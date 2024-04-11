@@ -5,6 +5,7 @@
 
 using std::vector, std::string;
 
+#include "Vec3.cuh"
 #include "ParticleContainer.cuh"
 
 int main() {
@@ -45,6 +46,4 @@ int main() {
     std::cout << pc;
 
     pc.copyToCPU();
-
-    std::cout << pc;
 }
