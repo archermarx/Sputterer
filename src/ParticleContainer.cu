@@ -70,6 +70,26 @@ void ParticleContainer::copyToCPU() {
     CUDA_CHECK( cudaMemcpy(weight.data(),     d_weight, size, cudaMemcpyDeviceToHost) );
 }
 
+__global__ void k_push(float *d_pos_x, float *d_pos_y, float *d_pos_z, float *d_vel_x, float *d_vel_y, float *d_vel_z, int N, float dt) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < N) {
+        d_pos_x[id] += d_vel_x[id] * dt;
+        d_pos_y[id] += d_vel_y[id] * dt;
+        d_pos_z[id] += d_vel_z[id] * dt;
+    }
+}
+
+void ParticleContainer::push(float dt) {
+    const int BLOCK_SIZE = 32;
+    const int GRID_SIZE = static_cast<int>(ceil(static_cast<float>(numParticles) / BLOCK_SIZE));
+    dim3 grid(GRID_SIZE, 1, 1);
+    dim3 block(BLOCK_SIZE, 1, 1);
+
+    k_push<<<grid, block>>>(d_pos_x, d_pos_y, d_pos_z, d_vel_x, d_vel_y, d_vel_z, numParticles, dt);
+
+    cudaDeviceSynchronize();
+}
+
 std::ostream &operator<<(std::ostream &os, ParticleContainer const &pc) {
     os << "==========================================================\n";
     os << "Particle container \"" << pc.name << "\"\n";

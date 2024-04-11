@@ -23,19 +23,28 @@ int main() {
     vector<float> w(numParticles, 1.0f);
 
     pc.addParticles(x, y, z, ux, uy, uz, w);
+
+    int numSteps = 1;
+    float dt = 1.0f / numSteps;
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < numSteps; i++) {
+        pc.push(dt);
+    }
+
+    cudaDeviceSynchronize();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count();
+
+    std::cout << "Average push duration: " << (float) duration / numSteps / 1000 << " us\n";
+
+    for (int i = 0; i < pc.numParticles; i++) {
+        pc.velocity_x[i] = 0.0;
+    }
+
+    std::cout << pc;
+
     pc.copyToCPU();
 
-    // int numSteps = 1000;
-    // float dt = 1.0f / numSteps;
-
-    // auto t1 = std::chrono::high_resolution_clock::now();
-    // // for (int i = 0; i < numSteps; i++) {
-    // //     pc.push(dt);
-    // // }
-    // auto t2 = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
-
-    // std::cout << duration << std::endl;
-    // std::cout << "Average push duration: " << (float) duration / numSteps << " ms\n";
     std::cout << pc;
 }

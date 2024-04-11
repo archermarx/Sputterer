@@ -56,23 +56,4 @@ class ParticleContainer {
 
 std::ostream &operator<<(std::ostream &os, ParticleContainer const &pc);
 
-
-// __global__ void k_push(float *x, float *y, float *z, float *vx, float *vy, float *vz, float dt, int N) {
-//     int ind = threadIdx.x + blockIdx.x * blockDim.x;
-//     if (ind < N) {
-//         x[ind] += vx[ind] * dt;
-//         y[ind] += vy[ind] * dt;
-//         z[ind] += vz[ind] * dt;
-//     }
-// }
-
-// void ParticleContainer::push(float dt) {
-//     for (int i = 0; i < numParticles; i++) {
-//         position_x[i] += velocity_x[i] * dt;
-//         position_y[i] += velocity_y[i] * dt;
-//         position_z[i] += velocity_z[i] * dt;
-//     }
-// }
-
-
 #endif
