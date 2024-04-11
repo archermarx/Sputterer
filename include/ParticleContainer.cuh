@@ -1,0 +1,78 @@
+
+#ifndef _PARTICLE_CONTAINER_H
+#define _PARTICLE_CONTAINER_H
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <thread>
+
+using std::string, std::vector;
+
+#define MAX_PARTICLES 35'000'000
+
+class ParticleContainer {
+    // Holds information for many particles of a specific species.
+    // Species are differentiated by charge state and mass.
+
+    public:
+        string name;        // name of particles
+        double mass;        // mass in atomic mass units
+        int charge;         // charge number
+        int numParticles;   // number of particles in container
+
+        // Position in meters
+        vector<float> position_x;
+        vector<float> position_y;
+        vector<float> position_z;
+        float *d_pos_x, *d_pos_y, *d_pos_z;
+
+        // Velocity in m/s
+        vector<float> velocity_x;
+        vector<float> velocity_y;
+        vector<float> velocity_z;
+        float *d_vel_x, *d_vel_y, *d_vel_z;
+
+        // Particle weight (computational particles per real particle
+        vector<float> weight;
+        float *d_weight;
+
+        // Constructor
+        ParticleContainer(string name, double mass, int charge);
+
+        // push particles to next positions (for now just use forward Euler)
+        void push(float dt);
+
+        // add particles to the container
+        void addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy, vector<float> vz, vector<float> w);
+
+        // Copy particles on GPU to CPU
+        void copyToCPU();
+
+        ~ParticleContainer();
+};
+
+std::ostream &operator<<(std::ostream &os, ParticleContainer const &pc);
+
+
+// __global__ void k_push(float *x, float *y, float *z, float *vx, float *vy, float *vz, float dt, int N) {
+//     int ind = threadIdx.x + blockIdx.x * blockDim.x;
+//     if (ind < N) {
+//         x[ind] += vx[ind] * dt;
+//         y[ind] += vy[ind] * dt;
+//         z[ind] += vz[ind] * dt;
+//     }
+// }
+
+// void ParticleContainer::push(float dt) {
+//     for (int i = 0; i < numParticles; i++) {
+//         position_x[i] += velocity_x[i] * dt;
+//         position_y[i] += velocity_y[i] * dt;
+//         position_z[i] += velocity_z[i] * dt;
+//     }
+// }
+
+
+#endif
