@@ -1,11 +1,21 @@
+[chamber]
+radius = 3
+length = 9
+
+# [[geometry]]
+# name = "beam dump"
+# file = "o_beamdump.obj"
+# emit = true
+# collect = false
+
 [[geometry]]
-name = "Emitter"
-file = "o_emitter.obj"
+name = "cube"
+file = "o_cube.obj"
 emit = true
 collect = false
 
-[[geometry]]
-name = "Collector"
-file = "o_collector.obj"
-emit = false
-collect = true
+# [[geometry]]
+# name = "Collector"
+# file = "o_collector.obj"
+# emit = false
+# collect = true

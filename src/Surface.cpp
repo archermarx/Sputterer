@@ -51,8 +51,9 @@ Surface::Surface(string name, string path, bool emit, bool collect)
 
 void Surface::enable() {
 
-    auto vertSize = numVertices * sizeof(Vec3<float>);
-    auto elemSize = numElements * sizeof(Vec3<unsigned int>);
+    unsigned int vertSize = numVertices * sizeof(Vec3<float>);
+    unsigned int elemSize = numElements * sizeof(Vec3<unsigned int>);
+    GLint vertSize_actual = 0, elemSize_actual = 0;
 
     // Set up buffers
     GL_CHECK( glGenVertexArrays(1, &VAO) );
@@ -64,16 +65,24 @@ void Surface::enable() {
     GL_CHECK( glBindBuffer(GL_ARRAY_BUFFER, VBO) );
     GL_CHECK( glBufferData(GL_ARRAY_BUFFER, vertSize, vertices.data(), GL_STATIC_DRAW) );
 
+    GL_CHECK( glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vertSize_actual) );
+    std::cout << "Vertex size: " << vertSize_actual << ", expected " << vertSize << std::endl;
+
     // Assign element data
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, elemSize, elements.data(), GL_STATIC_DRAW);
+    GL_CHECK( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO) );
+    GL_CHECK( glBufferData(GL_ELEMENT_ARRAY_BUFFER, elemSize, elements.data(), GL_STATIC_DRAW) );
+
+    GL_CHECK( glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &elemSize_actual) );
+    std::cout << "Element size: " << elemSize_actual << ", expected " << elemSize << std::endl;
 
     // Vertex positions
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3<float>), (void*) 0);
+    GL_CHECK( glEnableVertexAttribArray(0) );
+    GL_CHECK( glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0) );
 
+    // Unbind arrays and buffers
     glBindVertexArray(0);
-
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     enabled = true;
 }
 
@@ -88,9 +97,15 @@ void Surface::disable() {
 void Surface::draw(Shader &shader) {
     shader.use();
     // draw mesh
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, sizeof(Vec3<unsigned int>), GL_UNSIGNED_INT, 0);
+    GL_CHECK( glBindVertexArray(VAO) );
+    GL_CHECK( glBindBuffer(GL_ARRAY_BUFFER, VBO) );
+    GL_CHECK( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO) );
+
+    GL_CHECK( glDrawElements(GL_TRIANGLES, sizeof(Vec3<unsigned int>), GL_UNSIGNED_INT, 0) );
+
     glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 Surface::~Surface() {

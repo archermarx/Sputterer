@@ -4,6 +4,8 @@
 #include <string>
 #include <chrono>
 #include <filesystem>
+#include <sstream>
+#include <type_traits>
 
 // GLM headers
 #include <glm/glm.hpp>
@@ -25,9 +27,51 @@ using std::vector, std::string;
 #include "gl_helpers.hpp"
 #include "Camera.hpp"
 
-vector<Surface> readInput(string filename) {
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+float aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
 
-    std::cout << "In readinput" << std::endl;
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+template <typename T>
+T readTableEntryAs(toml::table &table, string inputName) {
+    auto node = table[inputName];
+    bool valid = true;
+    T value;
+
+    if constexpr (std::is_same_v<T, string>) {
+        if (node.is_string()) {
+            value = node.as_string() -> get();
+        } else {
+            valid = false;
+        }
+    } else {
+        if (node.is_integer()) {
+            value = static_cast<T>(node.as_integer() -> get());
+        } else if (node.is_boolean()) {
+            value = static_cast<T>(node.as_boolean() -> get());
+        } else if (node.is_floating_point()) {
+            value = static_cast<T>(node.as_floating_point() -> get());
+        } else if (node.is_string()) {
+            string str = node.as_string() -> get();
+            std::istringstream ss(str);
+            ss >> value;
+        } else {
+            valid = false;
+        }
+    }
+    if (!valid) {
+        std::cout << "Invalid input for option " << inputName << ".\n Expected value of type " << typeid(T).name() << "\n.";
+    }
+
+    return value;
+}
+
+vector<Surface> readInput(string filename) {
 
     std::vector<Surface> surfaces;
 
@@ -39,14 +83,28 @@ vector<Surface> readInput(string filename) {
         return surfaces;
     }
 
+    // Read chamber features
+    auto chamber = *input.get_as<toml::table>("chamber");
+    auto radius_node = chamber["radius"];
+    auto length_node = chamber["length"];
+
+    float radius = readTableEntryAs<float>(chamber, "radius");
+    float length = readTableEntryAs<float>(chamber, "length");
+
+    camera.orientation = glm::normalize(glm::vec3(radius, radius, radius));
+    camera.distance = 2 * radius;
+    camera.yaw = -135;
+    camera.pitch = 30;
+    camera.updateVectors();
+
     auto geometry = *input.get_as<toml::array>("geometry");
 
     for (auto&& elem : geometry) {
         auto tab = elem.as_table();
-        string name = tab->get_as<string>("name")->get();
-        string file = tab->get_as<string>("file")->get();
-        bool emit = tab->get_as<bool>("emit")->get();
-        bool collect = tab->get_as<bool>("collect")->get();
+        string name  = readTableEntryAs<string>(*tab, "name");
+        string file  = readTableEntryAs<string>(*tab, "file");
+        bool emit    = readTableEntryAs<bool>(*tab, "emit");
+        bool collect = readTableEntryAs<bool>(*tab, "collect");
         surfaces.emplace_back(name, file, emit, collect);
     }
 
@@ -58,15 +116,6 @@ vector<Surface> readInput(string filename) {
     return surfaces;
 }
 
-// settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
-float aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
-
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
 
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
@@ -104,7 +153,7 @@ bool dragging = false;
 bool firstClick = false;
 
 void mouseCursorCallback(GLFWwindow *window, double xpos_in, double ypos_in) {
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
         if (dragging) {
             dragging = false;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -123,7 +172,7 @@ void mouseCursorCallback(GLFWwindow *window, double xpos_in, double ypos_in) {
     }
 
     float offsetX = xPos - lastX;
-    float offsetY = lastY - yPos;
+    float offsetY = yPos - lastY;
     lastX = xPos;
     lastY = yPos;
 
