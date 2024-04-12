@@ -68,20 +68,20 @@ unsigned int compileShader(const char* source, const unsigned int type) {
 
     if(!success) {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::";
+        std::cout << "ERROR::SHADER::";
 
         switch(type) {
             case GL_FRAGMENT_SHADER:
-                std::cerr << "FRAGMENT";
+                std::cout << "FRAGMENT";
                 break;
             case GL_VERTEX_SHADER:
-                std::cerr << "VERTEX";
+                std::cout << "VERTEX";
                 break;
             default:
-                std::cerr << "UNKNOWN";
+                std::cout << "UNKNOWN";
                 break;
         }
-        std::cerr << "::COMPILATION_FAILED\n" << infoLog << std::endl;
+        std::cout << "::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
     return shader;
 }
@@ -105,7 +105,7 @@ unsigned int createShaderProgram(const std::vector<std::string>& sources, const 
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::LINK_FAILED\n" << infoLog << std::endl;
+        std::cout << "ERROR::SHADER::LINK_FAILED\n" << infoLog << std::endl;
     }
 
     return shaderProgram;
