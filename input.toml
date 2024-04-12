@@ -4,14 +4,8 @@ file = "o_emitter.obj"
 emit = true
 collect = false
 
-# [[geometry]]
-# name = "Collector"
-# file = "o_collector.obj"
-# emit = false
-# collect = true
-
 [[geometry]]
-name = "triangle"
-file = "o_triangle.obj"
+name = "Collector"
+file = "o_collector.obj"
 emit = false
-collect = false
+collect = true

@@ -7,12 +7,13 @@
 #include <glad/glad.h>
 
 #include "Vec3.hpp"
-#include "Mesh.hpp"
+#include "Surface.hpp"
 #include "gl_helpers.hpp"
 
 using std::string, std::vector;
 
-Mesh::Mesh(string path) : numVertices(0), numElements(0) {
+Surface::Surface(string name, string path, bool emit, bool collect)
+    : numVertices(0), numElements(0), name(name), emit(emit), collect(collect) {
 
     if (!std::filesystem::exists(path)) {
         std::cerr << "File " << path << " does not exist!\n";
@@ -48,7 +49,7 @@ Mesh::Mesh(string path) : numVertices(0), numElements(0) {
     }
 }
 
-void Mesh::enable() {
+void Surface::enable() {
 
     auto vertSize = numVertices * sizeof(Vec3<float>);
     auto elemSize = numElements * sizeof(Vec3<unsigned int>);
@@ -76,7 +77,7 @@ void Mesh::enable() {
     enabled = true;
 }
 
-void Mesh::disable() {
+void Surface::disable() {
     std::cout << "Disabling mesh" << std::endl;
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
@@ -84,7 +85,7 @@ void Mesh::disable() {
     enabled = false;
 }
 
-void Mesh::draw(Shader &shader) {
+void Surface::draw(Shader &shader) {
     shader.use();
     // draw mesh
     glBindVertexArray(VAO);
@@ -92,13 +93,13 @@ void Mesh::draw(Shader &shader) {
     glBindVertexArray(0);
 }
 
-Mesh::~Mesh() {
+Surface::~Surface() {
     if (enabled) {
         disable();
     }
 }
 
-std::ostream& operator <<(std::ostream &os, Mesh const &m) {
+std::ostream& operator <<(std::ostream &os, Surface const &m) {
     os << "Vertices\n=======================\n";
     for (int i = 0; i < m.numVertices; i++) {
         os << i << ": " << m.vertices[i] << "\n";
