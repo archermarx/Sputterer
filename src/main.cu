@@ -61,7 +61,7 @@ vector<Surface> readInput(string filename) {
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
-const float aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
+float aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -87,6 +87,14 @@ void processInput(GLFWwindow *window) {
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.processKeyboard(RIGHT, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        camera.processKeyboard(UP, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+        camera.processKeyboard(DOWN, deltaTime);
     }
 }
 
@@ -122,6 +130,18 @@ void mouseCursorCallback(GLFWwindow *window, double xpos_in, double ypos_in) {
     camera.processMouseMovement(offsetX, offsetY);
 }
 
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    camera.processMouseScroll(static_cast<float>(yoffset));
+}
+
+void framebufferSizeCallback(GLFWwindow* window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and
+    // height will be significantly larger than specified on retina displays.
+    aspectRatio = static_cast<float>(width) / height;
+    glViewport(0, 0, width, height);
+}
+
 int main(int argc, char * argv[]) {
 
     // Handle command line arguments
@@ -138,13 +158,14 @@ int main(int argc, char * argv[]) {
 
     Window window("Sputterer", SCR_WIDTH, SCR_HEIGHT);
 
+    glfwSetFramebufferSizeCallback(window.window, framebufferSizeCallback);
+    glfwSetCursorPosCallback(window.window, mouseCursorCallback);
+    glfwSetScrollCallback(window.window, scrollCallback);
+
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
 
     auto surfaces = readInput(filename);
-
-    glfwSetCursorPosCallback(window.window, mouseCursorCallback);
-
     for (const auto& surface: surfaces) {
         std::cout << surface.name << "\n";
         std::cout << surface << "\n";

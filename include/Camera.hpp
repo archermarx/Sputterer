@@ -13,7 +13,9 @@ enum CameraMovement {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    UP,
+    DOWN,
 };
 
 // Default camera values
@@ -97,13 +99,17 @@ class Camera {
                 case RIGHT:
                     position += right * velocity;
                     break;
+                case UP:
+                    position += up * velocity;
+                    break;
+                case DOWN:
+                    position -= up * velocity;
+                    break;
             }
         }
 
-
         // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-        void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true)
-        {
+        void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true) {
             xoffset *= mouseSensitivity;
             yoffset *= mouseSensitivity;
 
@@ -121,6 +127,15 @@ class Camera {
 
             // update Front, Right and Up Vectors using the updated Euler angles
             updateVectors();
+        }
+
+        // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
+        void processMouseScroll(float yoffset) {
+            zoom -= yoffset;
+            if (zoom < 1.0f)
+                zoom = 1.0f;
+            if (zoom > 45.0f)
+                zoom = 45.0f;
         }
 
     private:
