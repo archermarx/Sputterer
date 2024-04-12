@@ -23,6 +23,7 @@ using std::vector, std::string;
 #include "Window.hpp"
 #include "Shader.hpp"
 #include "gl_helpers.hpp"
+#include "Camera.hpp"
 
 vector<Surface> readInput(string filename) {
 
@@ -57,31 +58,69 @@ vector<Surface> readInput(string filename) {
     return surfaces;
 }
 
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+const float aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 void processInput(GLFWwindow *window) {
-    const float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        cameraPos += cameraSpeed * cameraFront;
+        camera.processKeyboard(FORWARD, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        cameraPos -= cameraSpeed * cameraFront;
+        camera.processKeyboard(BACKWARD, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        camera.processKeyboard(LEFT, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        camera.processKeyboard(RIGHT, deltaTime);
     }
 }
 
+float lastX = 0.0;
+float lastY = 0.0;
+bool dragging = false;
+bool firstClick = false;
+
+void mouseCursorCallback(GLFWwindow *window, double xpos_in, double ypos_in) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+        if (dragging) {
+            dragging = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        return;
+    }
+
+    float xPos = static_cast<float>(xpos_in);
+    float yPos = static_cast<float>(ypos_in);
+
+    if (!dragging) {
+        dragging = true;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        lastX = xPos;
+        lastY = yPos;
+    }
+
+    float offsetX = xPos - lastX;
+    float offsetY = lastY - yPos;
+    lastX = xPos;
+    lastY = yPos;
+
+    camera.processMouseMovement(offsetX, offsetY);
+}
 
 int main(int argc, char * argv[]) {
 
@@ -97,63 +136,43 @@ int main(int argc, char * argv[]) {
         display = static_cast<bool>(stoi(_display));
     }
 
-    Window window("Sputterer", 800, 800);
+    Window window("Sputterer", SCR_WIDTH, SCR_HEIGHT);
 
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
 
     auto surfaces = readInput(filename);
 
+    glfwSetCursorPosCallback(window.window, mouseCursorCallback);
+
     for (const auto& surface: surfaces) {
         std::cout << surface.name << "\n";
         std::cout << surface << "\n";
     }
 
-    // Camera info
-
-    const float radius = 10.0f;
-
-    glm::mat4 view = glm::lookAt(
-        cameraPos, cameraPos + cameraFront, cameraUp
-    );
-
-    // Model matrix
-    glm::mat4 model = glm::mat4(1.0f);
-    //model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-    glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-    int modelLoc = glGetUniformLocation(shader.ID, "model");
-    int viewLoc = glGetUniformLocation(shader.ID, "view");
-    int projLoc = glGetUniformLocation(shader.ID, "projection");
-
     glEnable(GL_DEPTH_TEST);
 
     while (window.open && display) {
-
-
+        // process user input
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         processInput(window.window);
 
-        view = glm::lookAt(
-            cameraPos, cameraPos + cameraFront, cameraUp
-        );
-
+        // draw background
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // update camera projection
+        shader.setMat4("view", camera.getViewMatrix());
+        shader.setMat4("projection", camera.getProjectionMatrix(aspectRatio));
+
+        // Draw geometry
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         for (int i = 0; i < surfaces.size(); i++) {
             surfaces[i].draw(shader);
         }
-
-        GL_CHECK( glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model)) );
-        GL_CHECK( glUniformMatrix4fv(viewLoc,  1, GL_FALSE, glm::value_ptr(view)) );
-        GL_CHECK( glUniformMatrix4fv(projLoc,  1, GL_FALSE, glm::value_ptr(projection)) );
-
 
         window.checkForUpdates();
     }
