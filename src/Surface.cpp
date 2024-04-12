@@ -47,7 +47,39 @@ Surface::Surface(string name, string path, bool emit, bool collect)
             numElements += 1;
         }
     }
+
+    // Allocate space for normals
+    normals.resize(numVertices);
+
+    generateNormals();
 }
+
+void Surface::generateNormals() {
+
+    int i = 0;
+    for (const auto& [e1, e2, e3] : elements) {
+        auto a = vertices.at(e1);
+        auto b = vertices.at(e2);
+        auto c = vertices.at(e3);
+        auto p = (b - a).cross(c - a);
+
+        std::cout << i << ": " << e1 << ", " << e2 << ", " << e3 << std::endl;
+        normals.at(e1) += p;
+        normals.at(e2) += p;
+        normals.at(e3) += p;
+        i++;
+    }
+
+    for (auto& normal : normals) {
+        normal.normalize();
+    }
+
+    for (auto& normal : normals) {
+        std::cout << "Normal: " << normal << " (length " << normal.length() << ")\n";
+    }
+}
+
+
 
 void Surface::enable() {
 

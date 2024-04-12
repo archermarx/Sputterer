@@ -13,6 +13,7 @@ class Surface {
         int numElements;
         vector<Point3<float>> vertices;
         vector<Vec3<unsigned int>> elements;
+        vector<Vec3<float>> normals;
         bool enabled;
 
         string name;
@@ -26,6 +27,7 @@ class Surface {
         void draw(Shader &shader);
         void enable();
         void disable();
+        void generateNormals();
     private:
         unsigned int VAO, VBO, EBO;
 };
