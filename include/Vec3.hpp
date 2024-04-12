@@ -31,7 +31,7 @@ class Vec3 {
         }
 
         inline Vec3<T> cross(Vec3<T> u) const {
-            return Vec3<T>(y*u.z - z*u.y, z*u.x - z*u.z, x*u.y - y*u.x);
+            return Vec3<T>(y*u.z - z*u.y, z*u.x - x*u.z, x*u.y - y*u.x);
         }
 
         // In-place updating functions

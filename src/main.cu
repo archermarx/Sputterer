@@ -237,7 +237,7 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", camera.getProjectionMatrix(aspectRatio));
 
         // Draw geometry
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        //  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         for (int i = 0; i < surfaces.size(); i++) {
             surfaces[i].draw(shader);

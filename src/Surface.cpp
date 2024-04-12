@@ -24,6 +24,8 @@ Surface::Surface(string name, string path, bool emit, bool collect)
 
     char firstChar;
     string line, v;
+    std::vector<Vec3<float>> rawVertices;
+    std::vector<Vec3<float>> rawElements;
 
     while (!objFile.eof()) {
 
@@ -37,53 +39,47 @@ Surface::Surface(string name, string path, bool emit, bool collect)
         if (firstChar == 'v') {
             // Read vertex points from file
             iss >> v >> x >> y >> z;
-            vertices.emplace_back(x, y, z);
-            numVertices += 1;
+            // put vertex in array
+            rawVertices.emplace_back(x, y, z);
         } else if (firstChar == 'f') {
             // Read elements from file.
             // Subtract one from each index (obj files start at 1, opengl at 0)
             iss >> v >> e1 >> e2 >> e3;
-            elements.emplace_back(e1 - 1, e2 - 1, e3 - 1);
-            numElements += 1;
+            rawElements.emplace_back(e1 - 1, e2 - 1, e3 - 1);
         }
     }
 
-    // Allocate space for normals
-    normals.resize(numVertices);
+    // now, split vertices for each face and generate normals
+    int id = 0;
+    for (const auto &[e1, e2, e3] : rawElements) {
 
-    generateNormals();
-}
+        // Get vertex coords
+        auto a = rawVertices.at(e1);
+        auto b = rawVertices.at(e2);
+        auto c = rawVertices.at(e3);
 
-void Surface::generateNormals() {
+        // Compute normal
+        auto n = (b - a).cross(c - a);
+        n.normalize();
 
-    int i = 0;
-    for (const auto& [e1, e2, e3] : elements) {
-        auto a = vertices.at(e1);
-        auto b = vertices.at(e2);
-        auto c = vertices.at(e3);
-        auto p = (b - a).cross(c - a);
+        // Add vertices to array
+        vertices.emplace_back(a, n);
+        vertices.emplace_back(b, n);
+        vertices.emplace_back(c, n);
 
-        std::cout << i << ": " << e1 << ", " << e2 << ", " << e3 << std::endl;
-        normals.at(e1) += p;
-        normals.at(e2) += p;
-        normals.at(e3) += p;
-        i++;
-    }
+        // Add elements to array
+        elements.emplace_back(id, id + 1, id + 2);
 
-    for (auto& normal : normals) {
-        normal.normalize();
-    }
-
-    for (auto& normal : normals) {
-        std::cout << "Normal: " << normal << " (length " << normal.length() << ")\n";
+        // increment vertex and element numbers
+        numVertices += 3;
+        numElements += 1;
+        id += 3;
     }
 }
-
-
 
 void Surface::enable() {
 
-    unsigned int vertSize = numVertices * sizeof(Vec3<float>);
+    unsigned int vertSize = numVertices * sizeof(Vertex);
     unsigned int elemSize = numElements * sizeof(Vec3<unsigned int>);
     GLint vertSize_actual = 0, elemSize_actual = 0;
 
@@ -109,7 +105,11 @@ void Surface::enable() {
 
     // Vertex positions
     GL_CHECK( glEnableVertexAttribArray(0) );
-    GL_CHECK( glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0) );
+    GL_CHECK( glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*) 0) );
+
+    // Vertex normals
+    GL_CHECK( glEnableVertexAttribArray(1) );
+    GL_CHECK( glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float))));
 
     // Unbind arrays and buffers
     glBindVertexArray(0);
@@ -149,7 +149,8 @@ Surface::~Surface() {
 std::ostream& operator <<(std::ostream &os, Surface const &m) {
     os << "Vertices\n=======================\n";
     for (int i = 0; i < m.numVertices; i++) {
-        os << i << ": " << m.vertices[i] << "\n";
+        os << i << ", pos =  " << m.vertices[i].pos << "\n";
+        os << i << ", normal =  " << m.vertices[i].normal << "\n";
     }
 
     os << "Elements\n=======================\n";
