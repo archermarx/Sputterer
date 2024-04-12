@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <filesystem>
 
 // defines to get TOML working with nvcc
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN 1
@@ -15,8 +16,11 @@ using std::vector, std::string;
 #include "Surface.hpp"
 #include "ParticleContainer.cuh"
 #include "Window.hpp"
+#include "Shader.hpp"
 
 vector<Surface> readInput(string filename) {
+
+    std::cout << "In readinput" << std::endl;
 
     std::vector<Surface> surfaces;
 
@@ -37,33 +41,54 @@ vector<Surface> readInput(string filename) {
         string file = tab->get_as<string>("file")->get();
         bool emit = tab->get_as<bool>("emit")->get();
         bool collect = tab->get_as<bool>("collect")->get();
+        surfaces.emplace_back(name, file, emit, collect);
+    }
 
-        Surface s(name, file, emit, collect);
-        surfaces.push_back(s);
+    for (auto &surface: surfaces) {
+        // enable meshes
+        surface.mesh.enable();
     }
 
     return surfaces;
 }
 
+
 int main(int argc, char * argv[]) {
 
-    string filename(argv[1]);
-    bool display;
+    // Handle command line arguments
+    string filename("input.toml");
+    if (argc > 1) {
+        filename = argv[1];
+    }
+
+    bool display(false);
     if (argc > 2) {
         string _display(argv[2]);
         display = static_cast<bool>(stoi(_display));
-    } else {
-        display = false;
     }
 
-    if (display) {
+    Window window("Sputterer", 800, 800);
 
-        Window window("Sputterer", 800, 800);
+    Shader shader("shaders/shader.vert", "shaders/shader.frag");
 
-        while (window.open) {
+    auto surfaces = readInput(filename);
 
-            window.checkForUpdates();
+    for (const auto& surface: surfaces) {
+        std::cout << surface.name << "\n";
+        std::cout << surface.mesh << "\n";
+    }
+
+    while (window.open && display) {
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        for (int i = 0; i < surfaces.size(); i++) {
+            surfaces[i].mesh.draw(shader);
         }
+
+        window.checkForUpdates();
     }
 
     return 0;

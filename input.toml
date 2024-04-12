@@ -1,11 +1,17 @@
 [[geometry]]
 name = "Emitter"
-file = "emitter.obj"
+file = "o_emitter.obj"
 emit = true
 collect = false
 
+# [[geometry]]
+# name = "Collector"
+# file = "o_collector.obj"
+# emit = false
+# collect = true
+
 [[geometry]]
-name = "Collector"
-file = "collector.obj"
+name = "triangle"
+file = "o_triangle.obj"
 emit = false
-collect = true
+collect = false

@@ -1,3 +1,6 @@
+#ifndef _CUDA_HELPERS_H
+#define _CUDA_HELPERS_H
+
 #include <stdio.h>
 
 #define CUDA_CHECK(err) do { cuda_check((err), __FILE__, __LINE__); } while(false)
@@ -10,3 +13,5 @@ inline void cuda_check(cudaError_t error_code, const char *file, int line)
         exit(error_code);
     }
 }
+
+#endif

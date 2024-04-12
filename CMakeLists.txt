@@ -31,4 +31,4 @@ target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus glfw)
 target_compile_features(sputterer PUBLIC cxx_std_20)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2 -g")
