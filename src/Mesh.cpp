@@ -5,8 +5,8 @@
 #include <string>
 #include <filesystem>
 
-#include "Vec3.cuh"
-#include "Mesh.cuh"
+#include "Vec3.hpp"
+#include "Mesh.hpp"
 
 using std::string, std::vector;
 

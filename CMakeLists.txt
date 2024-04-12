@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-project(Sputterer LANGUAGES CXX CUDA)
+project(Sputterer LANGUAGES C CXX CUDA)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -9,6 +9,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tomlplusplus)
 
+find_package(glfw3 3.3 REQUIRED)
+
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
@@ -16,12 +18,16 @@ include_directories(
 )
 
 file(GLOB sources
-    "${PROJECT_SOURCE_DIR}/include/*.cuh"
+    "${PROJECT_SOURCE_DIR}/src/*.c"
+    "${PROJECT_SOURCE_DIR}/src/*.cpp"
     "${PROJECT_SOURCE_DIR}/src/*.cu"
+    "${PROJECT_SOURCE_DIR}/include/*.cuh"
+    "${PROJECT_SOURCE_DIR}/include/*.hpp"
+    "${PROJECT_SOURCE_DIR}/include/*.h"
 )
 
 add_executable(sputterer ${sources})
-target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus)
+target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus glfw)
 target_compile_features(sputterer PUBLIC cxx_std_20)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

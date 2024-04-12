@@ -10,25 +10,25 @@
 
 using std::vector, std::string;
 
-#include "Vec3.cuh"
-#include "Mesh.cuh"
+#include "Vec3.hpp"
+#include "Mesh.hpp"
+#include "Surface.hpp"
 #include "ParticleContainer.cuh"
-#include "Surface.cuh"
+#include "Window.hpp"
 
-int main() {
-    string filename("../input.toml");
+vector<Surface> readInput(string filename) {
+
+    std::vector<Surface> surfaces;
 
     toml::table input;
     try {
         input = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
         std::cerr << "Parsing failed:\n" << err << "\n";
-        return 1;
+        return surfaces;
     }
 
     auto geometry = *input.get_as<toml::array>("geometry");
-
-    std::vector<Surface> surfaces;
 
     for (auto&& elem : geometry) {
 
@@ -40,8 +40,30 @@ int main() {
 
         Surface s(name, file, emit, collect);
         surfaces.push_back(s);
+    }
 
-        std::cout << s.name << "\n" << s.mesh << "\n";
+    return surfaces;
+}
+
+int main(int argc, char * argv[]) {
+
+    string filename(argv[1]);
+    bool display;
+    if (argc > 2) {
+        string _display(argv[2]);
+        display = static_cast<bool>(stoi(_display));
+    } else {
+        display = false;
+    }
+
+    if (display) {
+
+        Window window("Sputterer", 800, 800);
+
+        while (window.open) {
+
+            window.checkForUpdates();
+        }
     }
 
     return 0;

@@ -2,7 +2,7 @@
 #define _SURFACE_H
 
 #include <string>
-#include "Mesh.cuh"
+#include "Mesh.hpp"
 using std::string;
 
 class Surface {

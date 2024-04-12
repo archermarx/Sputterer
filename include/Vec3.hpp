@@ -1,6 +1,8 @@
 #ifndef _VEC3_H
 #define _VEC3_H
 
+#include <iostream>
+
 template <typename T>
 class Vec3 {
     public:

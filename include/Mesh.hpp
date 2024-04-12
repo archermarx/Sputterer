@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-#include "Vec3.cuh"
+#include "Vec3.hpp"
 using std::vector, std::string;
 
 class Mesh {

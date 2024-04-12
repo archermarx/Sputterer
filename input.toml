@@ -1,11 +1,11 @@
 [[geometry]]
 name = "Emitter"
-file = "../emitter.obj"
+file = "emitter.obj"
 emit = true
 collect = false
 
 [[geometry]]
 name = "Collector"
-file = "../collector.obj"
+file = "collector.obj"
 emit = false
 collect = true
