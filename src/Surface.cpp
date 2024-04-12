@@ -101,7 +101,7 @@ void Surface::draw(Shader &shader) {
     GL_CHECK( glBindBuffer(GL_ARRAY_BUFFER, VBO) );
     GL_CHECK( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO) );
 
-    GL_CHECK( glDrawElements(GL_TRIANGLES, sizeof(Vec3<unsigned int>), GL_UNSIGNED_INT, 0) );
+    GL_CHECK( glDrawElements(GL_TRIANGLES, 3 * numElements, GL_UNSIGNED_INT, 0) );
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
