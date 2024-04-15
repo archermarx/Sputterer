@@ -115,7 +115,6 @@ vector<Surface> readInput(string filename) {
     return surfaces;
 }
 
-
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
@@ -229,12 +228,13 @@ int main(int argc, char * argv[]) {
         processInput(window.window);
 
         // draw background
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // update camera projection
         shader.setMat4("view", camera.getViewMatrix());
         shader.setMat4("projection", camera.getProjectionMatrix(aspectRatio));
+        shader.setVec3("viewPos", camera.distance * camera.orientation);
 
         // Draw geometry
         //  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
