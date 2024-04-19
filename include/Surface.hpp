@@ -19,6 +19,7 @@ class Surface {
         int numElements;
         vector<Vertex> vertices;
         vector<Vec3<unsigned int>> elements;
+        bool enable_smooth{false};
         bool enabled;
 
         string name;

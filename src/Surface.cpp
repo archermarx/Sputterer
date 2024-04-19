@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
+#include <tuple>
+
 #include <glad/glad.h>
 
 #include "Vec3.hpp"
@@ -11,6 +13,18 @@
 #include "gl_helpers.hpp"
 
 using std::string, std::vector;
+
+std::vector<std::string> split (const std::string &s, char delim) {
+    std::vector<std::string> result;
+    std::stringstream ss (s);
+    std::string item;
+
+    while (getline (ss, item, delim)) {
+        result.push_back (item);
+    }
+
+    return result;
+}
 
 Surface::Surface(string name, string path, bool emit, bool collect)
     : numVertices(0), numElements(0), name(name), emit(emit), collect(collect) {
@@ -25,55 +39,99 @@ Surface::Surface(string name, string path, bool emit, bool collect)
     char firstChar;
     string line, v;
     std::vector<Vec3<float>> rawVertices;
-    std::vector<Vec3<float>> rawElements;
+    std::vector<Vec3<unsigned int>> rawElements;
 
     while (!objFile.eof()) {
 
         // Read a line from the file
         std::getline(objFile, line);
         std::istringstream iss(line);
-        firstChar = iss.peek();
+        firstChar = iss.get();
         float x, y, z;
+        std::string e1_str, e2_str, e3_str;
         unsigned int e1, e2, e3;
 
         if (firstChar == 'v') {
+            // Make sure these are just vertex coordinates (i.e. not vt or vn)
+            auto nextChar = iss.peek();
+            if (nextChar != ' ') {
+                continue;
+            }
+
             // Read vertex points from file
-            iss >> v >> x >> y >> z;
+            iss >> x >> y >> z;
+
             // put vertex in array
             rawVertices.emplace_back(x, y, z);
+
         } else if (firstChar == 'f') {
             // Read elements from file.
             // Subtract one from each index (obj files start at 1, opengl at 0)
-            iss >> v >> e1 >> e2 >> e3;
+            iss >> e1_str >> e2_str >> e3_str;
+
+            e1 = std::stoi(split(e1_str, '/').at(0));
+            e2 = std::stoi(split(e2_str, '/').at(0));
+            e3 = std::stoi(split(e3_str, '/').at(0));
+
             rawElements.emplace_back(e1 - 1, e2 - 1, e3 - 1);
+        } else if (firstChar == 's') {
+            iss >> enable_smooth;
         }
     }
+    std::cout << "Surface " << name << ", smooth = " << enable_smooth << std::endl;
+    // now, if smooth shading not enabled, split vertices for each face and generate normals
+    if (enable_smooth) {
+        numElements = rawElements.size();
+        numVertices = rawVertices.size();
+        elements = rawElements;
+        vertices = std::vector<Vertex>(numVertices);
 
-    // now, split vertices for each face and generate normals
-    int id = 0;
-    for (const auto &[e1, e2, e3] : rawElements) {
+        std::cout << vertices.size() << ", " << numVertices << std::endl;
 
-        // Get vertex coords
-        auto a = rawVertices.at(e1);
-        auto b = rawVertices.at(e2);
-        auto c = rawVertices.at(e3);
+        for (const auto &[e1, e2, e3] : elements) {
+            // Get vertex coords
+            auto a = rawVertices.at(e1);
+            auto b = rawVertices.at(e2);
+            auto c = rawVertices.at(e3);
 
-        // Compute normal
-        auto n = (b - a).cross(c - a);
-        n.normalize();
+            // Compute normal
+            auto n = (b - a).cross(c - a);
+            n.normalize();
 
-        // Add vertices to array
-        vertices.emplace_back(a, n);
-        vertices.emplace_back(b, n);
-        vertices.emplace_back(c, n);
+            vertices.at(e1).normal += n;
+            vertices.at(e2).normal += n;
+            vertices.at(e3).normal += n;
+        }
 
-        // Add elements to array
-        elements.emplace_back(id, id + 1, id + 2);
+        for (int i = 0; i < numVertices; i++) {
+            vertices.at(i).pos = rawVertices.at(i);
+            vertices.at(i).normal.normalize();
+        }
 
-        // increment vertex and element numbers
-        numVertices += 3;
-        numElements += 1;
-        id += 3;
+    } else {
+        int id = 0;
+        for (const auto &[e1, e2, e3] : rawElements) {
+            // Get vertex coords
+            auto a = rawVertices.at(e1);
+            auto b = rawVertices.at(e2);
+            auto c = rawVertices.at(e3);
+
+            // Compute normal
+            auto n = (b - a).cross(c - a);
+            n.normalize();
+
+            vertices.emplace_back(a, n);
+            vertices.emplace_back(b, n);
+            vertices.emplace_back(c, n);
+
+            // Add elements to array
+            elements.emplace_back(id, id + 1, id + 2);
+
+            // increment vertex and element numbers
+            numVertices += 3;
+            numElements += 1;
+            id += 3;
+        }
     }
 }
 

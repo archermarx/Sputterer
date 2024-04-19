@@ -1,3 +1,8 @@
+[[particle]]
+position = {x = 0, y = 0, z = 0}
+velocity = {x = 0, y = 0, z = 0}
+weight = 1
+
 [chamber]
 radius = 3
 length = 9
@@ -11,6 +16,12 @@ length = 9
 [[geometry]]
 name = "cube"
 file = "o_cube.obj"
+emit = true
+collect = false
+
+[[geometry]]
+name = "sphere"
+file = "o_sphere.obj"
 emit = true
 collect = false
 
