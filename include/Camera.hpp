@@ -21,14 +21,15 @@ enum CameraMovement {
 };
 
 // Default camera values
-const float YAW         = -90.0f;
-const float PITCH       =  0.0f;
-const float SPEED       =  2.5f;
-const float SENSITIVITY =  0.1f;
-const float FOV        = 45.0f;
-const float YAW_SPEED   = 100.0f;
-const float PITCH_SPEED = 100.0f;
-const float ZOOM_SPEED  = 0.5f;
+constexpr float YAW         = -90.0f;
+constexpr float PITCH       =  0.0f;
+constexpr float SPEED       =  2.5f;
+constexpr float SENSITIVITY =  0.1f;
+constexpr float FOV         = 75.0f;
+constexpr float YAW_SPEED   = 100.0f;
+constexpr float PITCH_SPEED = 100.0f;
+constexpr float ZOOM_SPEED  = 0.5f;
+constexpr float MAX_DISTANCE = 20.0f;
 
 class Camera {
     public:
@@ -147,8 +148,8 @@ class Camera {
             if (distance < 0.1f) {
                 distance = 0.1f;
             }
-            if (distance > 10.0f) {
-                distance = 10.0f;
+            if (distance > MAX_DISTANCE) {
+                distance = MAX_DISTANCE;
             }
             updateVectors();
         }

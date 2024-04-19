@@ -26,8 +26,10 @@ std::vector<std::string> split (const std::string &s, char delim) {
     return result;
 }
 
-Surface::Surface(string name, string path, bool emit, bool collect)
-    : numVertices(0), numElements(0), name(name), emit(emit), collect(collect) {
+Surface::Surface(string name, string path, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate)
+    : numVertices(0), numElements(0),
+      name(name), emit(emit), collect(collect),
+      scale(scale), translate(translate) {
 
     if (!std::filesystem::exists(path)) {
         std::cerr << "File " << path << " does not exist!\n";
@@ -62,7 +64,7 @@ Surface::Surface(string name, string path, bool emit, bool collect)
             iss >> x >> y >> z;
 
             // put vertex in array
-            rawVertices.emplace_back(x, y, z);
+            rawVertices.emplace_back(x + translate.x, y + translate.y, z + translate.z);
 
         } else if (firstChar == 'f') {
             // Read elements from file.
@@ -136,7 +138,6 @@ Surface::Surface(string name, string path, bool emit, bool collect)
 }
 
 void Surface::enable() {
-
     unsigned int vertSize = numVertices * sizeof(Vertex);
     unsigned int elemSize = numElements * sizeof(Vec3<unsigned int>);
     GLint vertSize_actual = 0, elemSize_actual = 0;
@@ -184,7 +185,7 @@ void Surface::disable() {
     enabled = false;
 }
 
-void Surface::draw(Shader &shader) {
+void Surface::draw(Shader &shader) const {
     shader.use();
     // draw mesh
     GL_CHECK( glBindVertexArray(VAO) );
@@ -215,6 +216,9 @@ std::ostream& operator <<(std::ostream &os, Surface const &m) {
     for (int i = 0; i < m.numElements; i++) {
         std::cout << i << ": " << m.elements[i] << "\n";
     }
+
+    os << "Scale: " << "{" << m.scale.x << ", " << m.scale.y << ", " << m.scale.z << "}\n";
+    os << "Translate: " << "{" << m.translate.x << ", " << m.translate.y << ", " << m.translate.z << "}\n";
 
     return os;
 }

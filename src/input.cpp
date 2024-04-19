@@ -18,6 +18,16 @@ T readTableEntryAs(toml::table &table, std::string inputName) {
         } else {
             valid = false;
         }
+    } else if constexpr (std::is_same_v<T, glm::vec3>) {
+        if (node.is_table()) {
+            auto tab = node.as_table();
+            auto x = readTableEntryAs<float>(*tab, "x");
+            auto y = readTableEntryAs<float>(*tab, "y");
+            auto z = readTableEntryAs<float>(*tab, "z");
+            value = glm::vec3(x, y, z);
+        } else {
+            valid = false;
+        }
     } else {
         if (node.is_integer()) {
             value = static_cast<T>(node.as_integer() -> get());
@@ -63,7 +73,20 @@ void Input::read() {
         std::string file  = readTableEntryAs<std::string>(*tab, "file");
         bool emit    = readTableEntryAs<bool>(*tab, "emit");
         bool collect = readTableEntryAs<bool>(*tab, "collect");
-        surfaces.emplace_back(name, file, emit, collect);
+
+        // object transformations (optional)
+        glm::vec3 scale(1.0f);
+        glm::vec3 translate(0.0f);
+
+        if (tab->contains("translate")) {
+            translate = readTableEntryAs<glm::vec3>(*tab, "translate");
+        }
+
+        if (tab->contains("scale")) {
+            scale = readTableEntryAs<glm::vec3>(*tab, "scale");
+        }
+
+        surfaces.emplace_back(name, file, emit, collect, scale, translate);
     }
 
     // Read particles

@@ -157,8 +157,15 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", camera.getProjectionMatrix(aspectRatio));
         shader.setVec3("viewPos", camera.distance * camera.orientation);
 
-        for (int i = 0; i < input.surfaces.size(); i++) {
-            input.surfaces[i].draw(shader);
+        glm::mat4 model;
+
+        for (const auto& surface: input.surfaces) {
+
+            // set the model matrix
+            model = glm::translate(glm::mat4(1.0f), surface.translate);
+            model = glm::scale(model, surface.scale);
+            shader.setMat4("model", model);
+            surface.draw(shader);
         }
 
         window.checkForUpdates();
