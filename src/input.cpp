@@ -67,6 +67,10 @@ void Input::read() {
     // Read surface geometry
     auto geometry = *input.get_as<toml::array>("geometry");
 
+    auto numSurfaces = geometry.size();
+    surfaces.reserve(numSurfaces);
+
+    int id = 0;
     for (auto&& elem : geometry) {
         auto tab = elem.as_table();
         std::string name  = readTableEntryAs<std::string>(*tab, "name");
@@ -87,6 +91,9 @@ void Input::read() {
         }
 
         surfaces.emplace_back(name, file, emit, collect, scale, translate);
+        std::cout << "emplaced" << std::endl;
+
+        id++;
     }
 
     // Read particles
@@ -107,10 +114,5 @@ void Input::read() {
 
         auto weight = readTableEntryAs<float>(*particle_tab, "weight");
         particle_w.push_back(weight);
-    }
-
-    for (auto &surface: surfaces) {
-        // enable meshes
-        surface.enable();
     }
 }

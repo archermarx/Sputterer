@@ -80,15 +80,12 @@ Surface::Surface(string name, string path, bool emit, bool collect, glm::vec3 sc
             iss >> enable_smooth;
         }
     }
-    std::cout << "Surface " << name << ", smooth = " << enable_smooth << std::endl;
     // now, if smooth shading not enabled, split vertices for each face and generate normals
     if (enable_smooth) {
         numElements = rawElements.size();
         numVertices = rawVertices.size();
         elements = rawElements;
         vertices = std::vector<Vertex>(numVertices);
-
-        std::cout << vertices.size() << ", " << numVertices << std::endl;
 
         for (const auto &[e1, e2, e3] : elements) {
             // Get vertex coords
@@ -135,6 +132,7 @@ Surface::Surface(string name, string path, bool emit, bool collect, glm::vec3 sc
             id += 3;
         }
     }
+    enable();
 }
 
 void Surface::enable() {
@@ -153,14 +151,12 @@ void Surface::enable() {
     GL_CHECK( glBufferData(GL_ARRAY_BUFFER, vertSize, vertices.data(), GL_STATIC_DRAW) );
 
     GL_CHECK( glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vertSize_actual) );
-    std::cout << "Vertex size: " << vertSize_actual << ", expected " << vertSize << std::endl;
 
     // Assign element data
     GL_CHECK( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO) );
     GL_CHECK( glBufferData(GL_ELEMENT_ARRAY_BUFFER, elemSize, elements.data(), GL_STATIC_DRAW) );
 
     GL_CHECK( glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &elemSize_actual) );
-    std::cout << "Element size: " << elemSize_actual << ", expected " << elemSize << std::endl;
 
     // Vertex positions
     GL_CHECK( glEnableVertexAttribArray(0) );
@@ -178,7 +174,6 @@ void Surface::enable() {
 }
 
 void Surface::disable() {
-    std::cout << "Disabling mesh" << std::endl;
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
