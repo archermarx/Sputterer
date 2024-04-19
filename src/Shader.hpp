@@ -8,10 +8,12 @@
 
 #include "glad/glad.h"
 
+#include "Camera.hpp"
+
 // Declarations
 unsigned int createShaderProgram (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
 unsigned int compileShader (const char *source, const unsigned int type);
-std::string readFromFile (const char *path);
+std::string  readFromFile (const char *path);
 
 class Shader {
 public:
@@ -27,6 +29,8 @@ public:
     void setMat4 (const std::string &name, glm::mat4 value) const;
 
     GLint getUniformLocation (const std::string &name) const;
+
+    void updateView (const Camera &camera, const float aspectRatio) const;
 };
 
 #endif

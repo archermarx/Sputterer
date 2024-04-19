@@ -1,12 +1,12 @@
 #include "Camera.hpp"
 
 // Returns the view matrix calculated using euler angles and the lookat matrix
-glm::mat4 Camera::getViewMatrix() {
+glm::mat4 Camera::getViewMatrix() const {
     return glm::lookAt(center + orientation * distance, center, up);
 }
 
 // Returns the projection matrix, given an aspect ratio
-glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float min, float max) {
+glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float min, float max) const {
     return glm::perspective(glm::radians(fov), aspectRatio, min, max);
 }
 

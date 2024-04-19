@@ -85,9 +85,7 @@ int main (int argc, char *argv[]) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // update camera projection
-        shader.setMat4("view", App::camera.getViewMatrix());
-        shader.setMat4("projection", App::camera.getProjectionMatrix(App::aspectRatio));
-        shader.setVec3("viewPos", App::camera.distance * App::camera.orientation);
+        shader.updateView(App::camera, App::aspectRatio);
 
         for (const auto &surface : input.surfaces) {
             // set the model matrix

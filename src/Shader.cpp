@@ -51,6 +51,12 @@ void Shader::setMat4(const std::string &name, glm::mat4 value) const {
     glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(value));
 }
 
+void Shader::updateView(const Camera &camera, const float aspectRatio) const {
+    setMat4("view", camera.getViewMatrix());
+    setMat4("projection", camera.getProjectionMatrix(aspectRatio));
+    setVec3("viewPos", camera.distance * camera.orientation);
+}
+
 //----------------------------------------------------------------------------------------------------------------------------------
 //                                                 UTILITY FUNCTIONS
 //----------------------------------------------------------------------------------------------------------------------------------

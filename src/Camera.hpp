@@ -62,10 +62,10 @@ public:
     float fov{FOV};
 
     // Returns the view matrix calculated using euler angles and the lookat matrix
-    glm::mat4 getViewMatrix ();
+    glm::mat4 getViewMatrix () const;
 
     // Returns the projection matrix, given an aspect ratio
-    glm::mat4 getProjectionMatrix (float aspectRatio, float min = 0.1f, float max = 100.0f);
+    glm::mat4 getProjectionMatrix (float aspectRatio, float min = 0.1f, float max = 100.0f) const;
 
     // Processes input recieved from keyboard. Expects a movement direction and a timestep.
     void processKeyboard (Direction direction, float deltaTime);
