@@ -134,12 +134,31 @@ int main(int argc, char * argv[]) {
     camera.pitch = 30;
     camera.updateVectors();
 
-    for (const auto& surface: input.surfaces) {
-        std::cout << surface.name << "\n";
-        std::cout << surface << "\n";
-    }
+    // for (const auto& surface: input.surfaces) {
+    //     std::cout << surface.name << "\n";
+    //     std::cout << surface << "\n";
+    // }
 
     glEnable(GL_DEPTH_TEST);
+
+    ParticleContainer pc{"noname", 1.0f, 1};
+
+
+    std::cout << "Particle x: " << input.particle_x.size() << std::endl;;
+
+    pc.addParticles(
+        input.particle_x, input.particle_y, input.particle_z,
+        input.particle_vx, input.particle_vy, input.particle_vz,
+        input.particle_w
+    );
+
+
+    glm::vec3 particleColor{0.0f, 0.2f, 0.8f};
+    glm::vec3 particleScale{0.1f};
+    glm::vec3 particleTranslate{0.0f};
+
+    Surface particleMesh("Particle", "o_sphere.obj", false, false, particleScale, particleTranslate, particleColor);
+    particleMesh.enable();
 
     while (window.open && display) {
         // process user input
@@ -160,13 +179,21 @@ int main(int argc, char * argv[]) {
         glm::mat4 model;
 
         for (const auto& surface: input.surfaces) {
-
             // set the model matrix
             model = glm::translate(glm::mat4(1.0f), surface.translate);
             model = glm::scale(model, surface.scale);
             shader.setMat4("model", model);
             shader.setVec3("objectColor", surface.color);
             surface.draw(shader);
+        }
+
+        for (int i = 0; i < pc.numParticles; i++) {
+            auto pos = glm::vec3{pc.position_x.at(i), pc.position_y.at(i), pc.position_z.at(i)};
+            model = glm::translate(glm::mat4(1.0f), pos);
+            model = glm::scale(model, particleMesh.scale);
+            shader.setMat4("model", model);
+            shader.setVec3("objectColor", particleMesh.color);
+            particleMesh.draw(shader);
         }
 
         window.checkForUpdates();

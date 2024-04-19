@@ -96,7 +96,6 @@ void Input::read() {
         }
 
         surfaces.emplace_back(name, file, emit, collect, scale, translate, color);
-        std::cout << "emplaced" << std::endl;
 
         id++;
     }
@@ -113,9 +112,9 @@ void Input::read() {
         particle_z.push_back(readTableEntryAs<float>(*pos, "z"));
 
         auto vel = particle_tab->get_as<toml::table>("velocity");
-        particle_x.push_back(readTableEntryAs<float>(*vel, "x"));
-        particle_y.push_back(readTableEntryAs<float>(*vel, "y"));
-        particle_z.push_back(readTableEntryAs<float>(*vel, "z"));
+        particle_vx.push_back(readTableEntryAs<float>(*vel, "x"));
+        particle_vy.push_back(readTableEntryAs<float>(*vel, "y"));
+        particle_vz.push_back(readTableEntryAs<float>(*vel, "z"));
 
         auto weight = readTableEntryAs<float>(*particle_tab, "weight");
         particle_w.push_back(weight);
