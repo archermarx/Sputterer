@@ -14,8 +14,9 @@ public:
     std::string          filename{"input.toml"};
     std::vector<Surface> surfaces;
 
-    double chamberRadius;
-    double chamberLength;
+    float  timestep{0.0};
+    double chamberRadius{-1.0};
+    double chamberLength{-1.0};
 
     std::vector<float> particle_w;
     std::vector<float> particle_x;

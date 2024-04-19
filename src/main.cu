@@ -69,8 +69,6 @@ int main (int argc, char *argv[]) {
     glm::vec3 particleColor{0.0f, 0.2f, 0.8f};
     glm::vec3 particleScale{0.1f};
 
-    float particle_dt = 0.1;
-
     Mesh particleMesh{};
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
@@ -83,7 +81,7 @@ int main (int argc, char *argv[]) {
         App::processInput(window.window);
 
         // Push particles
-        pc.push(particle_dt);
+        pc.push(input.timestep);
 
         // Copy back to CPU
         pc.copyToCPU();

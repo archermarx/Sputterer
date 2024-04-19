@@ -1,8 +1,8 @@
 // defines to get TOML working with nvcc
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN 1
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED 1
-#include <toml++/toml.hpp>
 #include <iostream>
+#include <toml++/toml.hpp>
 
 #include "Input.hpp"
 
@@ -51,6 +51,17 @@ T readTableEntryAs (toml::table &table, std::string inputName) {
     return value;
 }
 
+toml::table getTable (toml::table input, std::string name) {
+    if (input.contains(name)) {
+        return *input.get_as<toml::table>(name);
+    } else {
+        std::ostringstream msg;
+        msg << "TOML parsing error:\n"
+            << "Key " << name << " not found in table" << std::endl;
+        throw std::runtime_error(msg.str());
+    }
+}
+
 void Input::read() {
 
     toml::table input;
@@ -60,10 +71,13 @@ void Input::read() {
         std::cerr << "Parsing failed:\n" << err << "\n";
     }
 
+    auto sim = getTable(input, "simulation");
+    timestep = readTableEntryAs<float>(sim, "timestep_s");
+
     // Read chamber features
-    auto chamber  = *input.get_as<toml::table>("chamber");
-    chamberRadius = readTableEntryAs<float>(chamber, "radius");
-    chamberLength = readTableEntryAs<float>(chamber, "length");
+    auto chamber  = getTable(input, "chamber");
+    chamberRadius = readTableEntryAs<double>(chamber, "radius_m");
+    chamberLength = readTableEntryAs<double>(chamber, "length_m");
 
     // Read surface geometry
     auto geometry = *input.get_as<toml::array>("geometry");
