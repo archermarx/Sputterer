@@ -26,10 +26,10 @@ std::vector<std::string> split (const std::string &s, char delim) {
     return result;
 }
 
-Surface::Surface(string name, string path, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate)
+Surface::Surface(string name, string path, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate, glm::vec3 color)
     : numVertices(0), numElements(0),
       name(name), emit(emit), collect(collect),
-      scale(scale), translate(translate) {
+      scale(scale), translate(translate), color(color) {
 
     if (!std::filesystem::exists(path)) {
         std::cerr << "File " << path << " does not exist!\n";

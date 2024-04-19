@@ -25,11 +25,13 @@ class Surface {
         string name{"noname"};
         bool emit{false};
         bool collect{false};
-        glm::vec3 scale{1.0f};
+
+        glm::vec3 scale;
         glm::vec3 translate;
+        glm::vec3 color;
 
         Surface() = default;
-        Surface(string name, string path, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate);
+        Surface(string name, string path, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate, glm::vec3 color);
         ~Surface();
 
         void draw(Shader &shader) const;

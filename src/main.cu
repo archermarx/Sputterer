@@ -149,7 +149,7 @@ int main(int argc, char * argv[]) {
         processInput(window.window);
 
         // draw background
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.4f, 0.5f, 0.6f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // update camera projection
@@ -165,6 +165,7 @@ int main(int argc, char * argv[]) {
             model = glm::translate(glm::mat4(1.0f), surface.translate);
             model = glm::scale(model, surface.scale);
             shader.setMat4("model", model);
+            shader.setVec3("objectColor", surface.color);
             surface.draw(shader);
         }
 

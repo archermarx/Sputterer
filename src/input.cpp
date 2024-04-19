@@ -79,8 +79,9 @@ void Input::read() {
         bool collect = readTableEntryAs<bool>(*tab, "collect");
 
         // object transformations (optional)
-        glm::vec3 scale(1.0f);
-        glm::vec3 translate(0.0f);
+        glm::vec3 scale{1.0f};
+        glm::vec3 translate{0.0f};
+        glm::vec3 color{0.5f};
 
         if (tab->contains("translate")) {
             translate = readTableEntryAs<glm::vec3>(*tab, "translate");
@@ -90,7 +91,11 @@ void Input::read() {
             scale = readTableEntryAs<glm::vec3>(*tab, "scale");
         }
 
-        surfaces.emplace_back(name, file, emit, collect, scale, translate);
+        if (tab->contains("color")) {
+            color = readTableEntryAs<glm::vec3>(*tab, "color");
+        }
+
+        surfaces.emplace_back(name, file, emit, collect, scale, translate, color);
         std::cout << "emplaced" << std::endl;
 
         id++;
