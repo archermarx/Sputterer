@@ -41,25 +41,25 @@ class Camera {
 public:
     // camera attributes
     glm::vec3 orientation;
-    glm::vec3 front;
+    glm::vec3 front{glm::vec3(0.0f, 0.0f, -1.0f)};
     glm::vec3 up;
     glm::vec3 right;
-    glm::vec3 worldUp;
-    glm::vec3 center;
+    glm::vec3 worldUp{glm::vec3(0.0f, 1.0f, 0.0f)};
+    glm::vec3 center{glm::vec3(0.0f, 0.0f, 0.0f)};
 
     // Euler angles
-    float yaw;
-    float pitch;
+    float yaw{YAW};
+    float pitch{PITCH};
     float distance;
 
     // camera options
-    float movementSpeed;
-    float pitchSpeed;
-    float yawSpeed;
-    float orbitSensitivity;
-    float panSensitivity;
-    float zoomSpeed;
-    float fov;
+    float movementSpeed{SPEED};
+    float pitchSpeed{PITCH_SPEED};
+    float yawSpeed{YAW_SPEED};
+    float orbitSensitivity{ORBIT_SENSITIVITY};
+    float panSensitivity{PAN_SENSITIVITY};
+    float zoomSpeed{ZOOM_SPEED};
+    float fov{FOV};
 
     // Returns the view matrix calculated using euler angles and the lookat matrix
     glm::mat4 getViewMatrix ();
@@ -80,21 +80,9 @@ public:
     void updateVectors (CameraMovement movementType = CameraMovement::Orbit);
 
     // Constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-           glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f), float yaw = YAW, float pitch = PITCH)
-        : front(glm::vec3(0.0f, 0.0f, -1.0f))
-        , orientation(glm::normalize(position))
-        , distance(glm::length(position))
-        , worldUp(up)
-        , yaw(yaw)
-        , pitch(pitch)
-        , movementSpeed(SPEED)
-        , pitchSpeed(PITCH_SPEED)
-        , yawSpeed(YAW_SPEED)
-        , zoomSpeed(ZOOM_SPEED)
-        , orbitSensitivity(ORBIT_SENSITIVITY)
-        , panSensitivity(PAN_SENSITIVITY)
-        , fov(FOV) {
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f))
+        : orientation(glm::normalize(position))
+        , distance(glm::length(position)) {
         updateVectors();
     }
 };

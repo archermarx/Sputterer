@@ -12,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "App.hpp"
 #include "Camera.hpp"
 #include "Mesh.hpp"
 #include "ParticleContainer.cuh"
@@ -22,116 +23,6 @@
 #include "input.hpp"
 
 using std::vector, std::string;
-
-// settings
-const unsigned int SCR_WIDTH   = 800;
-const unsigned int SCR_HEIGHT  = 600;
-float              aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
-
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-
-float deltaTime     = 0.0f;
-float lastFrame     = 0.0f;
-float lastX         = 0.0;
-float lastY         = 0.0;
-bool  draggingLeft  = false;
-bool  draggingRight = false;
-bool  firstClick    = false;
-
-void processInput (GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Forward, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Backward, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Left, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Right, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Up, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-        camera.processKeyboard(Direction::Down, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        camera.center = glm::vec3{0.0};
-    }
-}
-
-void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
-
-    float xPos = static_cast<float>(xpos_in);
-    float yPos = static_cast<float>(ypos_in);
-
-    // Detection for left mouse drag/release
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE &&
-        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        if (draggingLeft || draggingRight) {
-            draggingLeft  = false;
-            draggingRight = false;
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            std::cout << "Drag released" << std::endl;
-        }
-        return;
-    } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        if (draggingRight) {
-            draggingRight = false;
-        }
-        if (!draggingLeft) {
-            draggingLeft = true;
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-            lastX = xPos;
-            lastY = yPos;
-            std::cout << "Left mouse drag initiated" << std::endl;
-        }
-    } else {
-        if (draggingLeft) {
-            draggingLeft = false;
-        }
-        if (!draggingRight) {
-            draggingRight = true;
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-            lastX = xPos;
-            lastY = yPos;
-            std::cout << "Right mouse drag initiated" << std::endl;
-        }
-    }
-
-    float offsetX = xPos - lastX;
-    float offsetY = yPos - lastY;
-
-    lastX = xPos;
-    lastY = yPos;
-
-    if (draggingLeft) {
-        camera.processMouseMovement(offsetX, offsetY, CameraMovement::Orbit);
-    } else if (draggingRight) {
-        camera.processMouseMovement(offsetX, offsetY, CameraMovement::Pan);
-    }
-}
-
-void scrollCallback (GLFWwindow *window, double xoffset, double yoffset) {
-    camera.processMouseScroll(static_cast<float>(yoffset));
-}
-
-void framebufferSizeCallback (GLFWwindow *window, int width, int height) {
-    aspectRatio = static_cast<float>(width) / height;
-    glViewport(0, 0, width, height);
-}
 
 int main (int argc, char *argv[]) {
     // Handle command line arguments
@@ -146,11 +37,11 @@ int main (int argc, char *argv[]) {
         display = static_cast<bool>(stoi(_display));
     }
 
-    Window window("Sputterer", SCR_WIDTH, SCR_HEIGHT);
+    Window window("Sputterer", App::SCR_WIDTH, App::SCR_HEIGHT);
 
-    glfwSetFramebufferSizeCallback(window.window, framebufferSizeCallback);
-    glfwSetCursorPosCallback(window.window, mouseCursorCallback);
-    glfwSetScrollCallback(window.window, scrollCallback);
+    glfwSetFramebufferSizeCallback(window.window, App::framebufferSizeCallback);
+    glfwSetCursorPosCallback(window.window, App::mouseCursorCallback);
+    glfwSetScrollCallback(window.window, App::scrollCallback);
 
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
@@ -158,11 +49,11 @@ int main (int argc, char *argv[]) {
     Input input(filename);
     input.read();
 
-    camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
-    camera.distance    = 2 * input.chamberRadius;
-    camera.yaw         = -135;
-    camera.pitch       = 30;
-    camera.updateVectors();
+    App::camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
+    App::camera.distance    = 2 * input.chamberRadius;
+    App::camera.yaw         = -135;
+    App::camera.pitch       = 30;
+    App::camera.updateVectors();
 
     for (const auto &surface : input.surfaces) {
         std::cout << surface.name << "\n";
@@ -185,18 +76,18 @@ int main (int argc, char *argv[]) {
     while (window.open && display) {
         // process user input
         float currentFrame = glfwGetTime();
-        deltaTime          = currentFrame - lastFrame;
-        lastFrame          = currentFrame;
-        processInput(window.window);
+        App::deltaTime     = currentFrame - App::lastFrame;
+        App::lastFrame     = currentFrame;
+        App::processInput(window.window);
 
         // draw background
         glClearColor(0.4f, 0.5f, 0.6f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // update camera projection
-        shader.setMat4("view", camera.getViewMatrix());
-        shader.setMat4("projection", camera.getProjectionMatrix(aspectRatio));
-        shader.setVec3("viewPos", camera.distance * camera.orientation);
+        shader.setMat4("view", App::camera.getViewMatrix());
+        shader.setMat4("projection", App::camera.getProjectionMatrix(App::aspectRatio));
+        shader.setVec3("viewPos", App::camera.distance * App::camera.orientation);
 
         for (const auto &surface : input.surfaces) {
             // set the model matrix

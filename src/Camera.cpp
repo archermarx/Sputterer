@@ -76,7 +76,6 @@ void Camera::updateVectors(CameraMovement movementType) {
     switch (movementType) {
     case CameraMovement::Orbit: {
         yaw = fmod(yaw, 360.0f);
-        std::cout << "Orbiting" << std::endl;
         // calculates the front vector from the Camera's (updated) Euler Angles
         orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         orientation.y = sin(glm::radians(pitch));
@@ -86,7 +85,6 @@ void Camera::updateVectors(CameraMovement movementType) {
         break;
     }
     case CameraMovement::Pan: {
-        std::cout << "Panning" << std::endl;
         auto pos = center + distance * orientation;
 
         orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
