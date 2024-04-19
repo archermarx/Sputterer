@@ -69,14 +69,11 @@ int main (int argc, char *argv[]) {
     glm::vec3 particleColor{0.0f, 0.2f, 0.8f};
     glm::vec3 particleScale{0.1f};
 
+    float particle_dt = 0.1;
+
     Mesh particleMesh{};
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
-
-    // GPU config
-    int  blockSize = 32;
-    dim3 threads(32, 1, 1);
-    dim3 blocks(static_cast<int>(ceil(static_cast<float>(pc.numParticles) / blockSize)));
 
     while (window.open && display) {
         // process user input
@@ -86,7 +83,7 @@ int main (int argc, char *argv[]) {
         App::processInput(window.window);
 
         // Push particles
-        pc.push(App::deltaTime);
+        pc.push(particle_dt);
 
         // Copy back to CPU
         pc.copyToCPU();
