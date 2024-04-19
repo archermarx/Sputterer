@@ -61,6 +61,24 @@ public:
     float zoomSpeed;
     float fov;
 
+    // Returns the view matrix calculated using euler angles and the lookat matrix
+    glm::mat4 getViewMatrix ();
+
+    // Returns the projection matrix, given an aspect ratio
+    glm::mat4 getProjectionMatrix (float aspectRatio, float min = 0.1f, float max = 100.0f);
+
+    // Processes input recieved from keyboard. Expects a movement direction and a timestep.
+    void processKeyboard (Direction direction, float deltaTime);
+
+    // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
+    void processMouseMovement (float xoffset, float yoffset, CameraMovement movementType);
+
+    // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
+    void processMouseScroll (float yoffset);
+
+    // After a change, update camera orientation and position vectors
+    void updateVectors (CameraMovement movementType = CameraMovement::Orbit);
+
     // Constructor with vectors
     Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
            glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f), float yaw = YAW, float pitch = PITCH)
@@ -78,127 +96,6 @@ public:
         , panSensitivity(PAN_SENSITIVITY)
         , fov(FOV) {
         updateVectors();
-    }
-
-    // Constructor with scalar values
-    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch)
-        : front(glm::vec3(0.0f, 0.0f, -1.0f))
-        , orientation(glm::normalize(glm::vec3(posX, posY, posZ)))
-        , distance(glm::length(glm::vec3(posX, posY, posZ)))
-        , worldUp(upX, upY, upZ)
-        , yaw(yaw)
-        , pitch(pitch)
-        , movementSpeed(SPEED)
-        , pitchSpeed(PITCH_SPEED)
-        , yawSpeed(YAW_SPEED)
-        , zoomSpeed(ZOOM_SPEED)
-        , orbitSensitivity(orbitSensitivity)
-        , panSensitivity(panSensitivity)
-        , fov(FOV) {
-        updateVectors();
-    }
-
-    // Returns the view matrix calculated using euler angles and the lookat matrix
-    glm::mat4 getViewMatrix () {
-        return glm::lookAt(center + orientation * distance, center, up);
-    }
-
-    // Returns the projection matrix, given an aspect ratio
-    glm::mat4 getProjectionMatrix (float aspectRatio, float min = 0.1f, float max = 100.0f) {
-        return glm::perspective(glm::radians(fov), aspectRatio, min, max);
-    }
-
-    void processKeyboard (Direction direction, float deltaTime) {
-        switch (direction) {
-        case Direction::Forward:
-            pitch += pitchSpeed * deltaTime;
-            break;
-        case Direction::Backward:
-            pitch -= pitchSpeed * deltaTime;
-            break;
-        case Direction::Left:
-            yaw += yawSpeed * deltaTime;
-            break;
-        case Direction::Right:
-            yaw -= yawSpeed * deltaTime;
-            break;
-        }
-        updateVectors();
-    }
-
-    // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-    void processMouseMovement (float xoffset, float yoffset, CameraMovement movementType) {
-
-        switch (movementType) {
-        case CameraMovement::Pan:
-            xoffset *= panSensitivity;
-            yoffset *= panSensitivity;
-            yaw -= xoffset;
-            pitch -= yoffset;
-            break;
-        case CameraMovement::Orbit:
-            xoffset *= orbitSensitivity;
-            yoffset *= orbitSensitivity;
-            yaw += xoffset;
-            pitch += yoffset;
-            break;
-        }
-
-        // update Front, Right and Up Vectors using the updated Euler angles
-        updateVectors(movementType);
-    }
-
-    // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
-    void processMouseScroll (float yoffset) {
-        distance -= zoomSpeed * yoffset;
-        if (distance < 0.1f) {
-            distance = 0.1f;
-        }
-        if (distance > MAX_DISTANCE) {
-            distance = MAX_DISTANCE;
-        }
-        updateVectors();
-    }
-
-    void updateVectors (CameraMovement movementType = CameraMovement::Orbit) {
-        // make sure that when pitch is out of bounds, screen doesn't get flipped
-        pitch = std::min(89.0f, std::max(-89.0f, pitch));
-
-        // Constrain yaw to [0, 360) for to avoid floating point issues at high angles
-        yaw = fmod(yaw, 360.0f);
-
-        switch (movementType) {
-        case CameraMovement::Orbit: {
-            yaw = fmod(yaw, 360.0f);
-            std::cout << "Orbiting" << std::endl;
-            // calculates the front vector from the Camera's (updated) Euler Angles
-            orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-            orientation.y = sin(glm::radians(pitch));
-            orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-            orientation   = glm::normalize(orientation);
-
-            break;
-        }
-        case CameraMovement::Pan: {
-            std::cout << "Panning" << std::endl;
-            auto pos = center + distance * orientation;
-
-            orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-            orientation.y = sin(glm::radians(pitch));
-            orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-            orientation   = glm::normalize(orientation);
-
-            center = pos - distance * orientation;
-
-            break;
-        }
-        }
-
-        front = center - distance * orientation;
-
-        // Also calculate right and up vector
-        right = glm::normalize(glm::cross(front, worldUp));
-        up    = glm::normalize(glm::cross(right, front));
     }
 };
 
