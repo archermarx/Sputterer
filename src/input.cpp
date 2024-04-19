@@ -7,36 +7,36 @@
 #include <iostream>
 
 template <typename T>
-T readTableEntryAs(toml::table &table, std::string inputName) {
-    auto node = table[inputName];
+T readTableEntryAs (toml::table &table, std::string inputName) {
+    auto node  = table[inputName];
     bool valid = true;
     T value{};
 
     if constexpr (std::is_same_v<T, string>) {
         if (node.is_string()) {
-            value = node.as_string() -> get();
+            value = node.as_string()->get();
         } else {
             valid = false;
         }
     } else if constexpr (std::is_same_v<T, glm::vec3>) {
         if (node.is_table()) {
             auto tab = node.as_table();
-            auto x = readTableEntryAs<float>(*tab, "x");
-            auto y = readTableEntryAs<float>(*tab, "y");
-            auto z = readTableEntryAs<float>(*tab, "z");
-            value = glm::vec3(x, y, z);
+            auto x   = readTableEntryAs<float>(*tab, "x");
+            auto y   = readTableEntryAs<float>(*tab, "y");
+            auto z   = readTableEntryAs<float>(*tab, "z");
+            value    = glm::vec3(x, y, z);
         } else {
             valid = false;
         }
     } else {
         if (node.is_integer()) {
-            value = static_cast<T>(node.as_integer() -> get());
+            value = static_cast<T>(node.as_integer()->get());
         } else if (node.is_boolean()) {
-            value = static_cast<T>(node.as_boolean() -> get());
+            value = static_cast<T>(node.as_boolean()->get());
         } else if (node.is_floating_point()) {
-            value = static_cast<T>(node.as_floating_point() -> get());
+            value = static_cast<T>(node.as_floating_point()->get());
         } else if (node.is_string()) {
-            string str = node.as_string() -> get();
+            string str = node.as_string()->get();
             std::istringstream ss(str);
             ss >> value;
         } else {
@@ -44,7 +44,8 @@ T readTableEntryAs(toml::table &table, std::string inputName) {
         }
     }
     if (!valid) {
-        std::cout << "Invalid input for option " << inputName << ".\n Expected value of type " << typeid(T).name() << "\n.";
+        std::cout << "Invalid input for option " << inputName << ".\n Expected value of type " << typeid(T).name()
+                  << "\n.";
     }
 
     return value;
@@ -55,12 +56,12 @@ void Input::read() {
     toml::table input;
     try {
         input = toml::parse_file(filename);
-    } catch (const toml::parse_error& err) {
+    } catch (const toml::parse_error &err) {
         std::cerr << "Parsing failed:\n" << err << "\n";
     }
 
     // Read chamber features
-    auto chamber = *input.get_as<toml::table>("chamber");
+    auto chamber  = *input.get_as<toml::table>("chamber");
     chamberRadius = readTableEntryAs<float>(chamber, "radius");
     chamberLength = readTableEntryAs<float>(chamber, "length");
 
@@ -71,12 +72,12 @@ void Input::read() {
     surfaces.reserve(numSurfaces);
 
     int id = 0;
-    for (auto&& elem : geometry) {
-        auto tab = elem.as_table();
-        std::string name  = readTableEntryAs<std::string>(*tab, "name");
-        std::string file  = readTableEntryAs<std::string>(*tab, "file");
-        bool emit    = readTableEntryAs<bool>(*tab, "emit");
-        bool collect = readTableEntryAs<bool>(*tab, "collect");
+    for (auto &&elem : geometry) {
+        auto tab         = elem.as_table();
+        std::string name = readTableEntryAs<std::string>(*tab, "name");
+        std::string file = readTableEntryAs<std::string>(*tab, "file");
+        bool emit        = readTableEntryAs<bool>(*tab, "emit");
+        bool collect     = readTableEntryAs<bool>(*tab, "collect");
 
         // object transformations (optional)
         glm::vec3 scale{1.0f};
@@ -95,7 +96,13 @@ void Input::read() {
             color = readTableEntryAs<glm::vec3>(*tab, "color");
         }
 
-        surfaces.emplace_back(name, file, emit, collect, scale, translate, color);
+        surfaces.emplace_back(name, emit, collect, scale, translate, color);
+
+        // Read mesh data
+        auto &surf = surfaces.at(id);
+        auto &mesh = surf.mesh;
+        mesh.readFromObj(file);
+        mesh.setBuffers();
 
         id++;
     }
@@ -103,7 +110,7 @@ void Input::read() {
     // Read particles
     auto particles = *input.get_as<toml::array>("particle");
 
-    for (auto&& particle: particles) {
+    for (auto &&particle : particles) {
         auto particle_tab = particle.as_table();
 
         auto pos = particle_tab->get_as<toml::table>("position");

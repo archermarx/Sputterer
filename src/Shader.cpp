@@ -1,7 +1,13 @@
-#include "Shader.hpp"
-#include "glm/glm.hpp"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include "glad/glad.h"
+#include "Shader.hpp"
 
 // Constructor for Shader type
 Shader::Shader(const char* vertexPath, const char* fragmentPath) {
