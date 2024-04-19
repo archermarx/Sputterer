@@ -2,15 +2,15 @@
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN 1
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED 1
 #include <toml++/toml.hpp>
-
-#include "input.hpp"
 #include <iostream>
+
+#include "Input.hpp"
 
 template <typename T>
 T readTableEntryAs (toml::table &table, std::string inputName) {
     auto node  = table[inputName];
     bool valid = true;
-    T value{};
+    T    value{};
 
     if constexpr (std::is_same_v<T, string>) {
         if (node.is_string()) {
@@ -36,7 +36,7 @@ T readTableEntryAs (toml::table &table, std::string inputName) {
         } else if (node.is_floating_point()) {
             value = static_cast<T>(node.as_floating_point()->get());
         } else if (node.is_string()) {
-            string str = node.as_string()->get();
+            string             str = node.as_string()->get();
             std::istringstream ss(str);
             ss >> value;
         } else {
@@ -73,11 +73,11 @@ void Input::read() {
 
     int id = 0;
     for (auto &&elem : geometry) {
-        auto tab         = elem.as_table();
-        std::string name = readTableEntryAs<std::string>(*tab, "name");
-        std::string file = readTableEntryAs<std::string>(*tab, "file");
-        bool emit        = readTableEntryAs<bool>(*tab, "emit");
-        bool collect     = readTableEntryAs<bool>(*tab, "collect");
+        auto        tab     = elem.as_table();
+        std::string name    = readTableEntryAs<std::string>(*tab, "name");
+        std::string file    = readTableEntryAs<std::string>(*tab, "file");
+        bool        emit    = readTableEntryAs<bool>(*tab, "emit");
+        bool        collect = readTableEntryAs<bool>(*tab, "collect");
 
         // object transformations (optional)
         glm::vec3 scale{1.0f};

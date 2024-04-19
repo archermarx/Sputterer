@@ -14,13 +14,13 @@
 
 #include "App.hpp"
 #include "Camera.hpp"
+#include "Input.hpp"
 #include "Mesh.hpp"
 #include "ParticleContainer.cuh"
 #include "Shader.hpp"
 #include "Surface.hpp"
 #include "Window.hpp"
 #include "gl_helpers.hpp"
-#include "input.hpp"
 
 using std::vector, std::string;
 
