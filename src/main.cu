@@ -73,12 +73,23 @@ int main (int argc, char *argv[]) {
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
 
+    // GPU config
+    int  blockSize = 32;
+    dim3 threads(32, 1, 1);
+    dim3 blocks(static_cast<int>(ceil(static_cast<float>(pc.numParticles) / blockSize)));
+
     while (window.open && display) {
         // process user input
         float currentFrame = glfwGetTime();
         App::deltaTime     = currentFrame - App::lastFrame;
         App::lastFrame     = currentFrame;
         App::processInput(window.window);
+
+        // Push particles
+        pc.push(App::deltaTime);
+
+        // Copy back to CPU
+        pc.copyToCPU();
 
         // draw background
         glClearColor(0.4f, 0.5f, 0.6f, 1.0f);
