@@ -1,18 +1,18 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "glad/glad.h"
 #include "Shader.hpp"
+#include "glad/glad.h"
 
 // Constructor for Shader type
-Shader::Shader(const char* vertexPath, const char* fragmentPath) {
+Shader::Shader(const char *vertexPath, const char *fragmentPath) {
     // 1. Retrieve vertex and fragment source code from file path
-    const auto vertexCode = readFromFile(vertexPath);
+    const auto vertexCode   = readFromFile(vertexPath);
     const auto fragmentCode = readFromFile(fragmentPath);
 
     // 2. Compile shaders and link
@@ -56,8 +56,8 @@ void Shader::setMat4(const std::string &name, glm::mat4 value) const {
 //----------------------------------------------------------------------------------------------------------------------------------
 
 // Read the contents of a file into a string
-std::string readFromFile(const char* path) {
-    std::string contents;
+std::string readFromFile (const char *path) {
+    std::string   contents;
     std::ifstream vFile;
 
     // ensure ifstream objects can throw exceptsions
@@ -73,47 +73,49 @@ std::string readFromFile(const char* path) {
         vFile.close();
         // convert stream into string
         contents = vStream.str();
-    } catch(std::ifstream::failure const&) {
+    } catch (std::ifstream::failure const &) {
         std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
     }
     return contents;
 }
 
-// Compile shader source code into a shader of the provided type, where type is GL_FRAGMENT_SHADER or GL_VERTEX_SHADER or similar.
-unsigned int compileShader(const char* source, const unsigned int type) {
+// Compile shader source code into a shader of the provided type, where type is GL_FRAGMENT_SHADER or GL_VERTEX_SHADER
+// or similar.
+unsigned int compileShader (const char *source, const unsigned int type) {
     unsigned int shader;
     shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
 
-    int success;
+    int  success;
     char infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 
-    if(!success) {
+    if (!success) {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::";
 
-        switch(type) {
-            case GL_FRAGMENT_SHADER:
-                std::cout << "FRAGMENT";
-                break;
-            case GL_VERTEX_SHADER:
-                std::cout << "VERTEX";
-                break;
-            default:
-                std::cout << "UNKNOWN";
-                break;
+        switch (type) {
+        case GL_FRAGMENT_SHADER:
+            std::cout << "FRAGMENT";
+            break;
+        case GL_VERTEX_SHADER:
+            std::cout << "VERTEX";
+            break;
+        default:
+            std::cout << "UNKNOWN";
+            break;
         }
         std::cout << "::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
     return shader;
 }
 
-// Given a list of shader source code and a list of types (e.g. GL_FRAGMENT_SHADER), compile the shaders and link into a program
-unsigned int createShaderProgram(const std::vector<std::string>& sources, const std::vector<unsigned int>& types) {
+// Given a list of shader source code and a list of types (e.g. GL_FRAGMENT_SHADER), compile the shaders and link into a
+// program
+unsigned int createShaderProgram (const std::vector<std::string> &sources, const std::vector<unsigned int> &types) {
     unsigned int shaderProgram = glCreateProgram();
-    int N = std::min(sources.size(), types.size());
+    int          N             = std::min(sources.size(), types.size());
 
     for (int i = 0; i < N; i++) {
         auto shader = compileShader(sources[i].c_str(), types[i]);
@@ -124,7 +126,7 @@ unsigned int createShaderProgram(const std::vector<std::string>& sources, const 
     glLinkProgram(shaderProgram);
 
     // check for success
-    int success;
+    int  success;
     char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {

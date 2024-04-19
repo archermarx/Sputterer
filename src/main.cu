@@ -30,12 +30,13 @@ float              aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
-float deltaTime  = 0.0f;
-float lastFrame  = 0.0f;
-float lastX      = 0.0;
-float lastY      = 0.0;
-bool  dragging   = false;
-bool  firstClick = false;
+float deltaTime     = 0.0f;
+float lastFrame     = 0.0f;
+float lastX         = 0.0;
+float lastY         = 0.0;
+bool  draggingLeft  = false;
+bool  draggingRight = false;
+bool  firstClick    = false;
 
 void processInput (GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
@@ -43,55 +44,84 @@ void processInput (GLFWwindow *window) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera.processKeyboard(FORWARD, deltaTime);
+        camera.processKeyboard(Direction::Forward, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera.processKeyboard(BACKWARD, deltaTime);
+        camera.processKeyboard(Direction::Backward, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera.processKeyboard(LEFT, deltaTime);
+        camera.processKeyboard(Direction::Left, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera.processKeyboard(RIGHT, deltaTime);
+        camera.processKeyboard(Direction::Right, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.processKeyboard(UP, deltaTime);
+        camera.processKeyboard(Direction::Up, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-        camera.processKeyboard(DOWN, deltaTime);
+        camera.processKeyboard(Direction::Down, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        camera.center = glm::vec3{0.0};
     }
 }
 
 void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        if (dragging) {
-            dragging = false;
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-        return;
-    }
 
     float xPos = static_cast<float>(xpos_in);
     float yPos = static_cast<float>(ypos_in);
 
-    if (!dragging) {
-        dragging = true;
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-        lastX = xPos;
-        lastY = yPos;
+    // Detection for left mouse drag/release
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE &&
+        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
+        if (draggingLeft || draggingRight) {
+            draggingLeft  = false;
+            draggingRight = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            std::cout << "Drag released" << std::endl;
+        }
+        return;
+    } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
+        if (draggingRight) {
+            draggingRight = false;
+        }
+        if (!draggingLeft) {
+            draggingLeft = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            lastX = xPos;
+            lastY = yPos;
+            std::cout << "Left mouse drag initiated" << std::endl;
+        }
+    } else {
+        if (draggingLeft) {
+            draggingLeft = false;
+        }
+        if (!draggingRight) {
+            draggingRight = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            lastX = xPos;
+            lastY = yPos;
+            std::cout << "Right mouse drag initiated" << std::endl;
+        }
     }
 
     float offsetX = xPos - lastX;
     float offsetY = yPos - lastY;
-    lastX         = xPos;
-    lastY         = yPos;
 
-    camera.processMouseMovement(offsetX, offsetY);
+    lastX = xPos;
+    lastY = yPos;
+
+    if (draggingLeft) {
+        camera.processMouseMovement(offsetX, offsetY, CameraMovement::Orbit);
+    } else if (draggingRight) {
+        camera.processMouseMovement(offsetX, offsetY, CameraMovement::Pan);
+    }
 }
 
 void scrollCallback (GLFWwindow *window, double xoffset, double yoffset) {
@@ -142,9 +172,6 @@ int main (int argc, char *argv[]) {
     glEnable(GL_DEPTH_TEST);
 
     ParticleContainer pc{"noname", 1.0f, 1};
-
-    std::cout << "Particle x: " << input.particle_x.size() << std::endl;
-
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 

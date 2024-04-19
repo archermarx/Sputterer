@@ -12,20 +12,25 @@
 
 #include "Window.hpp"
 
-enum CameraMovement {
-    FORWARD,
-    BACKWARD,
-    LEFT,
-    RIGHT,
-    UP,
-    DOWN,
+enum class Direction {
+    Forward,
+    Backward,
+    Left,
+    Right,
+    Up,
+    Down,
 };
 
+enum class CameraMovement { Pan, Orbit };
+
 // Default camera values
-constexpr float YAW          = -90.0f;
-constexpr float PITCH        = 0.0f;
-constexpr float SPEED        = 2.5f;
-constexpr float SENSITIVITY  = 0.1f;
+constexpr float YAW   = -90.0f;
+constexpr float PITCH = 0.0f;
+constexpr float SPEED = 2.5f;
+
+constexpr float PAN_SENSITIVITY   = 0.05f;
+constexpr float ORBIT_SENSITIVITY = 0.1f;
+
 constexpr float FOV          = 75.0f;
 constexpr float YAW_SPEED    = 100.0f;
 constexpr float PITCH_SPEED  = 100.0f;
@@ -51,7 +56,8 @@ public:
     float movementSpeed;
     float pitchSpeed;
     float yawSpeed;
-    float mouseSensitivity;
+    float orbitSensitivity;
+    float panSensitivity;
     float zoomSpeed;
     float fov;
 
@@ -68,7 +74,8 @@ public:
         , pitchSpeed(PITCH_SPEED)
         , yawSpeed(YAW_SPEED)
         , zoomSpeed(ZOOM_SPEED)
-        , mouseSensitivity(SENSITIVITY)
+        , orbitSensitivity(ORBIT_SENSITIVITY)
+        , panSensitivity(PAN_SENSITIVITY)
         , fov(FOV) {
         updateVectors();
     }
@@ -85,14 +92,15 @@ public:
         , pitchSpeed(PITCH_SPEED)
         , yawSpeed(YAW_SPEED)
         , zoomSpeed(ZOOM_SPEED)
-        , mouseSensitivity(SENSITIVITY)
+        , orbitSensitivity(orbitSensitivity)
+        , panSensitivity(panSensitivity)
         , fov(FOV) {
         updateVectors();
     }
 
     // Returns the view matrix calculated using euler angles and the lookat matrix
     glm::mat4 getViewMatrix () {
-        return glm::lookAt(orientation * distance, center, up);
+        return glm::lookAt(center + orientation * distance, center, up);
     }
 
     // Returns the projection matrix, given an aspect ratio
@@ -100,42 +108,44 @@ public:
         return glm::perspective(glm::radians(fov), aspectRatio, min, max);
     }
 
-    void processKeyboard (CameraMovement direction, float deltaTime) {
+    void processKeyboard (Direction direction, float deltaTime) {
         switch (direction) {
-        case FORWARD:
+        case Direction::Forward:
             pitch += pitchSpeed * deltaTime;
             break;
-        case BACKWARD:
+        case Direction::Backward:
             pitch -= pitchSpeed * deltaTime;
             break;
-        case LEFT:
-            // position -= right * velocity;
+        case Direction::Left:
             yaw += yawSpeed * deltaTime;
             break;
-        case RIGHT:
+        case Direction::Right:
             yaw -= yawSpeed * deltaTime;
-            // position += right * velocity;
             break;
-            // case UP:
-            //     position += up * velocity;
-            //     break;
-            // case DOWN:
-            //     position -= up * velocity;
-            //     break;
         }
         updateVectors();
     }
 
     // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-    void processMouseMovement (float xoffset, float yoffset, GLboolean constrainPitch = true) {
-        xoffset *= mouseSensitivity;
-        yoffset *= mouseSensitivity;
+    void processMouseMovement (float xoffset, float yoffset, CameraMovement movementType) {
 
-        yaw += xoffset;
-        pitch += yoffset;
+        switch (movementType) {
+        case CameraMovement::Pan:
+            xoffset *= panSensitivity;
+            yoffset *= panSensitivity;
+            yaw -= xoffset;
+            pitch -= yoffset;
+            break;
+        case CameraMovement::Orbit:
+            xoffset *= orbitSensitivity;
+            yoffset *= orbitSensitivity;
+            yaw += xoffset;
+            pitch += yoffset;
+            break;
+        }
 
         // update Front, Right and Up Vectors using the updated Euler angles
-        updateVectors();
+        updateVectors(movementType);
     }
 
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
@@ -150,21 +160,41 @@ public:
         updateVectors();
     }
 
-    void updateVectors () {
+    void updateVectors (CameraMovement movementType = CameraMovement::Orbit) {
         // make sure that when pitch is out of bounds, screen doesn't get flipped
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
+        pitch = std::min(89.0f, std::max(-89.0f, pitch));
 
         // Constrain yaw to [0, 360) for to avoid floating point issues at high angles
         yaw = fmod(yaw, 360.0f);
 
-        // calculates the front vector from the Camera's (updated) Euler Angles
-        orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        orientation.y = sin(glm::radians(pitch));
-        orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        front         = center - distance * orientation;
+        switch (movementType) {
+        case CameraMovement::Orbit: {
+            yaw = fmod(yaw, 360.0f);
+            std::cout << "Orbiting" << std::endl;
+            // calculates the front vector from the Camera's (updated) Euler Angles
+            orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+            orientation.y = sin(glm::radians(pitch));
+            orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+            orientation   = glm::normalize(orientation);
+
+            break;
+        }
+        case CameraMovement::Pan: {
+            std::cout << "Panning" << std::endl;
+            auto pos = center + distance * orientation;
+
+            orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+            orientation.y = sin(glm::radians(pitch));
+            orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+            orientation   = glm::normalize(orientation);
+
+            center = pos - distance * orientation;
+
+            break;
+        }
+        }
+
+        front = center - distance * orientation;
 
         // Also calculate right and up vector
         right = glm::normalize(glm::cross(front, worldUp));
