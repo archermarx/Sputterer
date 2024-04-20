@@ -1,10 +1,13 @@
 
-#ifndef _PARTICLE_CONTAINER_H
-#define _PARTICLE_CONTAINER_H
+#ifndef _PARTICLE_CONTAINER_CUH
+#define _PARTICLE_CONTAINER_CUH
 
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "Cuda.cuh"
+#include "Triangle.cuh"
 
 using std::vector, std::string;
 
@@ -40,7 +43,7 @@ public:
     ParticleContainer(string name, double mass, int charge);
 
     // push particles to next positions (for now just use forward Euler)
-    void push (float dt);
+    void push (const float dt, const cuda::vector<Triangle> &tris);
 
     // add particles to the container
     void addParticles (vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy,

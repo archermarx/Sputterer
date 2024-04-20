@@ -20,8 +20,10 @@
 #include "Window.hpp"
 
 #include "Cuda.cuh"
-#include "ParticleContainer.cuh"
+
 #include "Triangle.cuh"
+
+#include "ParticleContainer.cuh"
 
 #include "gl_helpers.hpp"
 
@@ -76,30 +78,45 @@ int main (int argc, char *argv[]) {
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
 
-    // TRIANGLE TESTS
+    // construct triangles
+    auto mesh = input.surfaces.at(0).mesh;
 
-    std::vector<Triangle> host_tris{
-        {.p1 = {0.0, 0.0, 0.0}, .p2 = {0.0, 1.0, 0.0}, .p3 = {1.0, 0.0, 0.0}},
-        {.p1 = {1.0, 1.0, 0.0}, .p2 = {1.0, 1.0, 1.0}, .p3 = {1.0, 0.0, 1.0}},
-        {.p1 = {1.0, 0.0, 1.0}, .p2 = {1.0, 0.5, 0.1}, .p3 = {2.0, 5.0, 3.0}},
-    };
+    std::vector<Triangle> h_triangles;
+    for (const auto &[i1, i2, i3] : mesh.triangles) {
+        auto scale     = input.surfaces.at(0).scale;
+        auto translate = input.surfaces.at(0).translate;
 
-    cuda::vector<Triangle> dev_tris(host_tris);
+        auto model = glm::translate(glm::mat4(1.0), translate);
+        model      = glm::scale(model, scale);
 
-    std::cout << dev_tris.size() << std::endl;
-    // invoke our kernel
-    g_translate_triangles<<<1, 3>>>(dev_tris.data(), dev_tris.size());
+        auto v1 = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
+        auto v2 = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
+        auto v3 = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
-    // Copy results back to host
-    dev_tris.copyTo(host_tris);
-
-    // let's see what we have
-    for (size_t i = 0; i < host_tris.size(); i++) {
-        std::cout << "Triangle: " << i << "\n";
-        std::cout << "[" << host_tris[i].p1.x << ", " << host_tris[i].p1.y << ", " << host_tris[i].p1.z << "]\n";
-        std::cout << "[" << host_tris[i].p2.x << ", " << host_tris[i].p2.y << ", " << host_tris[i].p2.z << "]\n";
-        std::cout << "[" << host_tris[i].p3.x << ", " << host_tris[i].p3.y << ", " << host_tris[i].p3.z << "]\n\n";
+        h_triangles.emplace_back(v1, v2, v3);
     }
+
+    Ray ray{.origin    = {pc.position_x[0], pc.position_y[0], pc.position_z[0]},
+            .direction = {pc.velocity_x[0] * input.timestep, pc.velocity_y[0] * input.timestep,
+                          pc.velocity_z[0] * input.timestep}};
+
+    std::cout << "Ray origin = " << ray.origin << ", direction = " << ray.direction << "\n\n";
+
+    for (auto &t : h_triangles) {
+        auto info = hits_triangle(ray, t);
+        std::cout << "Triangle: " << t.v0 << ", " << t.v1 << ", " << t.v2 << "\n";
+        std::cout << "Hit: " << (info.hits ? "true" : "false") << "\n";
+        if (info.hits) {
+            std::cout << "t = " << info.t << ", "
+                      << "norm = " << info.norm << "\n"
+                      << "intersect = " << ray.origin + info.t * ray.direction << "\n";
+        }
+        std::cout << "\n";
+    }
+
+    cuda::vector<Triangle> d_triangles{h_triangles};
+
+    size_t id = 0;
 
     while (window.open && display) {
         // process user input
@@ -108,8 +125,14 @@ int main (int argc, char *argv[]) {
         App::lastFrame     = currentFrame;
         App::processInput(window.window);
 
+        // if (id < 5) {
+        //     std::cout << "Pos, vel : " << std::endl;
+        //     std::cout << pc.position_x[0] << ", " << pc.position_y[0] << ", " << pc.position_z[0] << "\n";
+        //     std::cout << pc.velocity_x[0] << ", " << pc.velocity_y[0] << ", " << pc.velocity_z[0] << "\n";
+        // }
+
         // Push particles
-        pc.push(input.timestep);
+        pc.push(input.timestep, d_triangles);
 
         // Copy back to CPU
         pc.copyToCPU();
@@ -136,6 +159,7 @@ int main (int argc, char *argv[]) {
         }
 
         window.checkForUpdates();
+        id += 1;
     }
 
     return 0;

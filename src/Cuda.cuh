@@ -1,3 +1,6 @@
+#ifndef _CUDA_CUH
+#define _CUDA_CUH
+
 #include <vector>
 
 #include "../include/cuda_helpers.cuh"
@@ -28,7 +31,10 @@ public:
 
     // Free up memory when this vector is destroyed
     ~vector() {
-        CUDA_CHECK(cudaFree(m_data_ptr));
+        std::cout << "Destroying GPU vector" << std::endl;
+        if (m_data_ptr != nullptr) {
+            CUDA_CHECK(cudaFree(m_data_ptr));
+        }
     }
 
     // Return number of elements in the vector
@@ -63,3 +69,5 @@ private:
 };
 
 } // namespace cuda
+
+#endif
