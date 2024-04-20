@@ -5,24 +5,24 @@
 #include <vector>
 
 #include "Mesh.hpp"
-#include "Shader.hpp"
+#include "Vec3.hpp"
 
 using std::vector, std::string;
 
 class Surface {
 public:
     string name{"noname"};
-    bool emit{false};
-    bool collect{false};
+    bool   emit{false};
+    bool   collect{false};
 
     Mesh mesh{};
-    glm::vec3 scale;
-    glm::vec3 translate;
-    glm::vec3 color;
+    vec3 scale;
+    vec3 translate;
+    vec3 color;
 
     Surface()  = default;
     ~Surface() = default;
-    Surface(string name, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate, glm::vec3 color);
+    Surface(string name, bool emit, bool collect, vec3 scale, vec3 translate, vec3 color);
 };
 
 #endif

@@ -7,13 +7,12 @@
 #include <vector>
 
 // GLM types
-#include <glm/gtc/type_ptr.hpp>
-
 #include "Shader.hpp"
+#include "Vec3.hpp"
 
 struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 norm;
+    vec3 pos;
+    vec3 norm;
 };
 
 std::ostream &operator<< (std::ostream &os, const Vertex &v);
@@ -25,9 +24,9 @@ struct TriElement {
 std::ostream &operator<< (std::ostream &os, const TriElement &t);
 
 struct Transform {
-    glm::vec3 color{0.3, 0.3, 0.3};
-    glm::vec3 scale{1.0};
-    glm::vec3 translate{0.0, 0.0, 0.0};
+    vec3 color{0.3, 0.3, 0.3};
+    vec3 scale{1.0};
+    vec3 translate{0.0, 0.0, 0.0};
 };
 
 class Mesh {

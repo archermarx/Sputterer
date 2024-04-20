@@ -10,16 +10,19 @@
 // GLM headers
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "App.hpp"
 #include "Camera.hpp"
 #include "Input.hpp"
 #include "Mesh.hpp"
-#include "ParticleContainer.cuh"
 #include "Shader.hpp"
 #include "Surface.hpp"
 #include "Window.hpp"
+
+#include "Cuda.cuh"
+#include "ParticleContainer.cuh"
+#include "Triangle.cuh"
+
 #include "gl_helpers.hpp"
 
 using std::vector, std::string;
@@ -72,6 +75,31 @@ int main (int argc, char *argv[]) {
     Mesh particleMesh{};
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
+
+    // TRIANGLE TESTS
+
+    std::vector<Triangle> host_tris{
+        {.p1 = {0.0, 0.0, 0.0}, .p2 = {0.0, 1.0, 0.0}, .p3 = {1.0, 0.0, 0.0}},
+        {.p1 = {1.0, 1.0, 0.0}, .p2 = {1.0, 1.0, 1.0}, .p3 = {1.0, 0.0, 1.0}},
+        {.p1 = {1.0, 0.0, 1.0}, .p2 = {1.0, 0.5, 0.1}, .p3 = {2.0, 5.0, 3.0}},
+    };
+
+    cuda::vector<Triangle> dev_tris(host_tris);
+
+    std::cout << dev_tris.size() << std::endl;
+    // invoke our kernel
+    g_translate_triangles<<<1, 3>>>(dev_tris.data(), dev_tris.size());
+
+    // Copy results back to host
+    dev_tris.copyTo(host_tris);
+
+    // let's see what we have
+    for (size_t i = 0; i < host_tris.size(); i++) {
+        std::cout << "Triangle: " << i << "\n";
+        std::cout << "[" << host_tris[i].p1.x << ", " << host_tris[i].p1.y << ", " << host_tris[i].p1.z << "]\n";
+        std::cout << "[" << host_tris[i].p2.x << ", " << host_tris[i].p2.y << ", " << host_tris[i].p2.z << "]\n";
+        std::cout << "[" << host_tris[i].p3.x << ", " << host_tris[i].p3.y << ", " << host_tris[i].p3.z << "]\n\n";
+    }
 
     while (window.open && display) {
         // process user input

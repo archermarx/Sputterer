@@ -11,7 +11,7 @@
 #include "Surface.hpp"
 #include "gl_helpers.hpp"
 
-Surface::Surface(std::string name, bool emit, bool collect, glm::vec3 scale, glm::vec3 translate, glm::vec3 color)
+Surface::Surface(std::string name, bool emit, bool collect, vec3 scale, vec3 translate, vec3 color)
     : name(name)
     , emit(emit)
     , collect(collect)
