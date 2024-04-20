@@ -96,9 +96,7 @@ int main (int argc, char *argv[]) {
         h_triangles.emplace_back(v1, v2, v3);
     }
 
-    Ray ray{.origin    = {pc.position_x[0], pc.position_y[0], pc.position_z[0]},
-            .direction = {pc.velocity_x[0] * input.timestep, pc.velocity_y[0] * input.timestep,
-                          pc.velocity_z[0] * input.timestep}};
+    Ray ray{.origin = pc.position[0], .direction = input.timestep * pc.velocity[0]};
 
     std::cout << "Ray origin = " << ray.origin << ", direction = " << ray.direction << "\n\n";
 
@@ -125,11 +123,11 @@ int main (int argc, char *argv[]) {
         App::lastFrame     = currentFrame;
         App::processInput(window.window);
 
-        // if (id < 5) {
-        //     std::cout << "Pos, vel : " << std::endl;
-        //     std::cout << pc.position_x[0] << ", " << pc.position_y[0] << ", " << pc.position_z[0] << "\n";
-        //     std::cout << pc.velocity_x[0] << ", " << pc.velocity_y[0] << ", " << pc.velocity_z[0] << "\n";
-        // }
+        if (true) {
+            std::cout << "Pos, vel : " << std::endl;
+            std::cout << pc.position[0] << "\n";
+            std::cout << pc.velocity[0] << "\n";
+        }
 
         // Push particles
         pc.push(input.timestep, d_triangles);
@@ -153,7 +151,7 @@ int main (int argc, char *argv[]) {
         for (int i = 0; i < pc.numParticles; i++) {
             Transform t;
             t.scale     = particleScale;
-            t.translate = glm::vec3{pc.position_x[i], pc.position_y[i], pc.position_z[i]};
+            t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
             t.color     = particleColor;
             particleMesh.draw(shader, t);
         }

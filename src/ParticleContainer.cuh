@@ -18,26 +18,22 @@ class ParticleContainer {
     // Species are differentiated by charge state and mass.
 
 public:
-    string name;         // name of particles
-    double mass;         // mass in atomic mass units
-    int    charge;       // charge number
-    int    numParticles; // number of particles in container
+    string name;            // name of particles
+    double mass;            // mass in atomic mass units
+    int    charge;          // charge number
+    int    numParticles{0}; // number of particles in container
 
     // Position in meters
-    vector<float> position_x;
-    vector<float> position_y;
-    vector<float> position_z;
-    float        *d_pos_x, *d_pos_y, *d_pos_z;
+    vector<float3>       position;
+    cuda::vector<float3> d_position{MAX_PARTICLES};
 
     // Velocity in m/s
-    vector<float> velocity_x;
-    vector<float> velocity_y;
-    vector<float> velocity_z;
-    float        *d_vel_x, *d_vel_y, *d_vel_z;
+    vector<float3>       velocity;
+    cuda::vector<float3> d_velocity{MAX_PARTICLES};
 
     // Particle weight (computational particles per real particle
-    vector<float> weight;
-    float        *d_weight;
+    vector<float>       weight;
+    cuda::vector<float> d_weight{MAX_PARTICLES};
 
     // Constructor
     ParticleContainer(string name, double mass, int charge);
@@ -52,7 +48,7 @@ public:
     // Copy particles on GPU to CPU
     void copyToCPU ();
 
-    ~ParticleContainer();
+    ~ParticleContainer() = default;
 };
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);

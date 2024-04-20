@@ -15,11 +15,11 @@ inline __host__ __device__ float3 cross (const float3 a, const float3 b) {
 }
 
 inline __host__ __device__ float3 operator+ (const float3 a, const float3 b) {
-    return {a.x + b.x, a.y + b.x, a.z + b.z};
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 inline __host__ __device__ float3 operator- (const float3 a, const float3 b) {
-    return {a.x - b.x, a.y - b.x, a.z - b.z};
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
 inline __host__ __device__ float3 operator* (const float a, const float3 b) {

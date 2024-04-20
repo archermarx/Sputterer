@@ -4,73 +4,43 @@
 ParticleContainer::ParticleContainer(string name, double mass, int charge)
     : name(name)
     , mass(mass)
-    , charge(charge)
-    , numParticles(0) {
-
-    // Allocate sufficient GPU memory to hold MAX_PARTICLES particles
-    CUDA_CHECK(cudaMalloc((void **)&d_pos_x, MAX_PARTICLES * sizeof(float)));
-    CUDA_CHECK(cudaMalloc((void **)&d_pos_y, MAX_PARTICLES * sizeof(float)));
-    CUDA_CHECK(cudaMalloc((void **)&d_pos_z, MAX_PARTICLES * sizeof(float)));
-
-    CUDA_CHECK(cudaMalloc((void **)&d_vel_x, MAX_PARTICLES * sizeof(float)));
-    CUDA_CHECK(cudaMalloc((void **)&d_vel_y, MAX_PARTICLES * sizeof(float)));
-    CUDA_CHECK(cudaMalloc((void **)&d_vel_z, MAX_PARTICLES * sizeof(float)));
-
-    CUDA_CHECK(cudaMalloc((void **)&d_weight, MAX_PARTICLES * sizeof(float)));
-};
-
-ParticleContainer::~ParticleContainer() {
-    std::cout << "GPU memory freed." << std::endl;
-    // Free GPU memory
-    CUDA_CHECK(cudaFree(d_pos_x));
-    CUDA_CHECK(cudaFree(d_pos_y));
-    CUDA_CHECK(cudaFree(d_pos_z));
-    CUDA_CHECK(cudaFree(d_vel_x));
-    CUDA_CHECK(cudaFree(d_vel_y));
-    CUDA_CHECK(cudaFree(d_vel_z));
-    CUDA_CHECK(cudaFree(d_weight));
-}
+    , charge(charge) {}
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,
                                      vector<float> uy, vector<float> uz, vector<float> w) {
 
     auto N = std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()});
 
+    position.resize(numParticles + N);
+    velocity.resize(numParticles + N);
+    weight.resize(numParticles + N);
+
     // Add particles to CPU arrays
-    position_x.insert(position_x.end(), x.begin(), x.begin() + N);
-    position_y.insert(position_y.end(), y.begin(), y.begin() + N);
-    position_z.insert(position_z.end(), z.begin(), z.begin() + N);
-
-    velocity_x.insert(velocity_x.end(), ux.begin(), ux.begin() + N);
-    velocity_y.insert(velocity_y.end(), uy.begin(), uy.begin() + N);
-    velocity_z.insert(velocity_z.end(), uz.begin(), uz.begin() + N);
-
-    weight.insert(weight.end(), w.begin(), w.begin() + N);
+    for (int i = 0; i < N; i++) {
+        position.at(i + numParticles) = {x.at(i), y.at(i), z.at(i)};
+        velocity.at(i + numParticles) = {ux.at(i), uy.at(i), uz.at(i)};
+        weight.at(i + numParticles)   = w.at(i);
+    }
 
     // Copy particles to GPU
-    // The starting memory address is numParticles * sizeof(float)
-    int start = numParticles * sizeof(float);
-    int size  = N * sizeof(float);
-    CUDA_CHECK(cudaMemcpy(d_pos_x + start, x.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_pos_y + start, y.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_pos_z + start, z.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_vel_x + start, ux.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_vel_y + start, uy.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_vel_z + start, uz.data(), size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_weight + start, w.data(), size, cudaMemcpyHostToDevice));
+    // The starting memory address is numParticles * sizeof(float3)
+    auto start_f3 = numParticles * sizeof(float3);
+    auto size_f3  = N * sizeof(float3);
+    auto start_f  = numParticles * sizeof(float);
+    auto size_f   = N * sizeof(float);
+    CUDA_CHECK(cudaMemcpy(d_position.data() + start_f3, position.data() + start_f3, size_f3, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_velocity.data() + start_f3, velocity.data() + start_f3, size_f3, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_weight.data() + start_f, weight.data() + start_f, size_f, cudaMemcpyHostToDevice));
 
     numParticles += N;
 }
 
 void ParticleContainer::copyToCPU() {
-    int size = numParticles * sizeof(float);
-    CUDA_CHECK(cudaMemcpy(position_x.data(), d_pos_x, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(position_y.data(), d_pos_y, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(position_z.data(), d_pos_z, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(velocity_x.data(), d_vel_x, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(velocity_y.data(), d_vel_y, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(velocity_z.data(), d_vel_z, size, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(weight.data(), d_weight, size, cudaMemcpyDeviceToHost));
+    auto size_f3 = numParticles * sizeof(float3);
+    auto size_f  = numParticles * sizeof(float);
+    CUDA_CHECK(cudaMemcpy(position.data(), d_position.data(), size_f3, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(velocity.data(), d_velocity.data(), size_f3, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(weight.data(), d_weight.data(), size_f, cudaMemcpyDeviceToHost));
 }
 
 #define MIN_T 100'000
@@ -123,15 +93,14 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
     return info;
 }
 
-__global__ void k_push (float *d_pos_x, float *d_pos_y, float *d_pos_z, float *d_vel_x, float *d_vel_y, float *d_vel_z,
-                        int N, Triangle *tris, size_t numTriangles, float dt) {
+__global__ void k_push (float3 *position, float3 *velocity, int N, Triangle *tris, size_t numTriangles, float dt) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < N) {
+
+        auto pos = position[id];
+        auto vel = velocity[id];
+
         // Check for intersections with boundaries
-
-        float3 pos{d_pos_x[id], d_pos_y[id], d_pos_z[id]};
-        float3 vel{d_vel_x[id], d_vel_y[id], d_vel_z[id]};
-
         Ray ray{.origin = pos, .direction = dt * vel};
 
         HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
@@ -152,17 +121,11 @@ __global__ void k_push (float *d_pos_x, float *d_pos_y, float *d_pos_z, float *d
             auto hit_pos   = pos + t * dt * vel;
             auto final_pos = hit_pos + (1 - t) * dt * vel_refl;
 
-            d_pos_x[id] = final_pos.x;
-            d_pos_y[id] = final_pos.y;
-            d_pos_z[id] = final_pos.z;
-            d_vel_x[id] = vel_refl.x;
-            d_vel_y[id] = vel_refl.y;
-            d_vel_z[id] = vel_refl.z;
+            position[id] = final_pos;
+            velocity[id] = vel_refl;
 
         } else {
-            d_pos_x[id] += d_vel_x[id] * dt;
-            d_pos_y[id] += d_vel_y[id] * dt;
-            d_pos_z[id] += d_vel_z[id] * dt;
+            position[id] = pos + dt * vel;
         }
     }
 }
@@ -173,8 +136,7 @@ void ParticleContainer::push(const float dt, const cuda::vector<Triangle> &tris)
     dim3      grid(GRID_SIZE, 1, 1);
     dim3      block(BLOCK_SIZE, 1, 1);
 
-    k_push<<<grid, block>>>(d_pos_x, d_pos_y, d_pos_z, d_vel_x, d_vel_y, d_vel_z, numParticles, tris.data(),
-                            tris.size(), dt);
+    k_push<<<grid, block>>>(d_position.data(), d_velocity.data(), numParticles, tris.data(), tris.size(), dt);
 
     cudaDeviceSynchronize();
 }
@@ -190,12 +152,12 @@ std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
     os << "\tx\ty\tz\tvx\tvy\tvz\tw\t\n";
     os << "----------------------------------------------------------\n";
     for (int i = 0; i < pc.numParticles; i++) {
-        os << "\t" << pc.position_x[i] << "\t";
-        os << pc.position_y[i] << "\t";
-        os << pc.position_z[i] << "\t";
-        os << pc.velocity_x[i] << "\t";
-        os << pc.velocity_y[i] << "\t";
-        os << pc.velocity_z[i] << "\t";
+        os << "\t" << pc.position[i].x << "\t";
+        os << pc.position[i].x << "\t";
+        os << pc.position[i].x << "\t";
+        os << pc.velocity[i].x << "\t";
+        os << pc.velocity[i].x << "\t";
+        os << pc.velocity[i].x << "\t";
         os << pc.weight[i] << "\t";
         os << "\n";
     }
