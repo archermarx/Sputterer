@@ -132,12 +132,6 @@ int main (int argc, char *argv[]) {
         App::lastFrame     = currentFrame;
         App::processInput(window.window);
 
-        // if (true) {
-        //     std::cout << "Pos, vel : " << std::endl;
-        //     std::cout << pc.position[0] << "\n";
-        //     std::cout << pc.velocity[0] << "\n";
-        // }
-
         cudaEventRecord(start);
 
         // Emit particles
@@ -153,16 +147,8 @@ int main (int argc, char *argv[]) {
             triCount += surf.mesh.numTriangles;
         }
 
-        if (pc.numParticles > numParticlesOld) {
-            std::cout << pc << std::endl;
-        }
-
         // Push particles
         pc.push(input.timestep, d_triangles);
-
-        if (pc.numParticles > numParticlesOld) {
-            std::cout << pc << std::endl;
-        }
 
         numParticlesOld = pc.numParticles;
 
@@ -210,8 +196,6 @@ int main (int argc, char *argv[]) {
         window.checkForUpdates();
         frame += 1;
     }
-
-    std::cout << pc << std::endl;
 
     cudaEventDestroy(start);
     cudaEventDestroy(stopCompute);

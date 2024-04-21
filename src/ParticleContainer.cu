@@ -24,24 +24,15 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
         weight.push_back({w.at(i)});
     }
 
-    std::cout << "Before GPU" << position.at(numParticles + N - 1) << std::endl;
-
     // Copy particles to GPU
-    // The starting memory address is numParticles * sizeof(float3)
-    auto start_f3 = numParticles * sizeof(float3);
-    auto size_f3  = (numParticles + N) * sizeof(float3);
-    auto start_f  = numParticles * sizeof(float);
-    auto size_f   = (numParticles + N) * sizeof(float);
-    CUDA_CHECK(cudaMemcpy(d_position.data(), position.data(), size_f3, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_velocity.data(), velocity.data(), size_f3, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_weight.data(), weight.data(), size_f, cudaMemcpyHostToDevice));
-
-    std::cout << numParticles + N - 1 << ", " << position.size() << std::endl;
-
+    // The starting memory address is numParticles
+    CUDA_CHECK(cudaMemcpy(d_position.data() + numParticles, position.data() + numParticles, N * sizeof(float3),
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_velocity.data() + numParticles, velocity.data() + numParticles, N * sizeof(float3),
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_weight.data() + numParticles, weight.data() + numParticles, N * sizeof(float3),
+                          cudaMemcpyHostToDevice));
     numParticles += N;
-    this->copyToCPU();
-
-    std::cout << "after GPU" << position.at(numParticles - 1) << std::endl;
 }
 
 void ParticleContainer::copyToCPU() {
@@ -165,8 +156,6 @@ void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
     if (u < remainder) {
         intNumEmit += 1;
     }
-    // std::cout << "numEmit, intNumEmit, u, remainder: " << numEmit << ", " << intNumEmit << ", " << u << ", "
-    //           << remainder << std::endl;
 
     if (intNumEmit < 1) {
         return;
