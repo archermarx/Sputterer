@@ -60,6 +60,7 @@ struct Triangle {
     float3 v1;
     float3 v2;
     float3 norm;
+    float  area;
 
     __host__ __device__ Triangle (float3 v0, float3 v1, float3 v2)
         : v0(v0)
@@ -67,7 +68,26 @@ struct Triangle {
         , v2(v2) {
         auto e1 = v1 - v0;
         auto e2 = v2 - v0;
-        norm    = normalize(cross(e1, e2));
+
+        auto cross_prod = cross(e1, e2);
+        auto len        = length(cross_prod);
+
+        area = len / 2;
+        norm = cross_prod / len;
+    }
+
+    // given random uniform numbers u1 and u2, find a random point on the triangle
+    __host__ __device__ float3 sample (float u1, float u2) {
+        auto e1 = v1 - v0;
+        auto e2 = v2 - v0;
+
+        if (u1 + u2 > 1) {
+            // sampled point is outside the triangle and must be transformed back inside
+            u1 = 1 - u1;
+            u2 = 1 - u2;
+        }
+
+        return v0 + (u1 * e1 + u2 * e2);
     }
 };
 

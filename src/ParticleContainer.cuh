@@ -45,6 +45,9 @@ public:
     void addParticles (vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy,
                        vector<float> vz, vector<float> w);
 
+    // Emit particles from a given triangle
+    void emit (Triangle &triangle, float flux, float dt);
+
     // Copy particles on GPU to CPU
     void copyToCPU ();
 

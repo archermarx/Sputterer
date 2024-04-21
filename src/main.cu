@@ -138,6 +138,19 @@ int main (int argc, char *argv[]) {
 
         cudaEventRecord(start);
 
+        // Emit particles
+        size_t triCount;
+        for (const auto &surf : input.surfaces) {
+            if (!surf.emit) {
+                continue;
+            }
+
+            for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
+                pc.emit(h_triangles.at(i), surf.emitter_flux, input.timestep);
+            }
+            triCount += surf.mesh.numTriangles;
+        }
+
         // Push particles
         pc.push(input.timestep, d_triangles);
 
@@ -158,6 +171,7 @@ int main (int argc, char *argv[]) {
 
         if (frame % timingInterval == 0 && frame > 0) {
             std::cout << "Average compute time: " << totalTime / frame << "ms (" << computePercentage << "% compute)\n";
+            std::cout << "Number of particles: " << pc.numParticles << std::endl;
         }
 
         // draw background

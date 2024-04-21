@@ -1,3 +1,5 @@
+#include <random>
+
 #include "ParticleContainer.cuh"
 #include "cuda_helpers.cuh"
 
@@ -139,6 +141,43 @@ void ParticleContainer::push(const float dt, const cuda::vector<Triangle> &tris)
     k_push<<<grid, block>>>(d_position.data(), d_velocity.data(), numParticles, tris.data(), tris.size(), dt);
 
     cudaDeviceSynchronize();
+}
+
+float randUniform (float min = 0.0f, float max = 1.0f) {
+    static std::default_random_engine     rng;
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(rng);
+}
+
+void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
+    auto numEmit    = flux * triangle.area * dt;
+    int  intNumEmit = static_cast<int>(numEmit);
+    auto remainder  = numEmit - intNumEmit;
+
+    auto u = randUniform();
+    if (u < remainder) {
+        intNumEmit += 1;
+    }
+    // std::cout << "numEmit, intNumEmit, u, remainder: " << numEmit << ", " << intNumEmit << ", " << u << ", "
+    //           << remainder << std::endl;
+
+    float speed = 1.0;
+
+    std::vector<float> x(intNumEmit, 0.0), y(intNumEmit, 0.0), z(intNumEmit, 0.0);
+    std::vector<float> ux(intNumEmit, 0.0), uy(intNumEmit, 0.0), uz(intNumEmit, 0.0);
+    std::vector<float> w(intNumEmit, 1.0);
+
+    for (int i = 0; i < intNumEmit; i++) {
+        auto pt  = triangle.sample(randUniform(), randUniform());
+        x.at(i)  = pt.x;
+        y.at(i)  = pt.y;
+        z.at(i)  = pt.z;
+        ux.at(i) = speed * triangle.norm.x;
+        uy.at(i) = speed * triangle.norm.y;
+        uz.at(i) = speed * triangle.norm.z;
+    }
+
+    addParticles(x, y, z, ux, uy, uz, w);
 }
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
