@@ -179,7 +179,8 @@ int main (int argc, char *argv[]) {
         for (int i = 0; i < pc.numParticles; i++) {
             // this is pretty inefficient, as we have to copy a lot of identical vertex and normal data over to the GPU
             // for each particle
-            // Ideally, we'd use instancing to do better: https://learnopengl.com/Advanced-OpenGL/Instancing
+            // Ideally, we'd use instancing to do better, and only transfer the model matrix over at each timestep
+            // see https://learnopengl.com/Advanced-OpenGL/Instancing
             Transform t;
             t.scale     = particleScale;
             t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
