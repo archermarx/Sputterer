@@ -15,7 +15,7 @@ translate = { x = 0.0, y = 0.125, z = -3.0 }
 color = { x = 0.5, y = 0.0, z = 0.5 }
 
 [geometry.emitter]
-flux = 0.1
+flux = 10
 
 [[geometry]]
 name = "Collector"

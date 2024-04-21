@@ -99,19 +99,19 @@ int main (int argc, char *argv[]) {
 
     Ray ray{.origin = pc.position[0], .direction = input.timestep * pc.velocity[0]};
 
-    std::cout << "Ray origin = " << ray.origin << ", direction = " << ray.direction << "\n\n";
+    // std::cout << "Ray origin = " << ray.origin << ", direction = " << ray.direction << "\n\n";
 
-    for (auto &t : h_triangles) {
-        auto info = hits_triangle(ray, t);
-        std::cout << "Triangle: " << t.v0 << ", " << t.v1 << ", " << t.v2 << "\n";
-        std::cout << "Hit: " << (info.hits ? "true" : "false") << "\n";
-        if (info.hits) {
-            std::cout << "t = " << info.t << ", "
-                      << "norm = " << info.norm << "\n"
-                      << "intersect = " << ray.origin + info.t * ray.direction << "\n";
-        }
-        std::cout << "\n";
-    }
+    // for (auto &t : h_triangles) {
+    //     auto info = hits_triangle(ray, t);
+    //     std::cout << "Triangle: " << t.v0 << ", " << t.v1 << ", " << t.v2 << "\n";
+    //     std::cout << "Hit: " << (info.hits ? "true" : "false") << "\n";
+    //     if (info.hits) {
+    //         std::cout << "t = " << info.t << ", "
+    //                   << "norm = " << info.norm << "\n"
+    //                   << "intersect = " << ray.origin + info.t * ray.direction << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
 
     cuda::vector<Triangle> d_triangles{h_triangles};
 
@@ -123,7 +123,9 @@ int main (int argc, char *argv[]) {
     cudaEventCreate(&stopCompute);
     cudaEventCreate(&stopCopy);
 
-    while (window.open && display) {
+    int numParticlesOld = pc.numParticles;
+
+    while (true && window.open && display) {
         // process user input
         float currentFrame = glfwGetTime();
         App::deltaTime     = currentFrame - App::lastFrame;
@@ -151,8 +153,18 @@ int main (int argc, char *argv[]) {
             triCount += surf.mesh.numTriangles;
         }
 
+        if (pc.numParticles > numParticlesOld) {
+            std::cout << pc << std::endl;
+        }
+
         // Push particles
         pc.push(input.timestep, d_triangles);
+
+        if (pc.numParticles > numParticlesOld) {
+            std::cout << pc << std::endl;
+        }
+
+        numParticlesOld = pc.numParticles;
 
         cudaEventRecord(stopCompute);
         cudaEventSynchronize(stopCompute);
@@ -198,6 +210,12 @@ int main (int argc, char *argv[]) {
         window.checkForUpdates();
         frame += 1;
     }
+
+    std::cout << pc << std::endl;
+
+    cudaEventDestroy(start);
+    cudaEventDestroy(stopCompute);
+    cudaEventDestroy(stopCopy);
 
     return 0;
 }

@@ -13,28 +13,35 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
 
     auto N = std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()});
 
-    position.resize(numParticles + N);
-    velocity.resize(numParticles + N);
-    weight.resize(numParticles + N);
+    // position.resize(numParticles + N);
+    // velocity.resize(numParticles + N);
+    // weight.resize(numParticles + N);
 
     // Add particles to CPU arrays
     for (int i = 0; i < N; i++) {
-        position.at(i + numParticles) = {x.at(i), y.at(i), z.at(i)};
-        velocity.at(i + numParticles) = {ux.at(i), uy.at(i), uz.at(i)};
-        weight.at(i + numParticles)   = w.at(i);
+        position.push_back({x.at(i), y.at(i), z.at(i)});
+        velocity.push_back({ux.at(i), uy.at(i), uz.at(i)});
+        weight.push_back({w.at(i)});
     }
+
+    std::cout << "Before GPU" << position.at(numParticles + N - 1) << std::endl;
 
     // Copy particles to GPU
     // The starting memory address is numParticles * sizeof(float3)
     auto start_f3 = numParticles * sizeof(float3);
-    auto size_f3  = N * sizeof(float3);
+    auto size_f3  = (numParticles + N) * sizeof(float3);
     auto start_f  = numParticles * sizeof(float);
-    auto size_f   = N * sizeof(float);
-    CUDA_CHECK(cudaMemcpy(d_position.data() + start_f3, position.data() + start_f3, size_f3, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_velocity.data() + start_f3, velocity.data() + start_f3, size_f3, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_weight.data() + start_f, weight.data() + start_f, size_f, cudaMemcpyHostToDevice));
+    auto size_f   = (numParticles + N) * sizeof(float);
+    CUDA_CHECK(cudaMemcpy(d_position.data(), position.data(), size_f3, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_velocity.data(), velocity.data(), size_f3, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_weight.data(), weight.data(), size_f, cudaMemcpyHostToDevice));
+
+    std::cout << numParticles + N - 1 << ", " << position.size() << std::endl;
 
     numParticles += N;
+    this->copyToCPU();
+
+    std::cout << "after GPU" << position.at(numParticles - 1) << std::endl;
 }
 
 void ParticleContainer::copyToCPU() {
@@ -161,7 +168,11 @@ void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
     // std::cout << "numEmit, intNumEmit, u, remainder: " << numEmit << ", " << intNumEmit << ", " << u << ", "
     //           << remainder << std::endl;
 
-    float speed = 1.0;
+    if (intNumEmit < 1) {
+        return;
+    }
+
+    float speed = -1.0;
 
     std::vector<float> x(intNumEmit, 0.0), y(intNumEmit, 0.0), z(intNumEmit, 0.0);
     std::vector<float> ux(intNumEmit, 0.0), uy(intNumEmit, 0.0), uz(intNumEmit, 0.0);
@@ -191,14 +202,13 @@ std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
     os << "\tx\ty\tz\tvx\tvy\tvz\tw\t\n";
     os << "----------------------------------------------------------\n";
     for (int i = 0; i < pc.numParticles; i++) {
-        os << "\t" << pc.position[i].x << "\t";
-        os << pc.position[i].x << "\t";
-        os << pc.position[i].x << "\t";
-        os << pc.velocity[i].x << "\t";
-        os << pc.velocity[i].x << "\t";
-        os << pc.velocity[i].x << "\t";
-        os << pc.weight[i] << "\t";
-        os << "\n";
+        os << "\t" << pc.position.at(i).x << " ";
+        os << pc.position.at(i).y << "  ";
+        os << pc.position.at(i).z << "  ";
+        os << pc.velocity.at(i).x << "  ";
+        os << pc.velocity.at(i).y << "  ";
+        os << pc.velocity.at(i).z << "  ";
+        os << pc.weight.at(i) << "\n";
     }
     os << "==========================================================\n";
 
