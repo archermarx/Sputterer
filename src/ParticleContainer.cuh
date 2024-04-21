@@ -6,8 +6,13 @@
 #include <string>
 #include <vector>
 
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+
 #include "Cuda.cuh"
 #include "Triangle.cuh"
+
+using thrust::host_vector, thrust::device_vector;
 
 using std::vector, std::string;
 
@@ -24,16 +29,16 @@ public:
     int    numParticles{0}; // number of particles in container
 
     // Position in meters
-    vector<float3>       position;
-    cuda::vector<float3> d_position{MAX_PARTICLES};
+    host_vector<float3>   position;
+    device_vector<float3> d_position{MAX_PARTICLES};
 
     // Velocity in m/s
-    vector<float3>       velocity;
-    cuda::vector<float3> d_velocity{MAX_PARTICLES};
+    host_vector<float3>   velocity;
+    device_vector<float3> d_velocity{MAX_PARTICLES};
 
     // Particle weight (computational particles per real particle
-    vector<float>       weight;
-    cuda::vector<float> d_weight{MAX_PARTICLES};
+    host_vector<float>   weight;
+    device_vector<float> d_weight{MAX_PARTICLES};
 
     // Constructor
     ParticleContainer(string name, double mass, int charge);
@@ -47,6 +52,9 @@ public:
 
     // Emit particles from a given triangle
     void emit (Triangle &triangle, float flux, float dt);
+
+    // Set particles that leave bounds to have negative weights
+    void checkOutOfBounds (float radius, float length);
 
     // Copy particles on GPU to CPU
     void copyToCPU ();

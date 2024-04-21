@@ -6,7 +6,13 @@
 ParticleContainer::ParticleContainer(string name, double mass, int charge)
     : name(name)
     , mass(mass)
-    , charge(charge) {}
+    , charge(charge) {
+
+    // Allocate memory on GPU
+    d_position.resize(MAX_PARTICLES);
+    d_velocity.resize(MAX_PARTICLES);
+    d_weight.resize(MAX_PARTICLES);
+}
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,
                                      vector<float> uy, vector<float> uz, vector<float> w) {
@@ -26,21 +32,30 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
 
     // Copy particles to GPU
     // The starting memory address is numParticles
-    CUDA_CHECK(cudaMemcpy(d_position.data() + numParticles, position.data() + numParticles, N * sizeof(float3),
-                          cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_velocity.data() + numParticles, velocity.data() + numParticles, N * sizeof(float3),
-                          cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_weight.data() + numParticles, weight.data() + numParticles, N * sizeof(float3),
-                          cudaMemcpyHostToDevice));
+
+    thrust::copy(position.begin() + numParticles, position.end(), d_position.begin() + numParticles);
+    thrust::copy(velocity.begin() + numParticles, velocity.end(), d_velocity.begin() + numParticles);
+    thrust::copy(weight.begin() + numParticles, weight.end(), d_weight.begin() + numParticles);
+
+    // CUDA_CHECK(cudaMemcpy(d_position.data() + numParticles, position.data() + numParticles, N * sizeof(float3),
+    //                       cudaMemcpyHostToDevice));
+    // CUDA_CHECK(cudaMemcpy(d_velocity.data() + numParticles, velocity.data() + numParticles, N * sizeof(float3),
+    //                       cudaMemcpyHostToDevice));
+    // CUDA_CHECK(cudaMemcpy(d_weight.data() + numParticles, weight.data() + numParticles, N * sizeof(float3),
+    //                       cudaMemcpyHostToDevice));
     numParticles += N;
 }
 
 void ParticleContainer::copyToCPU() {
-    auto size_f3 = numParticles * sizeof(float3);
-    auto size_f  = numParticles * sizeof(float);
-    CUDA_CHECK(cudaMemcpy(position.data(), d_position.data(), size_f3, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(velocity.data(), d_velocity.data(), size_f3, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(weight.data(), d_weight.data(), size_f, cudaMemcpyDeviceToHost));
+    // auto size_f3 = numParticles * sizeof(float3);
+    // auto size_f  = numParticles * sizeof(float);
+    // CUDA_CHECK(cudaMemcpy(position.data(), d_position.data(), size_f3, cudaMemcpyDeviceToHost));
+    // CUDA_CHECK(cudaMemcpy(velocity.data(), d_velocity.data(), size_f3, cudaMemcpyDeviceToHost));
+    // CUDA_CHECK(cudaMemcpy(weight.data(), d_weight.data(), size_f, cudaMemcpyDeviceToHost));
+
+    thrust::copy(d_position.begin(), d_position.begin() + numParticles, position.begin());
+    thrust::copy(d_velocity.begin(), d_velocity.begin() + numParticles, velocity.begin());
+    thrust::copy(d_weight.begin(), d_weight.begin() + numParticles, weight.begin());
 }
 
 #define MIN_T 100'000
@@ -136,7 +151,8 @@ void ParticleContainer::push(const float dt, const cuda::vector<Triangle> &tris)
     dim3      grid(GRID_SIZE, 1, 1);
     dim3      block(BLOCK_SIZE, 1, 1);
 
-    k_push<<<grid, block>>>(d_position.data(), d_velocity.data(), numParticles, tris.data(), tris.size(), dt);
+    k_push<<<grid, block>>>(thrust::raw_pointer_cast(d_position.data()), thrust::raw_pointer_cast(d_velocity.data()),
+                            numParticles, tris.data(), tris.size(), dt);
 
     cudaDeviceSynchronize();
 }
@@ -191,13 +207,13 @@ std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
     os << "\tx\ty\tz\tvx\tvy\tvz\tw\t\n";
     os << "----------------------------------------------------------\n";
     for (int i = 0; i < pc.numParticles; i++) {
-        os << "\t" << pc.position.at(i).x << " ";
-        os << pc.position.at(i).y << "  ";
-        os << pc.position.at(i).z << "  ";
-        os << pc.velocity.at(i).x << "  ";
-        os << pc.velocity.at(i).y << "  ";
-        os << pc.velocity.at(i).z << "  ";
-        os << pc.weight.at(i) << "\n";
+        os << "\t" << pc.position[i].x << " ";
+        os << pc.position[i].y << "  ";
+        os << pc.position[i].z << "  ";
+        os << pc.velocity[i].x << "  ";
+        os << pc.velocity[i].y << "  ";
+        os << pc.velocity[i].z << "  ";
+        os << pc.weight[i] << "\n";
     }
     os << "==========================================================\n";
 

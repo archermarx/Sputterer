@@ -1,5 +1,5 @@
 [simulation]
-timestep_s = 0.01
+timestep_s = 1.0
 
 [chamber]
 radius_m = 3
