@@ -1,5 +1,5 @@
 [simulation]
-timestep_s = 1.0
+timestep_s = 5.0
 
 [chamber]
 radius_m = 3
@@ -24,8 +24,3 @@ emit = false
 collect = true
 translate = { x = 0.0, y = 0.0, z = 3.0 }
 color = { x = 0.0, y = 0.5, z = 0.0 }
-
-[[particle]]
-position = { x = 0, y = 0.0, z = -2.0 }
-velocity = { x = 0.0, y = 0.0, z = 1.0 }
-weight = 1

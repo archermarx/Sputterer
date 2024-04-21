@@ -70,19 +70,21 @@ int main (int argc, char *argv[]) {
 
     glEnable(GL_DEPTH_TEST);
 
+    // Create particle container, including any explicitly-specified initial particles
     ParticleContainer pc{"noname", 1.0f, 1};
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 
     glm::vec3 particleColor{0.2f, 0.2f, 0.2f};
+    glm::vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
     glm::vec3 particleScale{0.05f};
 
+    // Read mesh from file
     Mesh particleMesh{};
     particleMesh.readFromObj("o_sphere.obj");
     particleMesh.setBuffers();
 
     // construct triangles
-
     std::vector<Triangle> h_triangles;
     for (const auto &surf : input.surfaces) {
         const auto &mesh      = surf.mesh;
@@ -100,27 +102,11 @@ int main (int argc, char *argv[]) {
         }
     }
 
-    Ray ray{.origin = pc.position[0], .direction = input.timestep * pc.velocity[0]};
-
-    // std::cout << "Ray origin = " << ray.origin << ", direction = " << ray.direction << "\n\n";
-
-    // for (auto &t : h_triangles) {
-    //     auto info = hits_triangle(ray, t);
-    //     std::cout << "Triangle: " << t.v0 << ", " << t.v1 << ", " << t.v2 << "\n";
-    //     std::cout << "Hit: " << (info.hits ? "true" : "false") << "\n";
-    //     if (info.hits) {
-    //         std::cout << "t = " << info.t << ", "
-    //                   << "norm = " << info.norm << "\n"
-    //                   << "intersect = " << ray.origin + info.t * ray.direction << "\n";
-    //     }
-    //     std::cout << "\n";
-    // }
-
     thrust::device_vector<Triangle> d_triangles{h_triangles};
 
-    size_t frame = 0, timingInterval = 100;
-    float  totalTimeCompute = 0.0f, totalTime = 0.0f;
-
+    // Create timing objects
+    size_t      frame = 0, timingInterval = 100;
+    float       totalTimeCompute = 0.0f, totalTime = 0.0f;
     cuda::event start{}, stopCompute{}, stopCopy{};
 
     while (true && window.open && display) {
@@ -133,42 +119,48 @@ int main (int argc, char *argv[]) {
         auto physicalTimestep = input.timestep * app::deltaTime;
 
         // record compute start time
-        start.record();
+        if (frame > 1) {
+            start.record();
 
-        // Emit particles
-        size_t triCount;
-        for (const auto &surf : input.surfaces) {
-            if (!surf.emit) {
-                continue;
+            // Emit particles
+            size_t triCount;
+            for (const auto &surf : input.surfaces) {
+                if (!surf.emit) {
+                    continue;
+                }
+
+                for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
+                    pc.emit(h_triangles.at(i), surf.emitter_flux, physicalTimestep);
+                }
+                triCount += surf.mesh.numTriangles;
             }
 
-            for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
-                pc.emit(h_triangles.at(i), surf.emitter_flux, physicalTimestep);
+            // Push particles
+            pc.push(physicalTimestep, d_triangles);
+
+            // Remove particles that are out of bounds
+            pc.flagOutOfBounds(input.chamberRadius, input.chamberLength);
+
+            stopCompute.record();
+
+            // Copy back to CPU
+            pc.copyToCPU();
+
+            stopCopy.record();
+
+            float elapsedCompute, elapsedCopy;
+            elapsedCompute = cuda::eventElapsedTime(start, stopCompute);
+            elapsedCopy    = cuda::eventElapsedTime(start, stopCopy);
+
+            totalTime += elapsedCopy;
+            totalTimeCompute += elapsedCompute;
+            float computePercentage = totalTimeCompute / totalTime * 100;
+
+            if (frame % timingInterval == 0 && frame > 0) {
+                std::cout << "Average compute time: " << totalTime / frame << "ms (" << computePercentage
+                          << "% compute)\n";
+                std::cout << "Number of particles: " << pc.numParticles << std::endl;
             }
-            triCount += surf.mesh.numTriangles;
-        }
-
-        // Push particles
-        pc.push(physicalTimestep, d_triangles);
-
-        stopCompute.record();
-
-        // Copy back to CPU
-        pc.copyToCPU();
-
-        stopCopy.record();
-
-        float elapsedCompute, elapsedCopy;
-        elapsedCompute = cuda::eventElapsedTime(start, stopCompute);
-        elapsedCopy    = cuda::eventElapsedTime(start, stopCopy);
-
-        totalTime += elapsedCopy;
-        totalTimeCompute += elapsedCompute;
-        float computePercentage = totalTimeCompute / totalTime * 100;
-
-        if (frame % timingInterval == 0 && frame > 0) {
-            std::cout << "Average compute time: " << totalTime / frame << "ms (" << computePercentage << "% compute)\n";
-            std::cout << "Number of particles: " << pc.numParticles << std::endl;
         }
 
         // draw background
@@ -188,13 +180,15 @@ int main (int argc, char *argv[]) {
             Transform t;
             t.scale     = particleScale;
             t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
-            t.color     = particleColor;
+            t.color     = pc.weight[i] > 0 ? particleColor : particleColorOOB;
             particleMesh.draw(shader, t);
         }
 
         window.checkForUpdates();
         frame += 1;
     }
+
+    std::cout << pc << std::endl;
 
     return 0;
 }

@@ -19,9 +19,9 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
 
     auto N = std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()});
 
-    // position.resize(numParticles + N);
-    // velocity.resize(numParticles + N);
-    // weight.resize(numParticles + N);
+    if (N == 0) {
+        return;
+    }
 
     // Add particles to CPU arrays
     for (int i = 0; i < N; i++) {
@@ -32,27 +32,14 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
 
     // Copy particles to GPU
     // The starting memory address is numParticles
-
     thrust::copy(position.begin() + numParticles, position.end(), d_position.begin() + numParticles);
     thrust::copy(velocity.begin() + numParticles, velocity.end(), d_velocity.begin() + numParticles);
     thrust::copy(weight.begin() + numParticles, weight.end(), d_weight.begin() + numParticles);
 
-    // CUDA_CHECK(cudaMemcpy(d_position.data() + numParticles, position.data() + numParticles, N * sizeof(float3),
-    //                       cudaMemcpyHostToDevice));
-    // CUDA_CHECK(cudaMemcpy(d_velocity.data() + numParticles, velocity.data() + numParticles, N * sizeof(float3),
-    //                       cudaMemcpyHostToDevice));
-    // CUDA_CHECK(cudaMemcpy(d_weight.data() + numParticles, weight.data() + numParticles, N * sizeof(float3),
-    //                       cudaMemcpyHostToDevice));
     numParticles += N;
 }
 
 void ParticleContainer::copyToCPU() {
-    // auto size_f3 = numParticles * sizeof(float3);
-    // auto size_f  = numParticles * sizeof(float);
-    // CUDA_CHECK(cudaMemcpy(position.data(), d_position.data(), size_f3, cudaMemcpyDeviceToHost));
-    // CUDA_CHECK(cudaMemcpy(velocity.data(), d_velocity.data(), size_f3, cudaMemcpyDeviceToHost));
-    // CUDA_CHECK(cudaMemcpy(weight.data(), d_weight.data(), size_f, cudaMemcpyDeviceToHost));
-
     thrust::copy(d_position.begin(), d_position.begin() + numParticles, position.begin());
     thrust::copy(d_velocity.begin(), d_velocity.begin() + numParticles, velocity.begin());
     thrust::copy(d_weight.begin(), d_weight.begin() + numParticles, weight.begin());
@@ -146,16 +133,19 @@ __global__ void k_push (float3 *position, float3 *velocity, const int N, const T
     }
 }
 
-void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris) {
-    const int BLOCK_SIZE = 32;
-    const int GRID_SIZE  = static_cast<int>(ceil(static_cast<float>(numParticles) / BLOCK_SIZE));
-    dim3      grid(GRID_SIZE, 1, 1);
-    dim3      block(BLOCK_SIZE, 1, 1);
+std::pair<dim3, dim3> ParticleContainer::getKernelLaunchParams(size_t block_size) const {
+    auto grid_size = static_cast<int>(ceil(static_cast<float>(numParticles) / block_size));
+    dim3 grid(grid_size, 1, 1);
+    dim3 block(block_size, 1, 1);
+    return std::make_pair(grid, block);
+}
 
+void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris) {
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
     auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
 
+    auto [grid, block] = getKernelLaunchParams();
     k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, numParticles, d_tri_ptr, tris.size(), dt);
 
     cudaDeviceSynchronize();
@@ -198,6 +188,27 @@ void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
     }
 
     addParticles(x, y, z, ux, uy, uz, w);
+}
+
+__global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float halflength, size_t N) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < N && weight[id] > 0) {
+        auto r     = pos[id];
+        auto dist2 = r.x * r.x + r.y * r.y;
+        if (dist2 > radius2 || r.z < -halflength || r.z > halflength) {
+            // Particles that are oob get negative weight
+            weight[id] = -1;
+        }
+    }
+}
+
+void ParticleContainer::flagOutOfBounds(float radius, float length) {
+    auto [grid, block] = getKernelLaunchParams();
+
+    auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
+    auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
+    k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr, radius * radius, length / 2, numParticles);
+    cudaDeviceSynchronize();
 }
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {

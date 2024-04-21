@@ -32,4 +32,4 @@ target_compile_features(sputterer PUBLIC cxx_std_20)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2")
-set(CMAKE_CUDA_FLAGS "-std=c++20 -expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")
+set(CMAKE_CUDA_FLAGS "-arch=sm_61 -std=c++20 -expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")

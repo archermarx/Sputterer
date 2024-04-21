@@ -79,6 +79,9 @@ void Input::read() {
     chamberRadius = readTableEntryAs<double>(chamber, "radius_m");
     chamberLength = readTableEntryAs<double>(chamber, "length_m");
 
+    std::cout << chamberRadius << std::endl;
+    std::cout << chamberLength << std::endl;
+
     // Read surface geometry
     auto geometry = *input.get_as<toml::array>("geometry");
 
@@ -100,8 +103,6 @@ void Input::read() {
             auto emit_tab     = tab->get_as<toml::table>("emitter");
             surf.emitter_flux = readTableEntryAs<float>(*emit_tab, "flux");
         }
-
-        std::cout << "emitter flux: " << surf.emitter_flux << std::endl;
 
         // object transformations (optional)
 
@@ -125,23 +126,28 @@ void Input::read() {
         id++;
     }
 
-    // Read particles
-    auto particles = *input.get_as<toml::array>("particle");
+    // Read particles (optional)
 
-    for (auto &&particle : particles) {
-        auto particle_tab = particle.as_table();
+    if (input.contains("particle")) {
+        auto particles = *input.get_as<toml::array>("particle");
 
-        auto pos = particle_tab->get_as<toml::table>("position");
-        particle_x.push_back(readTableEntryAs<float>(*pos, "x"));
-        particle_y.push_back(readTableEntryAs<float>(*pos, "y"));
-        particle_z.push_back(readTableEntryAs<float>(*pos, "z"));
+        for (auto &&particle : particles) {
+            auto particle_tab = particle.as_table();
 
-        auto vel = particle_tab->get_as<toml::table>("velocity");
-        particle_vx.push_back(readTableEntryAs<float>(*vel, "x"));
-        particle_vy.push_back(readTableEntryAs<float>(*vel, "y"));
-        particle_vz.push_back(readTableEntryAs<float>(*vel, "z"));
+            auto pos = particle_tab->get_as<toml::table>("position");
+            particle_x.push_back(readTableEntryAs<float>(*pos, "x"));
+            particle_y.push_back(readTableEntryAs<float>(*pos, "y"));
+            particle_z.push_back(readTableEntryAs<float>(*pos, "z"));
 
-        auto weight = readTableEntryAs<float>(*particle_tab, "weight");
-        particle_w.push_back(weight);
+            auto vel = particle_tab->get_as<toml::table>("velocity");
+            particle_vx.push_back(readTableEntryAs<float>(*vel, "x"));
+            particle_vy.push_back(readTableEntryAs<float>(*vel, "y"));
+            particle_vz.push_back(readTableEntryAs<float>(*vel, "z"));
+
+            auto weight = readTableEntryAs<float>(*particle_tab, "weight");
+            particle_w.push_back(weight);
+        }
     }
+
+    return;
 }

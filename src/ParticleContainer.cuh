@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <thrust/device_vector.h>
@@ -53,8 +54,11 @@ public:
     // Emit particles from a given triangle
     void emit (Triangle &triangle, float flux, float dt);
 
+    // Returns kernel launch params
+    std::pair<dim3, dim3> getKernelLaunchParams (size_t block_size = 32) const;
+
     // Set particles that leave bounds to have negative weights
-    void checkOutOfBounds (float radius, float length);
+    void flagOutOfBounds (float radius, float length);
 
     // Copy particles on GPU to CPU
     void copyToCPU ();
