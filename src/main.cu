@@ -127,7 +127,7 @@ int main (int argc, char *argv[]) {
         app::lastFrame     = currentFrame;
         app::processInput(window.window);
 
-        physicalTimestep = input.timestep * app::deltaTime;
+        auto physicalTimestep = input.timestep * app::deltaTime;
 
         // record compute start time
         start.record();
