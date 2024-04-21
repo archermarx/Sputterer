@@ -42,11 +42,11 @@ int main (int argc, char *argv[]) {
         display = static_cast<bool>(stoi(_display));
     }
 
-    Window window("Sputterer", App::SCR_WIDTH, App::SCR_HEIGHT);
+    Window window("Sputterer", app::SCR_WIDTH, app::SCR_HEIGHT);
 
-    glfwSetFramebufferSizeCallback(window.window, App::framebufferSizeCallback);
-    glfwSetCursorPosCallback(window.window, App::mouseCursorCallback);
-    glfwSetScrollCallback(window.window, App::scrollCallback);
+    glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
+    glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
+    glfwSetScrollCallback(window.window, app::scrollCallback);
 
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
@@ -54,11 +54,11 @@ int main (int argc, char *argv[]) {
     Input input(filename);
     input.read();
 
-    App::camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
-    App::camera.distance    = 2 * input.chamberRadius;
-    App::camera.yaw         = -135;
-    App::camera.pitch       = 30;
-    App::camera.updateVectors();
+    app::camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
+    app::camera.distance    = 2 * input.chamberRadius;
+    app::camera.yaw         = -135;
+    app::camera.pitch       = 30;
+    app::camera.updateVectors();
 
     // for (const auto &surface : input.surfaces) {
     //     std::cout << surface.name << "\n";
@@ -71,8 +71,8 @@ int main (int argc, char *argv[]) {
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 
-    glm::vec3 particleColor{0.0f, 0.2f, 0.8f};
-    glm::vec3 particleScale{0.1f};
+    glm::vec3 particleColor{0.2f, 0.2f, 0.2f};
+    glm::vec3 particleScale{0.05f};
 
     Mesh particleMesh{};
     particleMesh.readFromObj("o_sphere.obj");
@@ -118,21 +118,19 @@ int main (int argc, char *argv[]) {
     size_t frame = 0, timingInterval = 100;
     float  totalTimeCompute = 0.0f, totalTime = 0.0f;
 
-    cudaEvent_t start, stopCompute, stopCopy;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stopCompute);
-    cudaEventCreate(&stopCopy);
-
-    int numParticlesOld = pc.numParticles;
+    cuda::event start{}, stopCompute{}, stopCopy{};
 
     while (true && window.open && display) {
         // process user input
         float currentFrame = glfwGetTime();
-        App::deltaTime     = currentFrame - App::lastFrame;
-        App::lastFrame     = currentFrame;
-        App::processInput(window.window);
+        app::deltaTime     = currentFrame - app::lastFrame;
+        app::lastFrame     = currentFrame;
+        app::processInput(window.window);
 
-        cudaEventRecord(start);
+        physicalTimestep = input.timestep * app::deltaTime;
+
+        // record compute start time
+        start.record();
 
         // Emit particles
         size_t triCount;
@@ -142,27 +140,25 @@ int main (int argc, char *argv[]) {
             }
 
             for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
-                pc.emit(h_triangles.at(i), surf.emitter_flux, input.timestep);
+                pc.emit(h_triangles.at(i), surf.emitter_flux, physicalTimestep);
             }
             triCount += surf.mesh.numTriangles;
         }
 
         // Push particles
-        pc.push(input.timestep, d_triangles);
+        pc.push(physicalTimestep, d_triangles);
 
-        numParticlesOld = pc.numParticles;
-
-        cudaEventRecord(stopCompute);
-        cudaEventSynchronize(stopCompute);
+        stopCompute.record();
 
         // Copy back to CPU
         pc.copyToCPU();
-        cudaEventRecord(stopCopy);
-        cudaEventSynchronize(stopCopy);
+
+        stopCopy.record();
 
         float elapsedCompute, elapsedCopy;
-        cudaEventElapsedTime(&elapsedCopy, start, stopCopy);
-        cudaEventElapsedTime(&elapsedCompute, start, stopCompute);
+        elapsedCompute = cuda::eventElapsedTime(start, stopCompute);
+        elapsedCopy    = cuda::eventElapsedTime(start, stopCopy);
+
         totalTime += elapsedCopy;
         totalTimeCompute += elapsedCompute;
         float computePercentage = totalTimeCompute / totalTime * 100;
@@ -177,7 +173,7 @@ int main (int argc, char *argv[]) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // update camera projection
-        shader.updateView(App::camera, App::aspectRatio);
+        shader.updateView(app::camera, app::aspectRatio);
 
         for (const auto &surface : input.surfaces) {
             // set the model matrix
@@ -196,10 +192,6 @@ int main (int argc, char *argv[]) {
         window.checkForUpdates();
         frame += 1;
     }
-
-    cudaEventDestroy(start);
-    cudaEventDestroy(stopCompute);
-    cudaEventDestroy(stopCopy);
 
     return 0;
 }

@@ -67,6 +67,25 @@ private:
     T *m_data_ptr;
 };
 
+class event {
+public:
+    event() {
+        cudaEventCreate(&m_event);
+    }
+    ~event() {
+        cudaEventDestroy(m_event);
+    };
+
+    void record () {
+        cudaEventRecord(m_event);
+        cudaEventSynchronize(m_event);
+    }
+
+    cudaEvent_t m_event;
+};
+
+float eventElapsedTime (const event &e1, const event &e2);
+
 } // namespace cuda
 
 #endif

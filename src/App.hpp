@@ -3,7 +3,7 @@
 
 #include "Camera.hpp"
 
-namespace App {
+namespace app {
 // settings
 const unsigned int SCR_WIDTH   = 800;
 const unsigned int SCR_HEIGHT  = 600;
@@ -111,6 +111,6 @@ void framebufferSizeCallback (GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-} // namespace App
+} // namespace app
 
 #endif
