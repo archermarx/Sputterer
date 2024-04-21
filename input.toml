@@ -6,8 +6,20 @@ radius_m = 3
 length_m = 9
 
 [[geometry]]
+name = "Emitter"
+file = "o_rect.obj"
+emit = true
+collect = false
+scale = { x = 0.25, y = 0.25, z = 0.25 }
+translate = { x = 0.0, y = 0.0, z = -3.0 }
+color = { x = 0.5, y = 0.0, z = 0.5 }
+
+[geometry.emitter]
+flux = 100
+
+[[geometry]]
 name = "Collector"
-file = "o_collector.obj"
+file = "o_rect.obj"
 emit = false
 collect = true
 translate = { x = 0.0, y = 0.0, z = 0.0 }

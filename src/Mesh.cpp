@@ -186,7 +186,6 @@ Mesh::~Mesh() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    std::cout << "Mesh destroyed" << std::endl;
 }
 
 void Mesh::draw(Shader &shader) const {

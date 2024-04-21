@@ -12,13 +12,18 @@ using std::vector, std::string;
 class Surface {
 public:
     string name{"noname"};
-    bool   emit{false};
-    bool   collect{false};
+
+    // Emitter options
+    bool  emit{false};
+    float emitter_flux{0.0};
+
+    // Collector options
+    bool collect{false};
 
     Mesh mesh{};
-    vec3 scale;
-    vec3 translate;
-    vec3 color;
+    vec3 scale{1.0f};
+    vec3 translate{0.0f};
+    vec3 color{0.5f, 0.5f, 0.5f};
 
     Surface()  = default;
     ~Surface() = default;

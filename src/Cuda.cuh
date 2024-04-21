@@ -31,7 +31,6 @@ public:
 
     // Free up memory when this vector is destroyed
     ~vector() {
-        std::cout << "Destroying GPU vector" << std::endl;
         if (m_data_ptr != nullptr) {
             CUDA_CHECK(cudaFree(m_data_ptr));
         }

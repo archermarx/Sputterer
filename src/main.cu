@@ -60,10 +60,10 @@ int main (int argc, char *argv[]) {
     App::camera.pitch       = 30;
     App::camera.updateVectors();
 
-    for (const auto &surface : input.surfaces) {
-        std::cout << surface.name << "\n";
-        std::cout << surface.mesh << "\n";
-    }
+    // for (const auto &surface : input.surfaces) {
+    //     std::cout << surface.name << "\n";
+    //     std::cout << surface.mesh << "\n";
+    // }
 
     glEnable(GL_DEPTH_TEST);
 
@@ -79,21 +79,22 @@ int main (int argc, char *argv[]) {
     particleMesh.setBuffers();
 
     // construct triangles
-    auto mesh = input.surfaces.at(0).mesh;
 
     std::vector<Triangle> h_triangles;
-    for (const auto &[i1, i2, i3] : mesh.triangles) {
-        auto scale     = input.surfaces.at(0).scale;
-        auto translate = input.surfaces.at(0).translate;
+    for (const auto &surf : input.surfaces) {
+        const auto &mesh      = surf.mesh;
+        const auto &translate = surf.translate;
+        const auto &scale     = surf.scale;
+        for (const auto &[i1, i2, i3] : mesh.triangles) {
+            auto model = glm::translate(glm::mat4(1.0), translate);
+            model      = glm::scale(model, scale);
 
-        auto model = glm::translate(glm::mat4(1.0), translate);
-        model      = glm::scale(model, scale);
+            auto v1 = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
+            auto v2 = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
+            auto v3 = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
-        auto v1 = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
-        auto v2 = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
-        auto v3 = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
-
-        h_triangles.emplace_back(v1, v2, v3);
+            h_triangles.emplace_back(v1, v2, v3);
+        }
     }
 
     Ray ray{.origin = pc.position[0], .direction = input.timestep * pc.velocity[0]};
@@ -114,7 +115,13 @@ int main (int argc, char *argv[]) {
 
     cuda::vector<Triangle> d_triangles{h_triangles};
 
-    size_t id = 0;
+    size_t frame = 0, timingInterval = 100;
+    float  totalTimeCompute = 0.0f, totalTime = 0.0f;
+
+    cudaEvent_t start, stopCompute, stopCopy;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stopCompute);
+    cudaEventCreate(&stopCopy);
 
     while (window.open && display) {
         // process user input
@@ -123,17 +130,35 @@ int main (int argc, char *argv[]) {
         App::lastFrame     = currentFrame;
         App::processInput(window.window);
 
-        if (true) {
-            std::cout << "Pos, vel : " << std::endl;
-            std::cout << pc.position[0] << "\n";
-            std::cout << pc.velocity[0] << "\n";
-        }
+        // if (true) {
+        //     std::cout << "Pos, vel : " << std::endl;
+        //     std::cout << pc.position[0] << "\n";
+        //     std::cout << pc.velocity[0] << "\n";
+        // }
+
+        cudaEventRecord(start);
 
         // Push particles
         pc.push(input.timestep, d_triangles);
 
+        cudaEventRecord(stopCompute);
+        cudaEventSynchronize(stopCompute);
+
         // Copy back to CPU
         pc.copyToCPU();
+        cudaEventRecord(stopCopy);
+        cudaEventSynchronize(stopCopy);
+
+        float elapsedCompute, elapsedCopy;
+        cudaEventElapsedTime(&elapsedCopy, start, stopCopy);
+        cudaEventElapsedTime(&elapsedCompute, start, stopCompute);
+        totalTime += elapsedCopy;
+        totalTimeCompute += elapsedCompute;
+        float computePercentage = totalTimeCompute / totalTime * 100;
+
+        if (frame % timingInterval == 0 && frame > 0) {
+            std::cout << "Average compute time: " << totalTime / frame << "ms (" << computePercentage << "% compute)\n";
+        }
 
         // draw background
         glClearColor(0.4f, 0.5f, 0.6f, 1.0f);
@@ -157,7 +182,7 @@ int main (int argc, char *argv[]) {
         }
 
         window.checkForUpdates();
-        id += 1;
+        frame += 1;
     }
 
     return 0;

@@ -83,39 +83,43 @@ void Input::read() {
     auto geometry = *input.get_as<toml::array>("geometry");
 
     auto numSurfaces = geometry.size();
-    surfaces.reserve(numSurfaces);
+    surfaces.resize(numSurfaces);
 
     int id = 0;
     for (auto &&elem : geometry) {
-        auto        tab     = elem.as_table();
-        std::string name    = readTableEntryAs<std::string>(*tab, "name");
-        std::string file    = readTableEntryAs<std::string>(*tab, "file");
-        bool        emit    = readTableEntryAs<bool>(*tab, "emit");
-        bool        collect = readTableEntryAs<bool>(*tab, "collect");
+        auto  tab    = elem.as_table();
+        auto &surf   = surfaces.at(id);
+        surf.name    = readTableEntryAs<string>(*tab, "name");
+        surf.emit    = readTableEntryAs<bool>(*tab, "emit");
+        surf.collect = readTableEntryAs<bool>(*tab, "collect");
+
+        string meshFile = readTableEntryAs<string>(*tab, "file");
+
+        // Read emitter options
+        if (surf.emit && tab->contains("emitter")) {
+            auto emit_tab     = tab->get_as<toml::table>("emitter");
+            surf.emitter_flux = readTableEntryAs<float>(*emit_tab, "flux");
+        }
+
+        std::cout << "emitter flux: " << surf.emitter_flux << std::endl;
 
         // object transformations (optional)
-        glm::vec3 scale{1.0f};
-        glm::vec3 translate{0.0f};
-        glm::vec3 color{0.5f};
 
         if (tab->contains("translate")) {
-            translate = readTableEntryAs<glm::vec3>(*tab, "translate");
+            surf.translate = readTableEntryAs<glm::vec3>(*tab, "translate");
         }
 
         if (tab->contains("scale")) {
-            scale = readTableEntryAs<glm::vec3>(*tab, "scale");
+            surf.scale = readTableEntryAs<glm::vec3>(*tab, "scale");
         }
 
         if (tab->contains("color")) {
-            color = readTableEntryAs<glm::vec3>(*tab, "color");
+            surf.color = readTableEntryAs<glm::vec3>(*tab, "color");
         }
 
-        surfaces.emplace_back(name, emit, collect, scale, translate, color);
-
         // Read mesh data
-        auto &surf = surfaces.at(id);
         auto &mesh = surf.mesh;
-        mesh.readFromObj(file);
+        mesh.readFromObj(meshFile);
         mesh.setBuffers();
 
         id++;
