@@ -108,7 +108,8 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
     return info;
 }
 
-__global__ void k_push (float3 *position, float3 *velocity, int N, Triangle *tris, size_t numTriangles, float dt) {
+__global__ void k_push (float3 *position, float3 *velocity, const int N, const Triangle *tris,
+                        const size_t numTriangles, const float dt) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < N) {
 
@@ -145,14 +146,17 @@ __global__ void k_push (float3 *position, float3 *velocity, int N, Triangle *tri
     }
 }
 
-void ParticleContainer::push(const float dt, const cuda::vector<Triangle> &tris) {
+void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris) {
     const int BLOCK_SIZE = 32;
     const int GRID_SIZE  = static_cast<int>(ceil(static_cast<float>(numParticles) / BLOCK_SIZE));
     dim3      grid(GRID_SIZE, 1, 1);
     dim3      block(BLOCK_SIZE, 1, 1);
 
-    k_push<<<grid, block>>>(thrust::raw_pointer_cast(d_position.data()), thrust::raw_pointer_cast(d_velocity.data()),
-                            numParticles, tris.data(), tris.size(), dt);
+    auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
+    auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
+    auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
+
+    k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, numParticles, d_tri_ptr, tris.size(), dt);
 
     cudaDeviceSynchronize();
 }

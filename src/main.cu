@@ -7,6 +7,9 @@
 #include <type_traits>
 #include <vector>
 
+// Thrust headers
+#include <thrust/host_vector.h>
+
 // GLM headers
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -113,7 +116,7 @@ int main (int argc, char *argv[]) {
     //     std::cout << "\n";
     // }
 
-    cuda::vector<Triangle> d_triangles{h_triangles};
+    thrust::device_vector<Triangle> d_triangles{h_triangles};
 
     size_t frame = 0, timingInterval = 100;
     float  totalTimeCompute = 0.0f, totalTime = 0.0f;

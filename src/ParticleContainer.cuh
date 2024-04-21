@@ -44,7 +44,7 @@ public:
     ParticleContainer(string name, double mass, int charge);
 
     // push particles to next positions (for now just use forward Euler)
-    void push (const float dt, const cuda::vector<Triangle> &tris);
+    void push (const float dt, const thrust::device_vector<Triangle> &tris);
 
     // add particles to the container
     void addParticles (vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy,
