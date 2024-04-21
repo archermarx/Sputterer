@@ -23,15 +23,20 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
         return;
     }
 
+    position.resize(numParticles + N);
+    velocity.resize(numParticles + N);
+    weight.resize(numParticles + N);
+
     // Add particles to CPU arrays
-    for (int i = 0; i < N; i++) {
-        position.push_back({x.at(i), y.at(i), z.at(i)});
-        velocity.push_back({ux.at(i), uy.at(i), uz.at(i)});
-        weight.push_back({w.at(i)});
+    for (size_t i = 0; i < N; i++) {
+        auto id = numParticles + i;
+
+        position[id] = {x.at(i), y.at(i), z.at(i)};
+        velocity[id] = {ux.at(i), uy.at(i), uz.at(i)};
+        weight[id]   = {w.at(i)};
     }
 
     // Copy particles to GPU
-    // The starting memory address is numParticles
     thrust::copy(position.begin() + numParticles, position.end(), d_position.begin() + numParticles);
     thrust::copy(velocity.begin() + numParticles, velocity.end(), d_velocity.begin() + numParticles);
     thrust::copy(weight.begin() + numParticles, weight.end(), d_weight.begin() + numParticles);
@@ -40,9 +45,9 @@ void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<fl
 }
 
 void ParticleContainer::copyToCPU() {
-    thrust::copy(d_position.begin(), d_position.begin() + numParticles, position.begin());
-    thrust::copy(d_velocity.begin(), d_velocity.begin() + numParticles, velocity.begin());
-    thrust::copy(d_weight.begin(), d_weight.begin() + numParticles, weight.begin());
+    position = host_vector<float3>(d_position.begin(), d_position.begin() + numParticles);
+    velocity = host_vector<float3>(d_velocity.begin(), d_velocity.begin() + numParticles);
+    weight   = host_vector<float>(d_weight.begin(), d_weight.begin() + numParticles);
 }
 
 #define MIN_T 100'000
