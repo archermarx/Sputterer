@@ -1,5 +1,8 @@
 #include <random>
 
+#include <thrust/distance.h>
+#include <thrust/partition.h>
+
 #include "ParticleContainer.cuh"
 #include "cuda_helpers.cuh"
 
@@ -12,6 +15,7 @@ ParticleContainer::ParticleContainer(string name, double mass, int charge)
     d_position.resize(MAX_PARTICLES);
     d_velocity.resize(MAX_PARTICLES);
     d_weight.resize(MAX_PARTICLES);
+    d_tmp.resize(MAX_PARTICLES);
 }
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,
@@ -182,14 +186,15 @@ void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
     std::vector<float> ux(intNumEmit, 0.0), uy(intNumEmit, 0.0), uz(intNumEmit, 0.0);
     std::vector<float> w(intNumEmit, 1.0);
 
+    auto velocityJitter = 0.15f;
     for (int i = 0; i < intNumEmit; i++) {
         auto pt  = triangle.sample(randUniform(), randUniform());
         x.at(i)  = pt.x;
         y.at(i)  = pt.y;
         z.at(i)  = pt.z;
-        ux.at(i) = speed * triangle.norm.x;
-        uy.at(i) = speed * triangle.norm.y;
-        uz.at(i) = speed * triangle.norm.z;
+        ux.at(i) = speed * (triangle.norm.x + velocityJitter * randUniform(-1, 1));
+        uy.at(i) = speed * (triangle.norm.y + velocityJitter * randUniform(-1, 1));
+        uz.at(i) = speed * (triangle.norm.z + velocityJitter * randUniform(-1, 1));
     }
 
     addParticles(x, y, z, ux, uy, uz, w);
@@ -214,6 +219,31 @@ void ParticleContainer::flagOutOfBounds(float radius, float length) {
     auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
     k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr, radius * radius, length / 2, numParticles);
     cudaDeviceSynchronize();
+}
+
+struct is_positive {
+    __host__ __device__ bool operator() (const float &w) {
+        return w > 0;
+    }
+};
+
+void ParticleContainer::removeFlaggedParticles() {
+    // reorder positions and velocities so that particles with negative weight follow those with positive weight
+    thrust::partition(d_position.begin(), d_position.begin() + numParticles, d_weight.begin(), is_positive());
+    thrust::partition(d_velocity.begin(), d_velocity.begin() + numParticles, d_weight.begin(), is_positive());
+
+    // reorder weights according to the same scheme as above
+    // copy weights to temporary vector first
+    // thrust partition likely is allocating some temporary memory
+    // to avoid this, we would probably want to set up a custom allocator
+    // c.f. https://github.com/NVIDIA/thrust/blob/1.6.0/examples/cuda/custom_temporary_allocation.cu
+    // Alternatively, could use CUB device partition, which gives us more control to allocate temporary data
+    // c.f. https://nvidia.github.io/cccl/cub/api/structcub_1_1DevicePartition.html#_CPPv4N3cub15DevicePartitionE
+    thrust::copy(d_weight.begin(), d_weight.begin() + numParticles, d_tmp.begin());
+    auto ret = thrust::partition(d_weight.begin(), d_weight.begin() + numParticles, d_tmp.begin(), is_positive());
+
+    // Reset number of particles to the middle of the partition
+    numParticles = thrust::distance(d_weight.begin(), ret);
 }
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {

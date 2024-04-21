@@ -41,6 +41,8 @@ public:
     host_vector<float>   weight;
     device_vector<float> d_weight{MAX_PARTICLES};
 
+    device_vector<float> d_tmp{MAX_PARTICLES};
+
     // Constructor
     ParticleContainer(string name, double mass, int charge);
 
@@ -59,6 +61,9 @@ public:
 
     // Set particles that leave bounds to have negative weights
     void flagOutOfBounds (float radius, float length);
+
+    // Remove particles with negative weights
+    void removeFlaggedParticles ();
 
     // Copy particles on GPU to CPU
     void copyToCPU ();
