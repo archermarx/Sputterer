@@ -18,6 +18,7 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 // My headers (c++)
 #include "gl_helpers.hpp"
@@ -121,11 +122,11 @@ int main (int argc, char *argv[]) {
     particleMesh.setBuffers();
 
     // construct triangles
-    std::vector<Triangle> h_triangles;
-    std::vector<int>      h_materialIDs;
-    std::vector<Material> h_materials;
-    std::vector<char>     h_to_collect;
-    std::vector<size_t>   collect_inds;
+    thrust::host_vector<Triangle> h_triangles;
+    thrust::host_vector<int>      h_materialIDs;
+    thrust::host_vector<Material> h_materials;
+    thrust::host_vector<char>     h_to_collect;
+    std::vector<size_t>           collect_inds;
 
     int id = 0;
     for (const auto &surf : input.surfaces) {
@@ -140,7 +141,7 @@ int main (int argc, char *argv[]) {
             auto v2    = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
             auto v3    = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
-            h_triangles.emplace_back(v1, v2, v3);
+            h_triangles.push_back({v1, v2, v3});
             h_materialIDs.push_back(id);
             if (material.collect) {
                 collect_inds.push_back(h_triangles.size() - 1);
@@ -182,7 +183,7 @@ int main (int argc, char *argv[]) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Set up UI components
+        // Timing info
         auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
         float  padding      = 0.0f;
@@ -192,6 +193,32 @@ int main (int argc, char *argv[]) {
         ImGui::Text("Simulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  \nParticles: %i",
                     printTime(physicalTime).c_str(), avgTimeCompute, (1.0f - avgTimeCompute / avgTimeTotal) * 100,
                     pc.numParticles);
+        ImGui::End();
+
+        // Table of collected particle amounts
+        auto   tableFlags  = ImGuiTableFlags_BordersH;
+        ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
+        ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
+        ImGui::Begin("Particle collection info", NULL, flags);
+        if (ImGui::BeginTable("Table", 3, tableFlags)) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Surface name");
+            ImGui::TableNextColumn();
+            ImGui::Text("Triangle ID");
+            ImGui::TableNextColumn();
+            ImGui::Text("Collection rate (#/s)");
+            for (int row = 0; row < collect_inds.size(); row++) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", input.surfaces.at(h_materialIDs[row]).name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%i", static_cast<int>(collect_inds[row]));
+                ImGui::TableNextColumn();
+                ImGui::Text("%.3e", static_cast<double>(collected[row]) / physicalTime);
+            }
+            ImGui::EndTable();
+        }
         ImGui::End();
 
         // frame timing for rendering
@@ -216,7 +243,7 @@ int main (int argc, char *argv[]) {
                 }
 
                 for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
-                    pc.emit(h_triangles.at(i), emitter, physicalTimestep);
+                    pc.emit(h_triangles[i], emitter, physicalTimestep);
                 }
                 triCount += surf.mesh.numTriangles;
             }
@@ -229,15 +256,12 @@ int main (int argc, char *argv[]) {
             pc.removeFlaggedParticles();
             stopCompute.record();
 
-            std::cout << "Collection rate:\n";
             // Track particles collected by each triangle flagged 'collect'
             for (int id = 0; id < collect_inds.size(); id++) {
                 auto oldVal  = collected[id];
                 auto d_begin = d_collected.begin() + collect_inds[id];
                 thrust::copy(d_begin, d_begin + 1, collected.begin() + id);
                 collected[id] += oldVal;
-                std::cout << "    " << collect_inds[id] << ": " << collected[id] / physicalTime
-                          << " particles/second \n";
             }
 
             // Copy particle data back to CPU
