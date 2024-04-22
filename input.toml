@@ -1,5 +1,5 @@
 [simulation]
-timestep_s = 0.01
+timestep_s = 0.005
 
 [chamber]
 radius_m = 3
@@ -89,7 +89,7 @@ collect = true
 scale = { x = 0.15, y = 0.15, z = 0.15 }
 color = { x = 0.9, y = 0.1, z = 0.1 }
 translate = { x = 1.5, y = 0.0, z = 0.0 }
-rotate = { angle = -30 }
+rotate = { angle = -45 }
 
 [geometry.material]
 sticking_coeff = 0.1

@@ -36,6 +36,27 @@
 
 using std::vector, std::string;
 
+std::string printTime (double time_s) {
+    char   buf[64];
+    int    factor = 1;
+    string str    = "s";
+
+    if (time_s < 1) {
+        factor = 1000;
+        str    = "ms";
+    } else if (time_s < 1e-3) {
+        factor = 1'000'000;
+        str    = "μs";
+    } else if (time_s < 1e-6) {
+        factor = 1'000'000'000;
+        str    = "ns";
+    }
+
+    sprintf(buf, "%.3f %s", time_s * factor, str.c_str());
+
+    return string(buf);
+}
+
 int main (int argc, char *argv[]) {
     // Handle command line arguments
     string filename("input.toml");
@@ -101,13 +122,18 @@ int main (int argc, char *argv[]) {
 
     // construct triangles
     std::vector<Triangle> h_triangles;
-    std::vector<int>      h_surfaceIDs;
+    std::vector<int>      h_materialIDs;
     std::vector<Material> h_materials;
+    std::vector<char>     h_to_collect;
+    std::vector<size_t>   collect_inds;
 
     int id = 0;
     for (const auto &surf : input.surfaces) {
 
-        const auto &mesh = surf.mesh;
+        std::cout << "Surface: " << surf.name << std::endl;
+        const auto &mesh     = surf.mesh;
+        const auto &material = surf.material;
+
         for (const auto &[i1, i2, i3] : mesh.triangles) {
             auto model = surf.transform.getMatrix();
             auto v1    = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
@@ -115,27 +141,33 @@ int main (int argc, char *argv[]) {
             auto v3    = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
             h_triangles.emplace_back(v1, v2, v3);
-            h_surfaceIDs.push_back(id);
+            h_materialIDs.push_back(id);
+            if (material.collect) {
+                collect_inds.push_back(h_triangles.size() - 1);
+            }
         }
 
         h_materials.push_back(surf.material);
         id++;
     }
-
     std::cout << "Meshes read." << std::endl;
 
     thrust::device_vector<Triangle> d_triangles{h_triangles};
-    thrust::device_vector<size_t>   d_surfaceIDs{h_surfaceIDs};
+    thrust::device_vector<size_t>   d_surfaceIDs{h_materialIDs};
     thrust::device_vector<Material> d_materials{h_materials};
+    thrust::device_vector<int>      d_collected(h_triangles.size(), 0);
+
+    thrust::host_vector<int> collected(collect_inds.size(), 0);
 
     std::cout << "Mesh data sent to GPU." << std::endl;
 
     // Create timing objects
     size_t frame = 0;
 
-    float avgTimeCompute = 0.0f, avgTimeTotal = 0.0f;
-    float iterReset = 100;
-    float timeConst = 1 / iterReset;
+    float  avgTimeCompute = 0.0f, avgTimeTotal = 0.0f;
+    float  iterReset    = 100;
+    float  timeConst    = 1 / iterReset;
+    double physicalTime = 0;
 
     cuda::event start{}, stopCompute{}, stopCopy{};
 
@@ -157,8 +189,9 @@ int main (int argc, char *argv[]) {
         ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
         ImGui::Begin("Frame time", NULL, flags);
-        ImGui::Text("Particles: %i\nCompute time: %.3f ms (%.2f%% data transfer)  ", pc.numParticles, avgTimeCompute,
-                    (1.0f - avgTimeCompute / avgTimeTotal) * 100);
+        ImGui::Text("Simulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  \nParticles: %i",
+                    printTime(physicalTime).c_str(), avgTimeCompute, (1.0f - avgTimeCompute / avgTimeTotal) * 100,
+                    pc.numParticles);
         ImGui::End();
 
         // frame timing for rendering
@@ -168,6 +201,7 @@ int main (int argc, char *argv[]) {
         app::processInput(window.window);
 
         auto physicalTimestep = input.timestep * app::deltaTime;
+        physicalTime += physicalTimestep;
 
         // record compute start time
         if (frame > 1) {
@@ -188,14 +222,25 @@ int main (int argc, char *argv[]) {
             }
 
             // Push particles
-            pc.push(physicalTimestep, d_triangles, d_surfaceIDs, d_materials);
+            pc.push(physicalTimestep, d_triangles, d_surfaceIDs, d_materials, d_collected);
 
             // Remove particles that are out of bounds
             pc.flagOutOfBounds(input.chamberRadius, input.chamberLength);
             pc.removeFlaggedParticles();
             stopCompute.record();
 
-            // Copy back to CPU
+            std::cout << "Collection rate:\n";
+            // Track particles collected by each triangle flagged 'collect'
+            for (int id = 0; id < collect_inds.size(); id++) {
+                auto oldVal  = collected[id];
+                auto d_begin = d_collected.begin() + collect_inds[id];
+                thrust::copy(d_begin, d_begin + 1, collected.begin() + id);
+                collected[id] += oldVal;
+                std::cout << "    " << collect_inds[id] << ": " << collected[id] / physicalTime
+                          << " particles/second \n";
+            }
+
+            // Copy particle data back to CPU
             pc.copyToCPU();
 
             stopCopy.record();

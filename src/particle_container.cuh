@@ -59,7 +59,7 @@ public:
 
     // push particles to next positions (for now just use forward Euler)
     void push (const float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids,
-               const thrust::device_vector<Material> &mats);
+               const thrust::device_vector<Material> &mats, thrust::device_vector<int> &collected);
 
     // add particles to the container
     void addParticles (vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy,

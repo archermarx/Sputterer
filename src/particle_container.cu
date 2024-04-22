@@ -117,8 +117,9 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
 }
 
 __global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
-                        const size_t numTriangles, const size_t *ids, const Material *materials, const curandState *rng,
-                        const float dt) {
+                        const size_t numTriangles, const size_t *ids, const Material *materials, int *collected,
+                        const curandState *rng, const float dt) {
+
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid < N) {
 
@@ -128,15 +129,17 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
         // Check for intersections with boundaries
         Ray ray{.origin = pos, .direction = dt * vel};
 
-        int     hit_id = 1;
+        int     hit_triangle_id = -1;
+        int     hit_material_id = -1;
         HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
         HitInfo current_hit;
 
         for (size_t i = 0; i < numTriangles; i++) {
             current_hit = hits_triangle(ray, tris[i]);
             if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {
-                closest_hit = current_hit;
-                hit_id      = ids[i];
+                closest_hit     = current_hit;
+                hit_triangle_id = i;
+                hit_material_id = ids[i];
             }
         }
 
@@ -144,7 +147,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
             auto &[_, t, norm] = closest_hit;
 
             // Get material info where we hit
-            auto &mat            = materials[hit_id];
+            auto &mat            = materials[hit_material_id];
             auto  sticking_coeff = mat.sticking_coeff;
             auto  hit_pos        = pos + t * dt * vel;
 
@@ -155,10 +158,14 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
             if (uniform < sticking_coeff) {
                 position[tid] = hit_pos;
                 velocity[tid] = float3(0.0f, 0.0f, 0.0f);
+
+                // Record that we hit this triangle
+                atomicAdd(&collected[hit_triangle_id], static_cast<int>(weight[tid]));
+
                 // set weight negative to flag for removal
                 // magnitude indicates which triangle we hit
                 // TODO: floats may be bad for this purpose, could convert weight to int64
-                weight[tid] = -hit_id;
+                weight[tid] = -hit_triangle_id;
 
             } else {
                 float3 vel_norm = dot(vel, norm) * norm;
@@ -183,18 +190,22 @@ std::pair<dim3, dim3> ParticleContainer::getKernelLaunchParams(size_t block_size
 }
 
 void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris,
-                             const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats) {
+                             const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats,
+                             thrust::device_vector<int> &collected) {
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
     auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
+
+    // TODO: could move all of the device geometric info into a struct
     auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
     auto d_id_ptr  = thrust::raw_pointer_cast(ids.data());
     auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
     auto d_rng_ptr = thrust::raw_pointer_cast(d_rng.data());
+    auto d_col_ptr = thrust::raw_pointer_cast(collected.data());
 
     auto [grid, block] = getKernelLaunchParams();
     k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, d_wgt_ptr, numParticles, d_tri_ptr, tris.size(), d_id_ptr, d_mat_ptr,
-                            d_rng_ptr, dt);
+                            d_col_ptr, d_rng_ptr, dt);
 
     cudaDeviceSynchronize();
 }
