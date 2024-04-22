@@ -27,7 +27,7 @@ ParticleContainer::ParticleContainer(string name, double mass, int charge)
     // Set up RNG for later use
     size_t block_size = 512;
     k_setup_rng<<<MAX_PARTICLES / block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(NULL));
-    std::cout << "GPU RNG state initialized" << std::endl;
+    std::cout << "GPU RNG state initialized." << std::endl;
 }
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,

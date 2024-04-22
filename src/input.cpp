@@ -116,7 +116,6 @@ void Input::read() {
         if (tab->contains("material")) {
             auto mat_tab            = tab->get_as<toml::table>("material");
             material.sticking_coeff = readTableEntryAs<float>(*mat_tab, "sticking_coeff");
-            std::cout << "Surface " << surf.name << ", sticking coeff = " << material.sticking_coeff << std::endl;
         }
 
         // object transformations (optional)

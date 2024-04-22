@@ -127,14 +127,15 @@ int main (int argc, char *argv[]) {
         h_materials.push_back(surf.material);
         id++;
     }
+    thrust::host_vector<int> collected(collect_inds.size(), 0);
+
     std::cout << "Meshes read." << std::endl;
 
-    thrust::device_vector<Triangle> d_triangles{h_triangles};
-    thrust::device_vector<size_t>   d_surfaceIDs{h_materialIDs};
-    thrust::device_vector<Material> d_materials{h_materials};
+    // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
+    thrust::device_vector<Triangle> d_triangles  = h_triangles;
+    thrust::device_vector<size_t>   d_surfaceIDs = h_materialIDs;
+    thrust::device_vector<Material> d_materials  = h_materials;
     thrust::device_vector<int>      d_collected(h_triangles.size(), 0);
-
-    thrust::host_vector<int> collected(collect_inds.size(), 0);
 
     std::cout << "Mesh data sent to GPU." << std::endl;
 
@@ -271,7 +272,7 @@ int main (int argc, char *argv[]) {
         frame += 1;
     }
 
-    std::cout << "Program terminated successfully" << std::endl;
+    std::cout << "Program terminated successfully." << std::endl;
 
     return 0;
 }
