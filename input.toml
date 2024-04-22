@@ -1,9 +1,9 @@
 [simulation]
-timestep_s = 2.0
+timestep_s = 0.01
 
 [chamber]
-radius_m = 4
-length_m = 10
+radius_m = 3
+length_m = 6
 
 [[geometry]]
 name = "Emitter"
@@ -11,32 +11,75 @@ file = "o_rect.obj"
 emit = true
 collect = false
 scale = { x = 0.25, y = 0.25, z = 0.25 }
-translate = { x = 0.0, y = 0.125, z = -3.0 }
-color = { x = 0.5, y = 0.0, z = 0.5 }
-sticking_coeff = 0.0
+translate = { x = 0.0, y = 0.125, z = -2.0 }
+color = { x = 0.2, y = 0.2, z = 0.8 }
 
 [geometry.emitter]
-flux = 1000
+flux = 1_000_000
+velocity = 300
+spread = 0.1
+reverse_direction = true
 
 [[geometry]]
-name = "Reflector 1"
+name = "Reflector l2"
 file = "o_rect.obj"
 emit = false
 collect = false
 scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = 0.0, y = 0.0, z = 3.0 }
-color = { x = 0.0, y = 0.5, z = 0.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -45 }
+translate = { x = 1.25, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
 
 [[geometry]]
-name = "Reflector 2"
+name = "Reflector l1"
 file = "o_rect.obj"
 emit = false
 collect = false
 scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = 0.5, y = 0.0, z = 3.0 }
-color = { x = 0.0, y = 0.5, z = 0.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -45 }
+translate = { x = 0.75, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
+
+[[geometry]]
+name = "Reflector l0"
+file = "o_rect.obj"
+emit = false
+collect = false
+scale = { x = 0.25, y = 1.0, z = 1.0 }
+translate = { x = 0.25, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
+
+[[geometry]]
+name = "Reflector r0"
+file = "o_rect.obj"
+emit = false
+collect = false
+scale = { x = 0.25, y = 1.0, z = 1.0 }
+translate = { x = -0.25, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
+
+[[geometry]]
+name = "Reflector r1"
+file = "o_rect.obj"
+emit = false
+collect = false
+scale = { x = 0.25, y = 1.0, z = 1.0 }
+translate = { x = -0.75, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
+
+[[geometry]]
+name = "Reflector r2"
+file = "o_rect.obj"
+emit = false
+collect = false
+scale = { x = 0.25, y = 1.0, z = 1.0 }
+translate = { x = -1.25, y = 0.0, z = 2.0 }
+color = { x = 0.2, y = 0.2, z = 0.2 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
+
 
 [[geometry]]
 name = "Collector"
@@ -45,4 +88,18 @@ emit = false
 collect = true
 scale = { x = 0.15, y = 0.15, z = 0.15 }
 color = { x = 0.9, y = 0.1, z = 0.1 }
-translate = { x = 1.0, y = 0.0, z = -3.0 }
+translate = { x = 1.5, y = 0.0, z = 0.0 }
+rotate = { angle = -30 }
+
+[geometry.material]
+sticking_coeff = 0.1
+
+# [[geometry]]
+# name = "Chamber"
+# file = "o_cylinder.obj"
+# emit = false
+# collect = false
+# rotate = { axis = { x = 1.0, y = 0.0, z = 0.0 }, angle = 90 }
+# scale = { x = 2.5, y = 4.5, z = 2.5 }
+# translate = { x = 0.0, y = 0.0, z = -3.5 }
+# color = { x = 1.0, y = 1.0, z = 1.0 }

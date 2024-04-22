@@ -25,7 +25,7 @@ std::ostream &operator<< (std::ostream &os, const TriElement &t);
 struct Transform {
     vec3  scale{1.0};
     vec3  translate{0.0, 0.0, 0.0};
-    vec3  rotationAxis{0.0, 0.0, 1.0};
+    vec3  rotationAxis{0.0, 1.0, 0.0};
     float rotationAngle{0.0};
 
     Transform() = default;

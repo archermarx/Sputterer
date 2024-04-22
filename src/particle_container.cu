@@ -6,6 +6,12 @@
 #include "particle_container.cuh"
 #include "cuda_helpers.cuh"
 
+// Setup RNG
+__global__ void k_setup_rng (curandState *rng, uint64_t seed) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    curand_init(seed, tid, 0, &rng[tid]);
+}
+
 ParticleContainer::ParticleContainer(string name, double mass, int charge)
     : name(name)
     , mass(mass)
@@ -16,6 +22,12 @@ ParticleContainer::ParticleContainer(string name, double mass, int charge)
     d_velocity.resize(MAX_PARTICLES);
     d_weight.resize(MAX_PARTICLES);
     d_tmp.resize(MAX_PARTICLES);
+    d_rng.resize(MAX_PARTICLES);
+
+    // Set up RNG for later use
+    size_t block_size = 512;
+    k_setup_rng<<<MAX_PARTICLES / block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(NULL));
+    std::cout << "GPU RNG state initialized" << std::endl;
 }
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,
@@ -104,40 +116,61 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
     return info;
 }
 
-__global__ void k_push (float3 *position, float3 *velocity, const int N, const Triangle *tris,
-                        const size_t numTriangles, const float dt) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
-    if (id < N) {
+__global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
+                        const size_t numTriangles, const size_t *ids, const Material *materials, const curandState *rng,
+                        const float dt) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if (tid < N) {
 
-        auto pos = position[id];
-        auto vel = velocity[id];
+        auto pos = position[tid];
+        auto vel = velocity[tid];
 
         // Check for intersections with boundaries
         Ray ray{.origin = pos, .direction = dt * vel};
 
+        int     hit_id = 1;
         HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
         HitInfo current_hit;
+
         for (size_t i = 0; i < numTriangles; i++) {
             current_hit = hits_triangle(ray, tris[i]);
             if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {
                 closest_hit = current_hit;
+                hit_id      = ids[i];
             }
         }
 
         if (closest_hit.t <= 1) {
             auto &[_, t, norm] = closest_hit;
 
-            float3 vel_norm = dot(vel, norm) * norm;
-            float3 vel_refl = vel - 2 * vel_norm;
+            // Get material info where we hit
+            auto &mat            = materials[hit_id];
+            auto  sticking_coeff = mat.sticking_coeff;
+            auto  hit_pos        = pos + t * dt * vel;
 
-            auto hit_pos   = pos + t * dt * vel;
-            auto final_pos = hit_pos + (1 - t) * dt * vel_refl;
+            // Generate a random number
+            auto localState = rng[tid];
+            auto uniform    = curand_uniform(&localState);
 
-            position[id] = final_pos;
-            velocity[id] = vel_refl;
+            if (uniform < sticking_coeff) {
+                position[tid] = hit_pos;
+                velocity[tid] = float3(0.0f, 0.0f, 0.0f);
+                // set weight negative to flag for removal
+                // magnitude indicates which triangle we hit
+                // TODO: floats may be bad for this purpose, could convert weight to int64
+                weight[tid] = -hit_id;
+
+            } else {
+                float3 vel_norm = dot(vel, norm) * norm;
+                float3 vel_refl = vel - 2 * vel_norm;
+
+                auto final_pos = hit_pos + (1 - t) * dt * vel_refl;
+                position[tid]  = final_pos;
+                velocity[tid]  = vel_refl;
+            }
 
         } else {
-            position[id] = pos + dt * vel;
+            position[tid] = pos + dt * vel;
         }
     }
 }
@@ -149,13 +182,19 @@ std::pair<dim3, dim3> ParticleContainer::getKernelLaunchParams(size_t block_size
     return std::make_pair(grid, block);
 }
 
-void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris) {
+void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris,
+                             const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats) {
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
+    auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
     auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
+    auto d_id_ptr  = thrust::raw_pointer_cast(ids.data());
+    auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
+    auto d_rng_ptr = thrust::raw_pointer_cast(d_rng.data());
 
     auto [grid, block] = getKernelLaunchParams();
-    k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, numParticles, d_tri_ptr, tris.size(), dt);
+    k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, d_wgt_ptr, numParticles, d_tri_ptr, tris.size(), d_id_ptr, d_mat_ptr,
+                            d_rng_ptr, dt);
 
     cudaDeviceSynchronize();
 }
@@ -166,8 +205,14 @@ float randUniform (float min = 0.0f, float max = 1.0f) {
     return dist(rng);
 }
 
-void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
-    auto numEmit    = flux * triangle.area * dt;
+float randNormal (float mean = 0.0f, float std = 1.0f) {
+    static std::default_random_engine rng;
+    std::normal_distribution<float>   dist(mean, std);
+    return dist(rng);
+}
+
+void ParticleContainer::emit(Triangle &triangle, Emitter emitter, float dt) {
+    auto numEmit    = emitter.flux * triangle.area * dt;
     int  intNumEmit = static_cast<int>(numEmit);
     auto remainder  = numEmit - intNumEmit;
 
@@ -180,21 +225,19 @@ void ParticleContainer::emit(Triangle &triangle, float flux, float dt) {
         return;
     }
 
-    float speed = -1.0;
-
     std::vector<float> x(intNumEmit, 0.0), y(intNumEmit, 0.0), z(intNumEmit, 0.0);
     std::vector<float> ux(intNumEmit, 0.0), uy(intNumEmit, 0.0), uz(intNumEmit, 0.0);
     std::vector<float> w(intNumEmit, 1.0);
 
-    auto velocityJitter = 0.15f;
     for (int i = 0; i < intNumEmit; i++) {
-        auto pt  = triangle.sample(randUniform(), randUniform());
-        x.at(i)  = pt.x;
-        y.at(i)  = pt.y;
-        z.at(i)  = pt.z;
-        ux.at(i) = speed * (triangle.norm.x + velocityJitter * randUniform(-1, 1));
-        uy.at(i) = speed * (triangle.norm.y + velocityJitter * randUniform(-1, 1));
-        uz.at(i) = speed * (triangle.norm.z + velocityJitter * randUniform(-1, 1));
+        auto pt   = triangle.sample(randUniform(), randUniform());
+        auto norm = emitter.reverse ? -triangle.norm : triangle.norm;
+        x.at(i)   = pt.x;
+        y.at(i)   = pt.y;
+        z.at(i)   = pt.z;
+        ux.at(i)  = emitter.velocity * (norm.x + randNormal(0, emitter.spread));
+        uy.at(i)  = emitter.velocity * (norm.y + randNormal(0, emitter.spread));
+        uz.at(i)  = emitter.velocity * (norm.z + randNormal(0, emitter.spread));
     }
 
     addParticles(x, y, z, ux, uy, uz, w);

@@ -87,18 +87,36 @@ void Input::read() {
 
     int id = 0;
     for (auto &&elem : geometry) {
-        auto  tab    = elem.as_table();
-        auto &surf   = surfaces.at(id);
-        surf.name    = readTableEntryAs<string>(*tab, "name");
-        surf.emit    = readTableEntryAs<bool>(*tab, "emit");
-        surf.collect = readTableEntryAs<bool>(*tab, "collect");
+        auto  tab  = elem.as_table();
+        auto &surf = surfaces.at(id);
+
+        auto &emitter  = surf.emitter;
+        auto &material = surf.material;
+
+        surf.name        = readTableEntryAs<string>(*tab, "name");
+        emitter.emit     = readTableEntryAs<bool>(*tab, "emit");
+        material.collect = readTableEntryAs<bool>(*tab, "collect");
 
         string meshFile = readTableEntryAs<string>(*tab, "file");
 
         // Read emitter options
-        if (surf.emit && tab->contains("emitter")) {
-            auto emit_tab     = tab->get_as<toml::table>("emitter");
-            surf.emitter_flux = readTableEntryAs<float>(*emit_tab, "flux");
+        if (emitter.emit && tab->contains("emitter")) {
+            auto emit_tab    = tab->get_as<toml::table>("emitter");
+            emitter.flux     = readTableEntryAs<float>(*emit_tab, "flux");
+            emitter.velocity = readTableEntryAs<float>(*emit_tab, "velocity");
+            if (emit_tab->contains("reverse_direction")) {
+                emitter.reverse = readTableEntryAs<bool>(*emit_tab, "reverse_direction");
+            }
+            if (emit_tab->contains("spread")) {
+                emitter.spread = readTableEntryAs<float>(*emit_tab, "spread");
+            }
+        }
+
+        // Read material options
+        if (tab->contains("material")) {
+            auto mat_tab            = tab->get_as<toml::table>("material");
+            material.sticking_coeff = readTableEntryAs<float>(*mat_tab, "sticking_coeff");
+            std::cout << "Surface " << surf.name << ", sticking coeff = " << material.sticking_coeff << std::endl;
         }
 
         // object transformations (optional)

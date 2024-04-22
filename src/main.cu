@@ -55,6 +55,8 @@ int main (int argc, char *argv[]) {
     glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
     glfwSetScrollCallback(window.window, app::scrollCallback);
 
+    std::cout << "GLFW window initialized." << std::endl;
+
     // ImGUI initialization
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -65,11 +67,15 @@ int main (int argc, char *argv[]) {
     ImGui_ImplGlfw_InitForOpenGL(window.window, true);
     ImGui_ImplOpenGL3_Init();
 
+    std::cout << "ImGUI initialized." << std::endl;
+
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
 
     Input input(filename);
     input.read();
+
+    std::cout << "Input read." << std::endl;
 
     app::camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
     app::camera.distance    = 2 * input.chamberRadius;
@@ -84,9 +90,9 @@ int main (int argc, char *argv[]) {
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 
-    glm::vec3 particleColor{0.1f, 0.1f, 0.1f};
+    glm::vec3 particleColor = vec3{0.05f};
     glm::vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
-    glm::vec3 particleScale{0.025f};
+    glm::vec3 particleScale{0.01f};
 
     // Read mesh from file
     Mesh particleMesh{};
@@ -95,7 +101,12 @@ int main (int argc, char *argv[]) {
 
     // construct triangles
     std::vector<Triangle> h_triangles;
+    std::vector<int>      h_surfaceIDs;
+    std::vector<Material> h_materials;
+
+    int id = 0;
     for (const auto &surf : input.surfaces) {
+
         const auto &mesh = surf.mesh;
         for (const auto &[i1, i2, i3] : mesh.triangles) {
             auto model = surf.transform.getMatrix();
@@ -104,10 +115,20 @@ int main (int argc, char *argv[]) {
             auto v3    = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
             h_triangles.emplace_back(v1, v2, v3);
+            h_surfaceIDs.push_back(id);
         }
+
+        h_materials.push_back(surf.material);
+        id++;
     }
 
+    std::cout << "Meshes read." << std::endl;
+
     thrust::device_vector<Triangle> d_triangles{h_triangles};
+    thrust::device_vector<size_t>   d_surfaceIDs{h_surfaceIDs};
+    thrust::device_vector<Material> d_materials{h_materials};
+
+    std::cout << "Mesh data sent to GPU." << std::endl;
 
     // Create timing objects
     size_t frame = 0;
@@ -117,6 +138,8 @@ int main (int argc, char *argv[]) {
     float timeConst = 1 / iterReset;
 
     cuda::event start{}, stopCompute{}, stopCopy{};
+
+    std::cout << "Beginning main loop." << std::endl;
 
     while (true && window.open && display) {
         // process user input
@@ -153,18 +176,19 @@ int main (int argc, char *argv[]) {
             // Emit particles
             size_t triCount;
             for (const auto &surf : input.surfaces) {
-                if (!surf.emit) {
+                auto &emitter = surf.emitter;
+                if (!emitter.emit) {
                     continue;
                 }
 
                 for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
-                    pc.emit(h_triangles.at(i), surf.emitter_flux, physicalTimestep);
+                    pc.emit(h_triangles.at(i), emitter, physicalTimestep);
                 }
                 triCount += surf.mesh.numTriangles;
             }
 
             // Push particles
-            pc.push(physicalTimestep, d_triangles);
+            pc.push(physicalTimestep, d_triangles, d_surfaceIDs, d_materials);
 
             // Remove particles that are out of bounds
             pc.flagOutOfBounds(input.chamberRadius, input.chamberLength);
@@ -219,6 +243,8 @@ int main (int argc, char *argv[]) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    std::cout << "Program terminated successfully" << std::endl;
 
     return 0;
 }
