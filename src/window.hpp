@@ -14,15 +14,16 @@ using std::string;
 
 class Window {
 public:
-    std::string name;
-    int         width;
-    int         height;
-    bool        open;
-    GLFWwindow *window;
+    string       name;
+    unsigned int width;
+    unsigned int height;
+    bool         open;
+    GLFWwindow  *window;
 
-    Window(string name, int width, int height);
+    Window(string name, unsigned int width, unsigned int height);
     ~Window();
-    void checkForUpdates ();
+    void beginRenderLoop ();
+    void endRenderLoop ();
 };
 
 #endif

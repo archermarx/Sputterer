@@ -65,31 +65,11 @@ int main (int argc, char *argv[]) {
         filename = argv[1];
     }
 
-    bool display(false);
-    if (argc > 2) {
-        string _display(argv[2]);
-        display = static_cast<bool>(stoi(_display));
-    }
-
     Window window("Sputterer", app::SCR_WIDTH, app::SCR_HEIGHT);
 
     glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
     glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
     glfwSetScrollCallback(window.window, app::scrollCallback);
-
-    std::cout << "GLFW window initialized." << std::endl;
-
-    // ImGUI initialization
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // enable keyboard controls
-
-    // Setup platform/renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window.window, true);
-    ImGui_ImplOpenGL3_Init();
-
-    std::cout << "ImGUI initialized." << std::endl;
 
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
@@ -104,8 +84,6 @@ int main (int argc, char *argv[]) {
     app::camera.yaw         = -135;
     app::camera.pitch       = 30;
     app::camera.updateVectors();
-
-    glEnable(GL_DEPTH_TEST);
 
     // Create particle container, including any explicitly-specified initial particles
     ParticleContainer pc{"noname", 1.0f, 1};
@@ -174,14 +152,9 @@ int main (int argc, char *argv[]) {
 
     std::cout << "Beginning main loop." << std::endl;
 
-    while (true && window.open && display) {
-        // process user input
-        glfwPollEvents();
+    while (window.open) {
 
-        // Dear ImGui frame setup
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        window.beginRenderLoop();
 
         // Timing info
         auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
@@ -277,10 +250,6 @@ int main (int argc, char *argv[]) {
             avgTimeTotal   = (1 - timeConst) * avgTimeTotal + timeConst * elapsedCopy;
         }
 
-        // draw background
-        glClearColor(0.4f, 0.5f, 0.6f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // update camera projection
         shader.updateView(app::camera, app::aspectRatio);
 
@@ -300,18 +269,9 @@ int main (int argc, char *argv[]) {
             particleMesh.draw(shader, t, color);
         }
 
-        // ImGui::Rendering
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        window.checkForUpdates();
+        window.endRenderLoop();
         frame += 1;
     }
-
-    // Shut down ImGui
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 
     std::cout << "Program terminated successfully" << std::endl;
 
