@@ -113,8 +113,6 @@ void scrollCallback (GLFWwindow *window, double xoffset, double yoffset) {
 void framebufferSizeCallback (GLFWwindow *window, int width, int height) {
     aspectRatio = static_cast<float>(width) / height;
     glViewport(0, 0, width, height);
-    SCR_WIDTH  = width;
-    SCR_HEIGHT = height;
 }
 
 } // namespace app

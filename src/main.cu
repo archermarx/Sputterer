@@ -138,8 +138,8 @@ int main (int argc, char *argv[]) {
         ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
         ImGui::Begin("Frame time", NULL, flags);
-        ImGui::Text("Particles: %i\nAvg. time: %.3f ms (%.2f%% compute) ", pc.numParticles, avgTimeCompute,
-                    avgTimeCompute / avgTimeTotal * 100);
+        ImGui::Text("Particles: %i\nCompute time: %.3f ms (%.2f%% data transfer)  ", pc.numParticles, avgTimeCompute,
+                    (1.0f - avgTimeCompute / avgTimeTotal) * 100);
         ImGui::End();
         // ImGui::ShowDemoWindow();
 
