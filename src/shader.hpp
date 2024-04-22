@@ -8,7 +8,7 @@
 
 #include "glad/glad.h"
 
-#include "Camera.hpp"
+#include "camera.hpp"
 
 // Declarations
 unsigned int createShaderProgram (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
@@ -21,7 +21,7 @@ public:
     unsigned int ID;
 
     Shader(const char *vertexPath, const char *fragmentPath);
-    void use ();
+    void use () const;
     void setBool (const std::string &name, bool value) const;
     void setInt (const std::string &name, int value) const;
     void setFloat (const std::string &name, float value) const;

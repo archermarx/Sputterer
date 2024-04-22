@@ -4,7 +4,7 @@
 #include <iostream>
 #include <toml++/toml.hpp>
 
-#include "Input.hpp"
+#include "input.hpp"
 
 template <typename T>
 T readTableEntryAs (toml::table &table, std::string inputName) {
@@ -102,15 +102,28 @@ void Input::read() {
         }
 
         // object transformations (optional)
+        auto &transform = surf.transform;
 
         if (tab->contains("translate")) {
-            surf.translate = readTableEntryAs<glm::vec3>(*tab, "translate");
+            transform.translate = readTableEntryAs<glm::vec3>(*tab, "translate");
         }
 
         if (tab->contains("scale")) {
-            surf.scale = readTableEntryAs<glm::vec3>(*tab, "scale");
+            transform.scale = readTableEntryAs<glm::vec3>(*tab, "scale");
         }
 
+        if (tab->contains("rotate")) {
+            auto rot_tab = tab->get_as<toml::table>("rotate");
+            if (rot_tab->contains("angle")) {
+                transform.rotationAngle = readTableEntryAs<float>(*rot_tab, "angle");
+            }
+
+            if (rot_tab->contains("axis")) {
+                transform.rotationAxis = readTableEntryAs<glm::vec3>(*rot_tab, "axis");
+            }
+        }
+
+        // Color
         if (tab->contains("color")) {
             surf.color = readTableEntryAs<glm::vec3>(*tab, "color");
         }

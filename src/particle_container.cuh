@@ -10,8 +10,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "Cuda.cuh"
-#include "Triangle.cuh"
+#include "cuda.cuh"
+#include "triangle.cuh"
 
 using thrust::host_vector, thrust::device_vector;
 

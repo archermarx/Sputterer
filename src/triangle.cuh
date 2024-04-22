@@ -1,7 +1,7 @@
 #ifndef _TRIANGLE_CUH
 #define _TRIANGLE_CUH
 
-#include "Vec3.hpp"
+#include "vec3.hpp"
 #include <iostream>
 
 std::ostream &operator<< (std::ostream &os, const float3 &v);

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "Mesh.hpp"
+#include "mesh.hpp"
 #include "gl_helpers.hpp"
 
 std::ostream &operator<< (std::ostream &os, const Vertex &v) {
@@ -190,17 +190,16 @@ Mesh::~Mesh() {
 
 void Mesh::draw(Shader &shader) const {
     Transform transform;
-    draw(shader, transform);
+    vec3      color{0.3, 0.3, 0.3};
+    draw(shader, transform, color);
 }
 
-void Mesh::draw(Shader &shader, Transform &transform) const {
+void Mesh::draw(const Shader &shader, const Transform &transform, const vec3 &color) const {
     shader.use();
 
     // Bind uniforms from transform
-    auto model = glm::translate(glm::mat4(1.0f), transform.translate);
-    model      = glm::scale(model, transform.scale);
-    shader.setMat4("model", model);
-    shader.setVec3("objectColor", transform.color);
+    shader.setMat4("model", transform.getMatrix());
+    shader.setVec3("objectColor", color);
 
     // draw mesh
     GL_CHECK(glBindVertexArray(VAO));

@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "Mesh.hpp"
-#include "Vec3.hpp"
+#include "mesh.hpp"
+#include "vec3.hpp"
 
 using std::vector, std::string;
 
@@ -20,14 +20,13 @@ public:
     // Collector options
     bool collect{false};
 
-    Mesh mesh{};
-    vec3 scale{1.0f};
-    vec3 translate{0.0f};
-    vec3 color{0.5f, 0.5f, 0.5f};
+    Mesh      mesh{};
+    Transform transform{};
+    vec3      color{0.5f, 0.5f, 0.5f};
 
     Surface()  = default;
     ~Surface() = default;
-    Surface(string name, bool emit, bool collect, vec3 scale, vec3 translate, vec3 color);
+    Surface(string name, bool emit, bool collect);
 };
 
 #endif

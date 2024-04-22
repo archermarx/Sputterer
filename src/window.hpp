@@ -15,9 +15,9 @@ using std::string;
 class Window {
 public:
     std::string name;
-    int width;
-    int height;
-    bool open;
+    int         width;
+    int         height;
+    bool        open;
     GLFWwindow *window;
 
     Window(string name, int width, int height);

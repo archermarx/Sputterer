@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#include "Window.hpp"
+#include "window.hpp"
 
 Window::Window(std::string name, int width, int height)
     : name(name)

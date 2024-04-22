@@ -6,7 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Shader.hpp"
+#include "shader.hpp"
 #include "glad/glad.h"
 
 // Constructor for Shader type
@@ -19,7 +19,7 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath) {
     ID = createShaderProgram({vertexCode, fragmentCode}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
 }
 
-void Shader::use() {
+void Shader::use() const {
     glUseProgram(ID);
 }
 

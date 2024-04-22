@@ -2,3 +2,4 @@ build
 *.swp
 .vscode
 *:Zone.Identifier
+*.ini

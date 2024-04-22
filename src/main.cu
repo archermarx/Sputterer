@@ -21,18 +21,18 @@
 
 // My headers (c++)
 #include "gl_helpers.hpp"
-#include "App.hpp"
-#include "Camera.hpp"
-#include "Input.hpp"
-#include "Mesh.hpp"
-#include "Shader.hpp"
-#include "Surface.hpp"
-#include "Window.hpp"
+#include "app.hpp"
+#include "camera.hpp"
+#include "input.hpp"
+#include "mesh.hpp"
+#include "shader.hpp"
+#include "surface.hpp"
+#include "window.hpp"
 
 // My headers (CUDA)
-#include "Cuda.cuh"
-#include "ParticleContainer.cuh"
-#include "Triangle.cuh"
+#include "cuda.cuh"
+#include "particle_container.cuh"
+#include "triangle.cuh"
 
 using std::vector, std::string;
 
@@ -96,16 +96,12 @@ int main (int argc, char *argv[]) {
     // construct triangles
     std::vector<Triangle> h_triangles;
     for (const auto &surf : input.surfaces) {
-        const auto &mesh      = surf.mesh;
-        const auto &translate = surf.translate;
-        const auto &scale     = surf.scale;
+        const auto &mesh = surf.mesh;
         for (const auto &[i1, i2, i3] : mesh.triangles) {
-            auto model = glm::translate(glm::mat4(1.0), translate);
-            model      = glm::scale(model, scale);
-
-            auto v1 = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
-            auto v2 = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
-            auto v3 = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
+            auto model = surf.transform.getMatrix();
+            auto v1    = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
+            auto v2    = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
+            auto v3    = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
             h_triangles.emplace_back(v1, v2, v3);
         }
@@ -141,8 +137,8 @@ int main (int argc, char *argv[]) {
         ImGui::Text("Particles: %i\nCompute time: %.3f ms (%.2f%% data transfer)  ", pc.numParticles, avgTimeCompute,
                     (1.0f - avgTimeCompute / avgTimeTotal) * 100);
         ImGui::End();
-        // ImGui::ShowDemoWindow();
 
+        // frame timing for rendering
         float currentFrame = glfwGetTime();
         app::deltaTime     = currentFrame - app::lastFrame;
         app::lastFrame     = currentFrame;
@@ -197,8 +193,7 @@ int main (int argc, char *argv[]) {
 
         for (const auto &surface : input.surfaces) {
             // set the model matrix
-            Transform t(surface.color, surface.scale, surface.translate);
-            surface.mesh.draw(shader, t);
+            surface.mesh.draw(shader, surface.transform, surface.color);
         }
 
         for (int i = 0; i < pc.numParticles; i++) {
@@ -208,8 +203,8 @@ int main (int argc, char *argv[]) {
             Transform t;
             t.scale     = particleScale;
             t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
-            t.color     = pc.weight[i] > 0 ? particleColor : particleColorOOB;
-            particleMesh.draw(shader, t);
+            auto color  = pc.weight[i] > 0 ? particleColor : particleColorOOB;
+            particleMesh.draw(shader, t, color);
         }
 
         // ImGui::Rendering

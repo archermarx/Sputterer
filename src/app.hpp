@@ -1,7 +1,7 @@
 #ifndef _APP_H
 #define _APP_H
 
-#include "Camera.hpp"
+#include "camera.hpp"
 
 namespace app {
 // settings

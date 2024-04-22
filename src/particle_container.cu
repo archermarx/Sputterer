@@ -3,7 +3,7 @@
 #include <thrust/distance.h>
 #include <thrust/partition.h>
 
-#include "ParticleContainer.cuh"
+#include "particle_container.cuh"
 #include "cuda_helpers.cuh"
 
 ParticleContainer::ParticleContainer(string name, double mass, int charge)

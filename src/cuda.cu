@@ -1,4 +1,4 @@
-#include "Cuda.cuh"
+#include "cuda.cuh"
 
 namespace cuda {
 float eventElapsedTime (const event &e1, const event &e2) {

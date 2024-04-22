@@ -19,13 +19,14 @@ sticking_coeff = 0.0
 flux = 1000
 
 [[geometry]]
-name = "Reflector"
+name = "Reflector 1"
 file = "o_rect.obj"
 emit = false
 collect = false
+scale = { x = 0.5, y = 1.0, z = 1.0 }
 translate = { x = 0.0, y = 0.0, z = 3.0 }
 color = { x = 0.0, y = 0.5, z = 0.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -10 }
 
 [[geometry]]
 name = "Collector"

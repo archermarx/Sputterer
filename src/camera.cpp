@@ -1,4 +1,4 @@
-#include "Camera.hpp"
+#include "camera.hpp"
 
 // Returns the view matrix calculated using euler angles and the lookat matrix
 glm::mat4 Camera::getViewMatrix() const {

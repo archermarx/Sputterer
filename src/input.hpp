@@ -1,7 +1,7 @@
 #ifndef _INPUT_HPP
 #define _INPUT_HPP
 
-#include <Surface.hpp>
+#include <surface.hpp>
 #include <string>
 #include <vector>
 
