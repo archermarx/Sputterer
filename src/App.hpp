@@ -5,19 +5,16 @@
 
 namespace app {
 // settings
-const unsigned int SCR_WIDTH   = 1200;
-const unsigned int SCR_HEIGHT  = 1000;
-float              aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
+unsigned int SCR_WIDTH   = 1360;
+unsigned int SCR_HEIGHT  = 768;
+float        aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
-float deltaTime     = 0.0f;
-float lastFrame     = 0.0f;
-float lastX         = 0.0;
-float lastY         = 0.0;
-bool  draggingLeft  = false;
-bool  draggingRight = false;
-bool  firstClick    = false;
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+float lastX     = 0.0;
+float lastY     = 0.0;
 
 void processInput (GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
@@ -53,36 +50,43 @@ void processInput (GLFWwindow *window) {
     }
 }
 
+bool orbiting   = false;
+bool panning    = false;
+bool firstClick = false;
+
 void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
 
     float xPos = static_cast<float>(xpos_in);
     float yPos = static_cast<float>(ypos_in);
 
+    const auto orbitButton = GLFW_MOUSE_BUTTON_RIGHT;
+    const auto panButton   = GLFW_MOUSE_BUTTON_MIDDLE;
+
     // Detection for left mouse drag/release
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE &&
-        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        if (draggingLeft || draggingRight) {
-            draggingLeft  = false;
-            draggingRight = false;
+    if (glfwGetMouseButton(window, orbitButton) == GLFW_RELEASE &&
+        glfwGetMouseButton(window, panButton) == GLFW_RELEASE) {
+        if (orbiting || panning) {
+            orbiting = false;
+            panning  = false;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
         return;
-    } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        if (draggingRight) {
-            draggingRight = false;
+    } else if (glfwGetMouseButton(window, panButton) == GLFW_RELEASE) {
+        if (panning) {
+            panning = false;
         }
-        if (!draggingLeft) {
-            draggingLeft = true;
+        if (!orbiting) {
+            orbiting = true;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             lastX = xPos;
             lastY = yPos;
         }
     } else {
-        if (draggingLeft) {
-            draggingLeft = false;
+        if (orbiting) {
+            orbiting = false;
         }
-        if (!draggingRight) {
-            draggingRight = true;
+        if (!panning) {
+            panning = true;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             lastX = xPos;
             lastY = yPos;
@@ -95,9 +99,9 @@ void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
     lastX = xPos;
     lastY = yPos;
 
-    if (draggingLeft) {
+    if (orbiting) {
         camera.processMouseMovement(offsetX, offsetY, CameraMovement::Orbit);
-    } else if (draggingRight) {
+    } else if (panning) {
         camera.processMouseMovement(offsetX, offsetY, CameraMovement::Pan);
     }
 }
@@ -109,6 +113,8 @@ void scrollCallback (GLFWwindow *window, double xoffset, double yoffset) {
 void framebufferSizeCallback (GLFWwindow *window, int width, int height) {
     aspectRatio = static_cast<float>(width) / height;
     glViewport(0, 0, width, height);
+    SCR_WIDTH  = width;
+    SCR_HEIGHT = height;
 }
 
 } // namespace app

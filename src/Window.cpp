@@ -5,7 +5,9 @@
 #include "Window.hpp"
 
 Window::Window(std::string name, int width, int height)
-    : name(name), width(width), height(height){
+    : name(name)
+    , width(width)
+    , height(height) {
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
@@ -25,7 +27,7 @@ Window::Window(std::string name, int width, int height)
     glfwMakeContextCurrent(window);
 
     // Check that GLAD is loaded properly
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         glfwTerminate();
         open = false;
@@ -38,8 +40,6 @@ Window::Window(std::string name, int width, int height)
 void Window::checkForUpdates() {
     // Check and call events, then swap buffers
     glfwSwapBuffers(window);
-    glfwPollEvents();
-
 
     if (glfwWindowShouldClose(window)) {
         open = false;

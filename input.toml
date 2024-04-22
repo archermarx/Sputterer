@@ -1,5 +1,5 @@
 [simulation]
-timestep_s = 5.0
+timestep_s = 2.0
 
 [chamber]
 radius_m = 4
@@ -13,14 +13,25 @@ collect = false
 scale = { x = 0.25, y = 0.25, z = 0.25 }
 translate = { x = 0.0, y = 0.125, z = -3.0 }
 color = { x = 0.5, y = 0.0, z = 0.5 }
+sticking_coeff = 0.0
 
 [geometry.emitter]
 flux = 1000
+
+[[geometry]]
+name = "Reflector"
+file = "o_rect.obj"
+emit = false
+collect = false
+translate = { x = 0.0, y = 0.0, z = 3.0 }
+color = { x = 0.0, y = 0.5, z = 0.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "Collector"
 file = "o_rect.obj"
 emit = false
 collect = true
-translate = { x = 0.0, y = 0.0, z = 3.0 }
-color = { x = 0.0, y = 0.5, z = 0.0 }
+scale = { x = 0.15, y = 0.15, z = 0.15 }
+color = { x = 0.9, y = 0.1, z = 0.1 }
+translate = { x = 1.0, y = 0.0, z = -3.0 }

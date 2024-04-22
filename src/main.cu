@@ -14,6 +14,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+// Imgui headers
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "imgui.h"
+
+// My headers (c++)
+#include "gl_helpers.hpp"
 #include "App.hpp"
 #include "Camera.hpp"
 #include "Input.hpp"
@@ -22,13 +29,10 @@
 #include "Surface.hpp"
 #include "Window.hpp"
 
+// My headers (CUDA)
 #include "Cuda.cuh"
-
-#include "Triangle.cuh"
-
 #include "ParticleContainer.cuh"
-
-#include "gl_helpers.hpp"
+#include "Triangle.cuh"
 
 using std::vector, std::string;
 
@@ -51,6 +55,16 @@ int main (int argc, char *argv[]) {
     glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
     glfwSetScrollCallback(window.window, app::scrollCallback);
 
+    // ImGUI initialization
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // enable keyboard controls
+
+    // Setup platform/renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window.window, true);
+    ImGui_ImplOpenGL3_Init();
+
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
 
@@ -63,11 +77,6 @@ int main (int argc, char *argv[]) {
     app::camera.pitch       = 30;
     app::camera.updateVectors();
 
-    // for (const auto &surface : input.surfaces) {
-    //     std::cout << surface.name << "\n";
-    //     std::cout << surface.mesh << "\n";
-    // }
-
     glEnable(GL_DEPTH_TEST);
 
     // Create particle container, including any explicitly-specified initial particles
@@ -75,9 +84,9 @@ int main (int argc, char *argv[]) {
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 
-    glm::vec3 particleColor{0.2f, 0.2f, 0.2f};
+    glm::vec3 particleColor{0.1f, 0.1f, 0.1f};
     glm::vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
-    glm::vec3 particleScale{0.05f};
+    glm::vec3 particleScale{0.025f};
 
     // Read mesh from file
     Mesh particleMesh{};
@@ -105,12 +114,35 @@ int main (int argc, char *argv[]) {
     thrust::device_vector<Triangle> d_triangles{h_triangles};
 
     // Create timing objects
-    size_t      frame = 0, timingInterval = 100;
-    float       totalTimeCompute = 0.0f, totalTime = 0.0f;
+    size_t frame = 0;
+
+    float avgTimeCompute = 0.0f, avgTimeTotal = 0.0f;
+    float iterReset = 100;
+    float timeConst = 1 / iterReset;
+
     cuda::event start{}, stopCompute{}, stopCopy{};
 
     while (true && window.open && display) {
         // process user input
+        glfwPollEvents();
+
+        // Dear ImGui frame setup
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Set up UI components
+        auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
+        float  padding      = 0.0f;
+        ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
+        ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
+        ImGui::Begin("Frame time", NULL, flags);
+        ImGui::Text("Particles: %i\nAvg. time: %.3f ms (%.2f%% compute) ", pc.numParticles, avgTimeCompute,
+                    avgTimeCompute / avgTimeTotal * 100);
+        ImGui::End();
+        // ImGui::ShowDemoWindow();
+
         float currentFrame = glfwGetTime();
         app::deltaTime     = currentFrame - app::lastFrame;
         app::lastFrame     = currentFrame;
@@ -152,15 +184,8 @@ int main (int argc, char *argv[]) {
             elapsedCompute = cuda::eventElapsedTime(start, stopCompute);
             elapsedCopy    = cuda::eventElapsedTime(start, stopCopy);
 
-            totalTime += elapsedCopy;
-            totalTimeCompute += elapsedCompute;
-            float computePercentage = totalTimeCompute / totalTime * 100;
-
-            if (frame % timingInterval == 0 && frame > 0) {
-                std::cout << "Average compute time: " << totalTime / frame << "ms (" << computePercentage
-                          << "% compute)\n";
-                std::cout << "Number of particles: " << pc.numParticles << std::endl;
-            }
+            avgTimeCompute = (1 - timeConst) * avgTimeCompute + timeConst * elapsedCompute;
+            avgTimeTotal   = (1 - timeConst) * avgTimeTotal + timeConst * elapsedCopy;
         }
 
         // draw background
@@ -177,10 +202,9 @@ int main (int argc, char *argv[]) {
         }
 
         for (int i = 0; i < pc.numParticles; i++) {
-            // this is pretty inefficient, as we have to copy a lot of identical vertex and normal data over to the GPU
-            // for each particle
-            // Ideally, we'd use instancing to do better, and only transfer the model matrix over at each timestep
-            // see https://learnopengl.com/Advanced-OpenGL/Instancing
+            // this is pretty inefficient, as we have to copy a lot of identical vertex and normal data over to the
+            // GPU for each particle Ideally, we'd use instancing to do better, and only transfer the model matrix
+            // over at each timestep see https://learnopengl.com/Advanced-OpenGL/Instancing
             Transform t;
             t.scale     = particleScale;
             t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
@@ -188,11 +212,18 @@ int main (int argc, char *argv[]) {
             particleMesh.draw(shader, t);
         }
 
+        // ImGui::Rendering
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         window.checkForUpdates();
         frame += 1;
     }
 
-    std::cout << pc << std::endl;
+    // Shut down ImGui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     return 0;
 }

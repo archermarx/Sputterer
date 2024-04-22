@@ -79,9 +79,6 @@ void Input::read() {
     chamberRadius = readTableEntryAs<double>(chamber, "radius_m");
     chamberLength = readTableEntryAs<double>(chamber, "length_m");
 
-    std::cout << chamberRadius << std::endl;
-    std::cout << chamberLength << std::endl;
-
     // Read surface geometry
     auto geometry = *input.get_as<toml::array>("geometry");
 

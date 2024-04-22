@@ -37,9 +37,9 @@ void Camera::processMouseMovement(float xoffset, float yoffset, CameraMovement m
     switch (movementType) {
     case CameraMovement::Pan:
         xoffset *= panSensitivity;
-        yoffset *= panSensitivity;
+        // yoffset *= panSensitivity;
         yaw -= xoffset;
-        pitch -= yoffset;
+        // pitch -= yoffset;
         break;
     case CameraMovement::Orbit:
         xoffset *= orbitSensitivity;

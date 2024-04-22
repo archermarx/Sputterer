@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(Sputterer LANGUAGES C CXX CUDA)
 
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+  set(CMAKE_CUDA_ARCHITECTURES 61)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
     tomlplusplus
@@ -14,7 +18,7 @@ find_package(glfw3 3.3 REQUIRED)
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/imgui
 )
 
 file(GLOB sources
@@ -24,6 +28,11 @@ file(GLOB sources
     "${PROJECT_SOURCE_DIR}/include/*.cuh"
     "${PROJECT_SOURCE_DIR}/include/*.hpp"
     "${PROJECT_SOURCE_DIR}/include/*.h"
+    "${PROJECT_SOURCE_DIR}/imgui/*.cpp"
+    "${PROJECT_SOURCE_DIR}/imgui/*.h"
+    "${PROJECT_SOURCE_DIR}/imgui/backends/imgui_impl_glfw.cpp"
+    "${PROJECT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
+    "${PROJECT_SOURCE_DIR}/cpp/imgui_stdlib.*"
 )
 
 add_executable(sputterer ${sources})
