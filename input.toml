@@ -23,10 +23,20 @@ name = "Reflector 1"
 file = "o_rect.obj"
 emit = false
 collect = false
-scale = { x = 0.5, y = 1.0, z = 1.0 }
+scale = { x = 0.25, y = 1.0, z = 1.0 }
 translate = { x = 0.0, y = 0.0, z = 3.0 }
 color = { x = 0.0, y = 0.5, z = 0.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -10 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -45 }
+
+[[geometry]]
+name = "Reflector 2"
+file = "o_rect.obj"
+emit = false
+collect = false
+scale = { x = 0.25, y = 1.0, z = 1.0 }
+translate = { x = 0.5, y = 0.0, z = 3.0 }
+color = { x = 0.0, y = 0.5, z = 0.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -45 }
 
 [[geometry]]
 name = "Collector"

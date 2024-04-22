@@ -37,9 +37,10 @@ struct Transform {
         , rotationAngle(rotationAngle) {}
 
     glm::mat4 getMatrix () const {
-        auto model = glm::translate(glm::mat4(1.0f), translate);
-        model      = glm::scale(model, scale);
-        model      = glm::rotate(model, glm::radians(rotationAngle), rotationAxis);
+        glm::mat4 model{1.0f};
+        model = glm::translate(model, translate);
+        model = glm::rotate(model, glm::radians(rotationAngle), rotationAxis);
+        model = glm::scale(model, scale);
         return model;
     }
 };
