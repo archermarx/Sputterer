@@ -108,8 +108,6 @@ int main (int argc, char *argv[]) {
 
     int id = 0;
     for (const auto &surf : input.surfaces) {
-
-        std::cout << "Surface: " << surf.name << std::endl;
         const auto &mesh     = surf.mesh;
         const auto &material = surf.material;
 
