@@ -47,7 +47,7 @@ T readTableEntryAs (toml::table &table, const std::string &inputName) {
         }
     }
     if (!valid) {
-        std::cout << "Invalid input for option " << inputName << ".\n Expected value of type " << typeid(T).name()
+        std::cerr << "Invalid input for option " << inputName << ".\n Expected value of type " << typeid(T).name()
                   << "\n.";
     }
 
@@ -103,12 +103,7 @@ void Input::read() {
         // need to append the current working directory to make sure mesh files are relative to where
         // the input file was run
         auto meshFile = readTableEntryAs<string>(*tab, "file");
-        auto path     = fs::absolute({this->filename});
-        std::cout << path << ", " << path.parent_path() << std::endl;
-
-        auto meshPath = path.parent_path();
-        meshPath /= meshFile;
-        std::cout << meshPath << std::endl;
+        auto meshPath = fs::absolute({this->filename}).parent_path() / meshFile;
 
         // Read emitter options
         if (emitter.emit && tab->contains("emitter")) {

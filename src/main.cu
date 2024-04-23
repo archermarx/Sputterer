@@ -29,15 +29,15 @@ string printTime (double time_s) {
     int    factor = 1;
     string str    = "s";
 
-    if (time_s < 1) {
-        factor = 1000;
-        str    = "ms";
-    } else if (time_s < 1e-3) {
-        factor = 1'000'000;
-        str    = "μs";
-    } else if (time_s < 1e-6) {
+    if (time_s < 1e-6) {
         factor = 1'000'000'000;
         str    = "ns";
+    } else if (time_s < 1e-3) {
+        factor = 1'000'000;
+        str    = "us";
+    } else if (time_s < 1) {
+        factor = 1000;
+        str    = "ms";
     }
 
     sprintf(buf, "%.3f %s", time_s * factor, str.c_str());
@@ -151,9 +151,10 @@ int main (int argc, char *argv[]) {
         ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
         ImGui::Begin("Frame time", nullptr, flags);
-        ImGui::Text("Simulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  \nParticles: %i",
-                    printTime(physicalTime).c_str(), avgTimeCompute, (1.0f - avgTimeCompute / avgTimeTotal) * 100,
-                    pc.numParticles);
+        ImGui::Text("Simulation timestep: %s\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  "
+                    "\nParticles: %i",
+                    printTime(input.timestep * app::deltaTime).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
+                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, pc.numParticles);
         ImGui::End();
 
         // Table of collected particle amounts
