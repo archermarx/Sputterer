@@ -10,6 +10,7 @@ name = "carbon"
 color = { x = 0.1, y = 0.1, z = 0.1 }
 sticking_coeff = 0.1
 diffuse_coeff = 0.8
+temperature_K = 300
 
 [[geometry]]
 name = "Emitter"

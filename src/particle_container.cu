@@ -116,8 +116,8 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
 }
 
 __global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
-                        const size_t numTriangles, const size_t *ids, const MaterialProperties *materials,
-                        int *collected, const curandState *rng, const float dt) {
+                        const size_t numTriangles, const size_t *ids, const Material *materials, int *collected,
+                        const curandState *rng, const float dt) {
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid < N) {
 
@@ -188,9 +188,8 @@ std::pair<dim3, dim3> ParticleContainer::getKernelLaunchParams(size_t block_size
 }
 
 void ParticleContainer::push(const float dt, const thrust::device_vector<Triangle> &tris,
-                             const thrust::device_vector<size_t>             &ids,
-                             const thrust::device_vector<MaterialProperties> &mats,
-                             thrust::device_vector<int>                      &collected) {
+                             const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats,
+                             thrust::device_vector<int> &collected) {
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
     auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());

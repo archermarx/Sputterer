@@ -85,6 +85,7 @@ void Input::read() {
 
     // Read materials
     std::unordered_map<string, Material> materials;
+    std::unordered_map<string, vec3>     materialColors;
 
     auto inputMaterials = *input.get_as<toml::array>("material");
 
@@ -94,13 +95,16 @@ void Input::read() {
         // Populate material
         Material material;
 
-        material.meta.name           = readTableEntryAs<string>(*materialTable, "name");
-        material.meta.color          = readTableEntryAs<vec3>(*materialTable, "color");
-        material.prop.sticking_coeff = readTableEntryAs<float>(*materialTable, "sticking_coeff");
-        material.prop.diffuse_coeff  = readTableEntryAs<float>(*materialTable, "diffuse_coeff");
+        auto materialName  = readTableEntryAs<string>(*materialTable, "name");
+        auto materialColor = readTableEntryAs<vec3>(*materialTable, "color");
+
+        material.sticking_coeff = readTableEntryAs<float>(*materialTable, "sticking_coeff");
+        material.diffuse_coeff  = readTableEntryAs<float>(*materialTable, "diffuse_coeff");
+        material.temperature_K  = readTableEntryAs<float>(*materialTable, "temperature_K");
 
         // Add material to list
-        materials.insert(std::make_pair(material.meta.name, material));
+        materials.insert(std::make_pair(materialName, material));
+        materialColors.insert(std::make_pair(materialName, materialColor));
     }
 
     // Read surfaces
@@ -116,8 +120,8 @@ void Input::read() {
         // get material
         auto matName = readTableEntryAs<string>(*tab, "material");
         if (materials.find(matName) != materials.end()) {
-            surf.material = materials.at(matName).prop;
-            surf.color    = materials.at(matName).meta.color;
+            surf.material = materials.at(matName);
+            surf.color    = materialColors.at(matName);
         } else {
             std::cerr << "Material \"" << matName << "\" not found in input file!" << std::endl;
         }
@@ -170,13 +174,18 @@ void Input::read() {
             }
 
             if (rot_tab->contains("axis")) {
-                transform.rotationAxis = readTableEntryAs<glm::vec3>(*rot_tab, "axis");
+                transform.rotationAxis = readTableEntryAs<vec3>(*rot_tab, "axis");
             }
         }
 
         // Color (overwrites color specified by material)
         if (tab->contains("color")) {
-            surf.color = readTableEntryAs<glm::vec3>(*tab, "color");
+            surf.color = readTableEntryAs<vec3>(*tab, "color");
+        }
+
+        // Temperature (overwrites temperature specified my material)
+        if (tab->contains("temperature_K")) {
+            surf.material.temperature_K = readTableEntryAs<float>(*tab, "temperature_K");
         }
 
         // Read mesh data

@@ -10,20 +10,11 @@
 
 using std::vector, std::string;
 
-struct MaterialMetadata {
-    string name{};
-    vec3   color{0.5f, 0.5f, 0.5f};
-};
-
-struct MaterialProperties {
+struct Material {
     bool  collect{false};
     float sticking_coeff{0.0f};
     float diffuse_coeff{0.0f};
-};
-
-struct Material {
-    MaterialMetadata   meta{};
-    MaterialProperties prop{};
+    float temperature_K{300.0f};
 };
 
 struct Emitter {
@@ -42,7 +33,7 @@ struct Surface {
     Emitter emitter{};
 
     // Material options
-    MaterialProperties material{};
+    Material material{};
 
     // Geometric options
     Mesh      mesh{};
