@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "camera.hpp"
 
 // Returns the view matrix calculated using euler angles and the lookat matrix

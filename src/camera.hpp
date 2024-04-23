@@ -1,7 +1,7 @@
 #ifndef _CAMERA_HPP
 #define _CAMERA_HPP
 
-#include <iostream>
+#include <iosfwd>
 
 #include <glad/glad.h>
 

@@ -105,11 +105,15 @@ int main (int argc, char *argv[]) {
     thrust::host_vector<Material> h_materials;
     thrust::host_vector<char>     h_to_collect;
     std::vector<size_t>           collect_inds;
+    std::vector<string>           surfaceNames;
 
     int id = 0;
     for (const auto &surf : input.surfaces) {
         const auto &mesh     = surf.mesh;
         const auto &material = surf.material;
+
+        surfaceNames.push_back(surf.name);
+        h_materials.push_back(surf.material);
 
         for (const auto &[i1, i2, i3] : mesh.triangles) {
             auto model = surf.transform.getMatrix();
@@ -122,11 +126,13 @@ int main (int argc, char *argv[]) {
             if (material.collect) {
                 collect_inds.push_back(h_triangles.size() - 1);
             }
+
+            auto triInd = h_triangles.size() - 1;
         }
 
-        h_materials.push_back(surf.material);
         id++;
     }
+
     thrust::host_vector<int> collected(collect_inds.size(), 0);
 
     std::cout << "Meshes read." << std::endl;
@@ -181,11 +187,12 @@ int main (int argc, char *argv[]) {
             ImGui::TableNextColumn();
             ImGui::Text("Collection rate (#/s)");
             for (int row = 0; row < collect_inds.size(); row++) {
+                auto triangleID = collect_inds[row];
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::Text("%s", input.surfaces.at(h_materialIDs[row]).name.c_str());
+                ImGui::Text("%s", surfaceNames.at(h_materialIDs[triangleID]).c_str());
                 ImGui::TableNextColumn();
-                ImGui::Text("%i", static_cast<int>(collect_inds[row]));
+                ImGui::Text("%i", static_cast<int>(triangleID));
                 ImGui::TableNextColumn();
                 ImGui::Text("%.3e", static_cast<double>(collected[row]) / physicalTime);
             }

@@ -2,7 +2,7 @@
 #define _VEC3_HPP
 
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
+#include <iosfwd>
 
 using vec3 = glm::vec3;
 

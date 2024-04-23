@@ -21,8 +21,8 @@ Window::Window(std::string name, unsigned int width, unsigned int height)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window and verify that it worked
-    window = glfwCreateWindow(width, height, name.c_str(), NULL, NULL);
-    if (window == NULL) {
+    this->window = glfwCreateWindow(width, height, name.c_str(), NULL, NULL);
+    if (this->window == NULL) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
         open = false;
@@ -30,7 +30,7 @@ Window::Window(std::string name, unsigned int width, unsigned int height)
     }
 
     // Make the context of our window the main context on the current thread
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(this->window);
 
     // Check that GLAD is loaded properly
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -80,9 +80,9 @@ void Window::endRenderLoop() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     // Swap buffers and determine if we should close
-    glfwSwapBuffers(window);
+    glfwSwapBuffers(this->window);
 
-    if (glfwWindowShouldClose(window)) {
+    if (glfwWindowShouldClose(this->window)) {
         open = false;
     } else {
         open = true;
