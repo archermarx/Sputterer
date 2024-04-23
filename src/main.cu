@@ -207,13 +207,13 @@ int main (int argc, char *argv[]) {
                 }
 
                 for (size_t i = 0; i < surf.mesh.numTriangles; i++) {
-                    pc.emit(h_triangles[i], emitter, physicalTimestep);
+                    pc.emit(h_triangles[i], emitter, thisTimestep);
                 }
                 triCount += surf.mesh.numTriangles;
             }
 
             // Push particles
-            pc.push(physicalTimestep, d_triangles, d_surfaceIDs, d_materials, d_collected);
+            pc.push(thisTimestep, d_triangles, d_surfaceIDs, d_materials, d_collected);
 
             // Remove particles that are out of bounds
             pc.flagOutOfBounds(input.chamberRadius, input.chamberLength);
