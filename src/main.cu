@@ -134,7 +134,7 @@ int main (int argc, char *argv[]) {
     float  avgTimeCompute = 0.0f, avgTimeTotal = 0.0f;
     float  iterReset    = 100;
     float  timeConst    = 1 / iterReset;
-    double physicalTime = 0;
+    double physicalTime = 0, physicalTimestep = 0;
 
     cuda::event start{}, stopCompute{}, stopCopy{};
 
@@ -153,7 +153,7 @@ int main (int argc, char *argv[]) {
         ImGui::Begin("Frame time", nullptr, flags);
         ImGui::Text("Simulation timestep: %s\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  "
                     "\nParticles: %i",
-                    printTime(input.timestep * app::deltaTime).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
+                    printTime(physicalTimestep).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
                     (1.0f - avgTimeCompute / avgTimeTotal) * 100, pc.numParticles);
         ImGui::End();
 
@@ -190,8 +190,9 @@ int main (int argc, char *argv[]) {
         app::lastFrame    = currentFrame;
         app::processInput(window.window);
 
-        auto physicalTimestep = input.timestep * app::deltaTime;
-        physicalTime += physicalTimestep;
+        auto thisTimestep = input.timestep * app::deltaTime;
+        physicalTime += thisTimestep;
+        physicalTimestep = (1 - timeConst) * physicalTimestep + timeConst * input.timestep * app::deltaTime;
 
         // record compute start time
         if (frame > 1) {
