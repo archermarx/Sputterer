@@ -4,6 +4,7 @@
 #include <toml++/toml.hpp>
 #include <iostream>
 #include <filesystem>
+#include <unordered_map>
 
 #include "input.hpp"
 
@@ -82,9 +83,28 @@ void Input::read() {
     chamberRadius = readTableEntryAs<float>(chamber, "radius_m");
     chamberLength = readTableEntryAs<float>(chamber, "length_m");
 
-    // Read surface geometry
-    auto geometry = *input.get_as<toml::array>("geometry");
+    // Read materials
+    std::unordered_map<string, Material> materials;
 
+    auto inputMaterials = *input.get_as<toml::array>("material");
+
+    for (auto &&materialNode : inputMaterials) {
+        auto materialTable = materialNode.as_table();
+
+        // Populate material
+        Material material;
+
+        material.meta.name           = readTableEntryAs<string>(*materialTable, "name");
+        material.meta.color          = readTableEntryAs<vec3>(*materialTable, "color");
+        material.prop.sticking_coeff = readTableEntryAs<float>(*materialTable, "sticking_coeff");
+        material.prop.diffuse_coeff  = readTableEntryAs<float>(*materialTable, "diffuse_coeff");
+
+        // Add material to list
+        materials.insert(std::make_pair(material.meta.name, material));
+    }
+
+    // Read surfaces
+    auto geometry    = *input.get_as<toml::array>("geometry");
     auto numSurfaces = geometry.size();
     surfaces.resize(numSurfaces);
 
@@ -93,12 +113,26 @@ void Input::read() {
         auto  tab  = elem.as_table();
         auto &surf = surfaces.at(id);
 
+        // get material
+        auto matName = readTableEntryAs<string>(*tab, "material");
+        if (materials.find(matName) != materials.end()) {
+            surf.material = materials.at(matName).prop;
+            surf.color    = materials.at(matName).meta.color;
+        } else {
+            std::cerr << "Material \"" << matName << "\" not found in input file!" << std::endl;
+        }
+
         auto &emitter  = surf.emitter;
         auto &material = surf.material;
 
-        surf.name        = readTableEntryAs<string>(*tab, "name");
-        emitter.emit     = readTableEntryAs<bool>(*tab, "emit");
-        material.collect = readTableEntryAs<bool>(*tab, "collect");
+        if (tab->contains("name"))
+            surf.name = readTableEntryAs<string>(*tab, "name");
+
+        if (tab->contains("emit"))
+            emitter.emit = readTableEntryAs<bool>(*tab, "emit");
+
+        if (tab->contains("collect"))
+            material.collect = readTableEntryAs<bool>(*tab, "collect");
 
         // need to append the current working directory to make sure mesh files are relative to where
         // the input file was run
@@ -116,12 +150,6 @@ void Input::read() {
             if (emit_tab->contains("spread")) {
                 emitter.spread = readTableEntryAs<float>(*emit_tab, "spread");
             }
-        }
-
-        // Read material options
-        if (tab->contains("material")) {
-            auto mat_tab            = tab->get_as<toml::table>("material");
-            material.sticking_coeff = readTableEntryAs<float>(*mat_tab, "sticking_coeff");
         }
 
         // object transformations (optional)
@@ -146,7 +174,7 @@ void Input::read() {
             }
         }
 
-        // Color
+        // Color (overwrites color specified by material)
         if (tab->contains("color")) {
             surf.color = readTableEntryAs<glm::vec3>(*tab, "color");
         }

@@ -88,11 +88,13 @@ int main (int argc, char *argv[]) {
 
     // construct triangles
     host_vector<Triangle> h_triangles;
-    host_vector<size_t>   h_materialIDs;
-    host_vector<Material> h_materials;
-    host_vector<char>     h_to_collect;
-    std::vector<int>      collect_inds;
-    std::vector<string>   surfaceNames;
+
+    host_vector<size_t>             h_materialIDs;
+    host_vector<MaterialProperties> h_materials;
+
+    host_vector<char>   h_to_collect;
+    std::vector<int>    collect_inds;
+    std::vector<string> surfaceNames;
 
     for (size_t id = 0; id < input.surfaces.size(); id++) {
         const auto &surf     = input.surfaces.at(id);
@@ -122,9 +124,11 @@ int main (int argc, char *argv[]) {
 
     // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
     device_vector<Triangle> d_triangles{h_triangles};
-    device_vector<size_t>   d_surfaceIDs{h_materialIDs};
-    device_vector<Material> d_materials{h_materials};
-    device_vector<int>      d_collected(h_triangles.size(), 0);
+
+    device_vector<size_t>             d_surfaceIDs{h_materialIDs};
+    device_vector<MaterialProperties> d_materials{h_materials};
+
+    device_vector<int> d_collected(h_triangles.size(), 0);
 
     std::cout << "Mesh data sent to GPU." << std::endl;
 
