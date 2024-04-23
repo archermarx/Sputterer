@@ -1,5 +1,6 @@
-#ifndef _SURFACE_H
-#define _SURFACE_H
+#pragma once
+#ifndef SURFACE_HPP
+#define SURFACE_HPP
 
 #include <string>
 #include <vector>
@@ -22,8 +23,8 @@ struct Emitter {
     bool  reverse{false};
 };
 
-class Surface {
-public:
+struct Surface {
+    // Name of surface
     string name{"noname"};
 
     // Emitter options
@@ -36,9 +37,6 @@ public:
     Mesh      mesh{};
     Transform transform{};
     vec3      color{0.5f, 0.5f, 0.5f};
-
-    Surface()  = default;
-    ~Surface() = default;
 };
 
 #endif

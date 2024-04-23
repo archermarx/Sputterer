@@ -11,9 +11,9 @@ UseTab: Never
 AlignEscapedNewlines: Left
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortLambdasOnASingleLine: Empty
-AlwaysBreakTemplateDeclarations: true
+AlwaysBreakTemplateDeclarations: Yes
 BreakConstructorInitializers: BeforeComma
-IndentPPDirectives: AfterHash
+IndentPPDirectives: None
 PointerAlignment: Right
 
 AlignConsecutiveAssignments:
@@ -29,4 +29,4 @@ SpaceBeforeParensOptions:
   AfterFunctionDeclarationName: true
   AfterOverloadedOperator: true
 
-SortIncludes: false
+SortIncludes: Never

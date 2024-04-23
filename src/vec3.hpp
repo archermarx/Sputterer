@@ -1,5 +1,6 @@
-#ifndef _VEC3_HPP
-#define _VEC3_HPP
+#pragma once
+#ifndef VEC3_HPP
+#define VEC3_HPP
 
 #include <glm/gtc/type_ptr.hpp>
 #include <iosfwd>

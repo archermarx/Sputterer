@@ -1,5 +1,6 @@
-#ifndef _TRIANGLE_CUH
-#define _TRIANGLE_CUH
+#pragma once
+#ifndef TRIANGLE_CUH
+#define TRIANGLE_CUH
 
 #include <iosfwd>
 
@@ -8,7 +9,7 @@
 std::ostream &operator<< (std::ostream &os, const float3 &v);
 
 inline __host__ __device__ float dot (const float3 a, const float3 b) {
-    return {a.x * b.x + a.y * b.y + a.z * b.z};
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 inline __host__ __device__ float3 cross (const float3 a, const float3 b) {
@@ -36,7 +37,7 @@ inline __host__ __device__ float3 operator- (const float3 a) {
 }
 
 inline __host__ __device__ float length (const float3 v) {
-    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 inline __host__ __device__ float3 normalize (const float3 v) {
@@ -66,7 +67,9 @@ struct Triangle {
     __host__ __device__ Triangle (float3 v0, float3 v1, float3 v2)
         : v0(v0)
         , v1(v1)
-        , v2(v2) {
+        , v2(v2)
+        , norm{0.0f}
+        , area{-1.0f} {
         auto e1 = v1 - v0;
         auto e2 = v2 - v0;
 
@@ -78,7 +81,7 @@ struct Triangle {
     }
 
     // given random uniform numbers u1 and u2, find a random point on the triangle
-    __host__ __device__ float3 sample (float u1, float u2) {
+    __host__ __device__ float3 sample (float u1, float u2) const {
         auto e1 = v1 - v0;
         auto e2 = v2 - v0;
 

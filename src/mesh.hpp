@@ -1,13 +1,18 @@
-#ifndef _MESH_HPP
-#define _MESH_HPP
+#pragma once
+
+#ifndef MESH_HPP
+#define MESH_HPP
 
 // Standard libraries
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "shader.hpp"
 #include "vec3.hpp"
+
+using std::string, std::vector;
 
 struct Vertex {
     vec3 pos;
@@ -30,13 +35,13 @@ struct Transform {
 
     Transform() = default;
 
-    Transform(vec3 scale, vec3 translate, vec3 rotationAxis, float rotationAngle)
+    [[maybe_unused]] Transform(vec3 scale, vec3 translate, vec3 rotationAxis, float rotationAngle)
         : scale(scale)
         , translate(translate)
         , rotationAxis(glm::normalize(rotationAxis))
         , rotationAngle(rotationAngle) {}
 
-    glm::mat4 getMatrix () const {
+    [[nodiscard]] glm::mat4 getMatrix () const {
         glm::mat4 model{1.0f};
         model = glm::translate(model, translate);
         model = glm::rotate(model, glm::radians(rotationAngle), rotationAxis);
@@ -52,20 +57,20 @@ public:
 
     bool smooth{false};
 
-    std::vector<Vertex>     vertices;
-    std::vector<TriElement> triangles;
+    vector<Vertex>     vertices{};
+    vector<TriElement> triangles{};
 
     Mesh() = default;
     ~Mesh();
 
-    void readFromObj (std::string path);
+    void readFromObj (const string &path);
     void setBuffers ();
     void draw (Shader &shader) const;
     void draw (const Shader &shader, const Transform &transform, const vec3 &color) const;
 
 private:
     // OpenGL buffers
-    unsigned int VAO, VBO, EBO;
+    unsigned int VAO{}, VBO{}, EBO{};
 };
 
 std::ostream &operator<< (std::ostream &os, const Mesh &m);

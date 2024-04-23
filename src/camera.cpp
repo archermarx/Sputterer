@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include "camera.hpp"
 
@@ -27,7 +28,6 @@ void Camera::processKeyboard(Direction direction, float deltaTime) {
         yaw -= yawSpeed * deltaTime;
         break;
     case Direction::Up:
-        break;
     case Direction::Down:
         break;
     }
@@ -39,9 +39,7 @@ void Camera::processMouseMovement(float xoffset, float yoffset, CameraMovement m
     switch (movementType) {
     case CameraMovement::Pan:
         xoffset *= panSensitivity;
-        // yoffset *= panSensitivity;
         yaw -= xoffset;
-        // pitch -= yoffset;
         break;
     case CameraMovement::Orbit:
         xoffset *= orbitSensitivity;
@@ -73,15 +71,15 @@ void Camera::updateVectors(CameraMovement movementType) {
     pitch = std::min(89.0f, std::max(-89.0f, pitch));
 
     // Constrain yaw to [0, 360) for to avoid floating point issues at high angles
-    yaw = fmod(yaw, 360.0f);
+    yaw = fmodf(yaw, 360.0f);
 
     switch (movementType) {
     case CameraMovement::Orbit: {
-        yaw = fmod(yaw, 360.0f);
+        yaw = fmodf(yaw, 360.0f);
         // calculates the front vector from the Camera's (updated) Euler Angles
-        orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        orientation.y = sin(glm::radians(pitch));
-        orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        orientation.x = cosf(glm::radians(yaw)) * cosf(glm::radians(pitch));
+        orientation.y = sinf(glm::radians(pitch));
+        orientation.z = sinf(glm::radians(yaw)) * cosf(glm::radians(pitch));
         orientation   = glm::normalize(orientation);
 
         break;
@@ -89,9 +87,9 @@ void Camera::updateVectors(CameraMovement movementType) {
     case CameraMovement::Pan: {
         auto pos = center + distance * orientation;
 
-        orientation.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        orientation.y = sin(glm::radians(pitch));
-        orientation.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        orientation.x = cosf(glm::radians(yaw)) * cosf(glm::radians(pitch));
+        orientation.y = sinf(glm::radians(pitch));
+        orientation.z = sinf(glm::radians(yaw)) * cosf(glm::radians(pitch));
         orientation   = glm::normalize(orientation);
 
         center = pos - distance * orientation;

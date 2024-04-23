@@ -1,5 +1,5 @@
-#ifndef _APP_H
-#define _APP_H
+#ifndef APP_H
+#define APP_H
 
 #include "camera.hpp"
 
@@ -7,7 +7,7 @@ namespace app {
 // settings
 unsigned int SCR_WIDTH   = 1360;
 unsigned int SCR_HEIGHT  = 768;
-float        aspectRatio = static_cast<float>(SCR_WIDTH) / SCR_HEIGHT;
+float        aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -50,14 +50,13 @@ void processInput (GLFWwindow *window) {
     }
 }
 
-bool orbiting   = false;
-bool panning    = false;
-bool firstClick = false;
+bool orbiting = false;
+bool panning  = false;
 
 void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
 
-    float xPos = static_cast<float>(xpos_in);
-    float yPos = static_cast<float>(ypos_in);
+    auto xPos = static_cast<float>(xpos_in);
+    auto yPos = static_cast<float>(ypos_in);
 
     const auto orbitButton = GLFW_MOUSE_BUTTON_RIGHT;
     const auto panButton   = GLFW_MOUSE_BUTTON_MIDDLE;
@@ -106,12 +105,12 @@ void mouseCursorCallback (GLFWwindow *window, double xpos_in, double ypos_in) {
     }
 }
 
-void scrollCallback (GLFWwindow *window, double xoffset, double yoffset) {
+void scrollCallback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset) {
     camera.processMouseScroll(static_cast<float>(yoffset));
 }
 
-void framebufferSizeCallback (GLFWwindow *window, int width, int height) {
-    aspectRatio = static_cast<float>(width) / height;
+void framebufferSizeCallback ([[maybe_unused]] GLFWwindow *window, int width, int height) {
+    aspectRatio = static_cast<float>(width) / static_cast<float>(height);
     glViewport(0, 0, width, height);
 }
 

@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-// Imgui headers
+// ImGUI headers
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
@@ -11,7 +11,7 @@
 #include "window.hpp"
 
 Window::Window(std::string name, unsigned int width, unsigned int height)
-    : name(name)
+    : name(std::move(name))
     , width(width)
     , height(height) {
 
@@ -21,8 +21,8 @@ Window::Window(std::string name, unsigned int width, unsigned int height)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window and verify that it worked
-    this->window = glfwCreateWindow(width, height, name.c_str(), NULL, NULL);
-    if (this->window == NULL) {
+    this->window = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), name.c_str(), nullptr, nullptr);
+    if (this->window == nullptr) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
         open = false;

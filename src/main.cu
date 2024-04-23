@@ -1,29 +1,16 @@
 // C++ headers
-#include <chrono>
-#include <filesystem>
 #include <iostream>
-#include <sstream>
 #include <string>
-#include <type_traits>
 #include <vector>
-
-// Thrust headers
-#include <thrust/host_vector.h>
 
 // GLM headers
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
-// Imgui headers
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
+// ImGUI headers
 #include "imgui.h"
-#include "misc/cpp/imgui_stdlib.h"
 
 // My headers (c++)
-#include "gl_helpers.hpp"
 #include "app.hpp"
-#include "camera.hpp"
 #include "input.hpp"
 #include "mesh.hpp"
 #include "shader.hpp"
@@ -37,7 +24,7 @@
 
 using std::vector, std::string;
 
-std::string printTime (double time_s) {
+string printTime (double time_s) {
     char   buf[64];
     int    factor = 1;
     string str    = "s";
@@ -55,12 +42,12 @@ std::string printTime (double time_s) {
 
     sprintf(buf, "%.3f %s", time_s * factor, str.c_str());
 
-    return string(buf);
+    return {buf};
 }
 
 int main (int argc, char *argv[]) {
     // Handle command line arguments
-    string filename("input.toml");
+    string filename("../input.toml");
     if (argc > 1) {
         filename = argv[1];
     }
@@ -71,7 +58,7 @@ int main (int argc, char *argv[]) {
     glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
     glfwSetScrollCallback(window.window, app::scrollCallback);
 
-    Shader shader("shaders/shader.vert", "shaders/shader.frag");
+    Shader shader("../shaders/shader.vert", "../shaders/shader.frag");
     shader.use();
 
     Input input(filename);
@@ -80,7 +67,7 @@ int main (int argc, char *argv[]) {
     std::cout << "Input read." << std::endl;
 
     app::camera.orientation = glm::normalize(glm::vec3(input.chamberRadius));
-    app::camera.distance    = 2 * input.chamberRadius;
+    app::camera.distance    = 2.0f * input.chamberRadius;
     app::camera.yaw         = -135;
     app::camera.pitch       = 30;
     app::camera.updateVectors();
@@ -90,25 +77,25 @@ int main (int argc, char *argv[]) {
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
 
-    glm::vec3 particleColor = vec3{0.05f};
-    glm::vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
-    glm::vec3 particleScale{0.01f};
+    vec3 particleColor{0.05f};
+    vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
+    vec3 particleScale{0.01f};
 
     // Read mesh from file
     Mesh particleMesh{};
-    particleMesh.readFromObj("o_sphere.obj");
+    particleMesh.readFromObj("../o_sphere.obj");
     particleMesh.setBuffers();
 
     // construct triangles
-    thrust::host_vector<Triangle> h_triangles;
-    thrust::host_vector<int>      h_materialIDs;
-    thrust::host_vector<Material> h_materials;
-    thrust::host_vector<char>     h_to_collect;
-    std::vector<size_t>           collect_inds;
-    std::vector<string>           surfaceNames;
+    host_vector<Triangle> h_triangles;
+    host_vector<size_t>   h_materialIDs;
+    host_vector<Material> h_materials;
+    host_vector<char>     h_to_collect;
+    std::vector<int>      collect_inds;
+    std::vector<string>   surfaceNames;
 
-    int id = 0;
-    for (const auto &surf : input.surfaces) {
+    for (size_t id = 0; id < input.surfaces.size(); id++) {
+        const auto &surf     = input.surfaces.at(id);
         const auto &mesh     = surf.mesh;
         const auto &material = surf.material;
 
@@ -124,24 +111,20 @@ int main (int argc, char *argv[]) {
             h_triangles.push_back({v1, v2, v3});
             h_materialIDs.push_back(id);
             if (material.collect) {
-                collect_inds.push_back(h_triangles.size() - 1);
+                collect_inds.push_back(static_cast<int>(h_triangles.size()) - 1);
             }
-
-            auto triInd = h_triangles.size() - 1;
         }
-
-        id++;
     }
 
-    thrust::host_vector<int> collected(collect_inds.size(), 0);
+    host_vector<int> collected(collect_inds.size(), 0);
 
     std::cout << "Meshes read." << std::endl;
 
     // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-    thrust::device_vector<Triangle> d_triangles  = h_triangles;
-    thrust::device_vector<size_t>   d_surfaceIDs = h_materialIDs;
-    thrust::device_vector<Material> d_materials  = h_materials;
-    thrust::device_vector<int>      d_collected(h_triangles.size(), 0);
+    device_vector<Triangle> d_triangles{h_triangles};
+    device_vector<size_t>   d_surfaceIDs{h_materialIDs};
+    device_vector<Material> d_materials{h_materials};
+    device_vector<int>      d_collected(h_triangles.size(), 0);
 
     std::cout << "Mesh data sent to GPU." << std::endl;
 
@@ -159,7 +142,7 @@ int main (int argc, char *argv[]) {
 
     while (window.open) {
 
-        window.beginRenderLoop();
+        Window::beginRenderLoop();
 
         // Timing info
         auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
@@ -167,7 +150,7 @@ int main (int argc, char *argv[]) {
         float  padding      = 0.0f;
         ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
-        ImGui::Begin("Frame time", NULL, flags);
+        ImGui::Begin("Frame time", nullptr, flags);
         ImGui::Text("Simulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  \nParticles: %i",
                     printTime(physicalTime).c_str(), avgTimeCompute, (1.0f - avgTimeCompute / avgTimeTotal) * 100,
                     pc.numParticles);
@@ -177,7 +160,7 @@ int main (int argc, char *argv[]) {
         auto   tableFlags  = ImGuiTableFlags_BordersH;
         ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
-        ImGui::Begin("Particle collection info", NULL, flags);
+        ImGui::Begin("Particle collection info", nullptr, flags);
         if (ImGui::BeginTable("Table", 3, tableFlags)) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
@@ -201,9 +184,9 @@ int main (int argc, char *argv[]) {
         ImGui::End();
 
         // frame timing for rendering
-        float currentFrame = glfwGetTime();
-        app::deltaTime     = currentFrame - app::lastFrame;
-        app::lastFrame     = currentFrame;
+        auto currentFrame = static_cast<float>(glfwGetTime());
+        app::deltaTime    = currentFrame - app::lastFrame;
+        app::lastFrame    = currentFrame;
         app::processInput(window.window);
 
         auto physicalTimestep = input.timestep * app::deltaTime;
@@ -214,7 +197,7 @@ int main (int argc, char *argv[]) {
             start.record();
 
             // Emit particles
-            size_t triCount;
+            size_t triCount{0};
             for (const auto &surf : input.surfaces) {
                 auto &emitter = surf.emitter;
                 if (!emitter.emit) {

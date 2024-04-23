@@ -1,22 +1,29 @@
-#ifndef _INPUT_HPP
-#define _INPUT_HPP
+#pragma once
+#ifndef INPUT_HPP
+#define INPUT_HPP
 
-#include <surface.hpp>
 #include <string>
 #include <vector>
 
+#include "surface.hpp"
+#include "window.hpp"
+
+using std::string, std::vector;
+
 class Input {
 public:
-    Input();
-    Input(std::string filename)
-        : filename(filename) {}
+    Input() = default;
+    explicit Input(string filename)
+        : filename{std::move(filename)} {}
 
-    std::string          filename{"input.toml"};
-    std::vector<Surface> surfaces;
+    string filename{"input.toml"};
+    string current_path{"."};
 
-    float  timestep{0.0};
-    double chamberRadius{-1.0};
-    double chamberLength{-1.0};
+    vector<Surface> surfaces;
+
+    float timestep{0.0};
+    float chamberRadius{-1.0};
+    float chamberLength{-1.0};
 
     std::vector<float> particle_w;
     std::vector<float> particle_x;
@@ -27,8 +34,6 @@ public:
     std::vector<float> particle_vz;
 
     void read ();
-
-private:
 };
 
 #endif

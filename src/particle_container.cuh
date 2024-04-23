@@ -1,6 +1,6 @@
-
-#ifndef _PARTICLE_CONTAINER_CUH
-#define _PARTICLE_CONTAINER_CUH
+#pragma once
+#ifndef PARTICLE_CONTAINER_CUH
+#define PARTICLE_CONTAINER_CUH
 
 // STL headers
 #include <iostream>
@@ -25,7 +25,7 @@ using thrust::host_vector, thrust::device_vector;
 
 using std::vector, std::string;
 
-#define MAX_PARTICLES 35'000'000
+constexpr size_t MAX_PARTICLES = 35'000'000;
 
 class ParticleContainer {
     // Holds information for many particles of a specific species.
@@ -38,27 +38,27 @@ public:
     int    numParticles{0}; // number of particles in container
 
     // RNG state
-    device_vector<curandState> d_rng{MAX_PARTICLES};
+    device_vector<curandState> d_rng;
 
     // Position in meters
     host_vector<float3>   position;
-    device_vector<float3> d_position{MAX_PARTICLES};
+    device_vector<float3> d_position;
 
     // Velocity in m/s
     host_vector<float3>   velocity;
-    device_vector<float3> d_velocity{MAX_PARTICLES};
+    device_vector<float3> d_velocity;
 
     // Particle weight (computational particles per real particle
     host_vector<float>   weight;
-    device_vector<float> d_weight{MAX_PARTICLES};
+    device_vector<float> d_weight;
 
-    device_vector<float> d_tmp{MAX_PARTICLES};
+    device_vector<float> d_tmp;
 
     // Constructor
     ParticleContainer(string name, double mass, int charge);
 
     // push particles to next positions (for now just use forward Euler)
-    void push (const float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids,
+    void push (float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids,
                const thrust::device_vector<Material> &mats, thrust::device_vector<int> &collected);
 
     // add particles to the container
@@ -69,7 +69,7 @@ public:
     void emit (Triangle &triangle, Emitter emitter, float dt);
 
     // Returns kernel launch params
-    std::pair<dim3, dim3> getKernelLaunchParams (size_t block_size = 32) const;
+    [[nodiscard]] std::pair<dim3, dim3> getKernelLaunchParams (size_t block_size = 32) const;
 
     // Set particles that leave bounds to have negative weights
     void flagOutOfBounds (float radius, float length);

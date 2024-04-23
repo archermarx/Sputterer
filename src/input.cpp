@@ -1,13 +1,16 @@
 // defines to get TOML working with nvcc
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN 1
 #define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED 1
-#include <iostream>
 #include <toml++/toml.hpp>
+#include <iostream>
+#include <filesystem>
 
 #include "input.hpp"
 
+namespace fs = std::filesystem;
+
 template <typename T>
-T readTableEntryAs (toml::table &table, std::string inputName) {
+T readTableEntryAs (toml::table &table, const std::string &inputName) {
     auto node  = table[inputName];
     bool valid = true;
     T    value{};
@@ -51,7 +54,7 @@ T readTableEntryAs (toml::table &table, std::string inputName) {
     return value;
 }
 
-toml::table getTable (toml::table input, std::string name) {
+toml::table getTable (toml::table input, const std::string &name) {
     if (input.contains(name)) {
         return *input.get_as<toml::table>(name);
     } else {
@@ -76,8 +79,8 @@ void Input::read() {
 
     // Read chamber features
     auto chamber  = getTable(input, "chamber");
-    chamberRadius = readTableEntryAs<double>(chamber, "radius_m");
-    chamberLength = readTableEntryAs<double>(chamber, "length_m");
+    chamberRadius = readTableEntryAs<float>(chamber, "radius_m");
+    chamberLength = readTableEntryAs<float>(chamber, "length_m");
 
     // Read surface geometry
     auto geometry = *input.get_as<toml::array>("geometry");
@@ -97,7 +100,15 @@ void Input::read() {
         emitter.emit     = readTableEntryAs<bool>(*tab, "emit");
         material.collect = readTableEntryAs<bool>(*tab, "collect");
 
-        string meshFile = readTableEntryAs<string>(*tab, "file");
+        // need to append the current working directory to make sure mesh files are relative to where
+        // the input file was run
+        auto meshFile = readTableEntryAs<string>(*tab, "file");
+        auto path     = fs::absolute({this->filename});
+        std::cout << path << ", " << path.parent_path() << std::endl;
+
+        auto meshPath = path.parent_path();
+        meshPath /= meshFile;
+        std::cout << meshPath << std::endl;
 
         // Read emitter options
         if (emitter.emit && tab->contains("emitter")) {
@@ -147,7 +158,7 @@ void Input::read() {
 
         // Read mesh data
         auto &mesh = surf.mesh;
-        mesh.readFromObj(meshFile);
+        mesh.readFromObj({meshPath});
         mesh.setBuffers();
 
         id++;
@@ -175,6 +186,4 @@ void Input::read() {
             particle_w.push_back(weight);
         }
     }
-
-    return;
 }

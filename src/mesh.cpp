@@ -1,7 +1,7 @@
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
 
 #include "mesh.hpp"
 #include "gl_helpers.hpp"
@@ -30,9 +30,9 @@ std::ostream &operator<< (std::ostream &os, const Mesh &m) {
     return os;
 }
 
-std::vector<std::string> split (const std::string &s, char delim);
+vector<string> split (const string &s, char delim);
 
-void Mesh::readFromObj(std::string path) {
+void Mesh::readFromObj(const string &path) {
 
     if (!(std::filesystem::exists(path))) {
         std::ostringstream msg;
@@ -40,14 +40,14 @@ void Mesh::readFromObj(std::string path) {
         throw std::runtime_error(msg.str());
     }
 
-    std::vector<glm::vec3>  vertexCoords;
-    std::vector<TriElement> triangleInds;
+    vector<glm::vec3>  vertexCoords;
+    vector<TriElement> triangleInds;
 
     // Read basic vertex information from file
     std::ifstream objFile(path);
     while (!objFile.eof()) {
         // Read a line from the file;
-        std::string line;
+        string line;
         std::getline(objFile, line);
         std::istringstream lineStream(line);
 
@@ -78,7 +78,7 @@ void Mesh::readFromObj(std::string path) {
         case ('f'): {
             // This line pertains to face data
             // Read face indices from file
-            std::string i1_str, i2_str, i3_str;
+            string i1_str, i2_str, i3_str;
             lineStream >> i1_str >> i2_str >> i3_str;
 
             // Discard information related to vertex/texture coords
@@ -95,6 +95,9 @@ void Mesh::readFromObj(std::string path) {
             lineStream >> smooth;
             break;
         }
+        default: {
+            break;
+        }
         }
     }
 
@@ -104,7 +107,7 @@ void Mesh::readFromObj(std::string path) {
         numTriangles = triangleInds.size();
         numVertices  = vertexCoords.size();
         triangles    = triangleInds;
-        vertices     = std::vector<Vertex>(numVertices);
+        vertices     = vector<Vertex>(numVertices);
 
         for (const auto &[i1, i2, i3] : triangles) {
             // Get vertex coordinates
@@ -113,10 +116,10 @@ void Mesh::readFromObj(std::string path) {
             auto c = vertexCoords.at(i3);
 
             // Compute face normal and add to all three vertex normals
-            auto n = glm::normalize(glm::cross((b - a), (c - a)));
-            vertices.at(i1).norm += n;
-            vertices.at(i2).norm += n;
-            vertices.at(i3).norm += n;
+            vec3 faceNorm = glm::normalize(glm::cross((b - a), (c - a)));
+            vertices.at(i1).norm += faceNorm;
+            vertices.at(i2).norm += faceNorm;
+            vertices.at(i3).norm += faceNorm;
         }
 
         // Assign vertex positions and normalize normal vectors
@@ -170,7 +173,7 @@ void Mesh::setBuffers() {
 
     // Vertex positions
     GL_CHECK(glEnableVertexAttribArray(0));
-    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0));
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr));
 
     // Vertex normals
     GL_CHECK(glEnableVertexAttribArray(1));
@@ -206,17 +209,17 @@ void Mesh::draw(const Shader &shader, const Transform &transform, const vec3 &co
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO));
 
-    GL_CHECK(glDrawElements(GL_TRIANGLES, 3 * numTriangles, GL_UNSIGNED_INT, 0));
+    GL_CHECK(glDrawElements(GL_TRIANGLES, 3 * numTriangles, GL_UNSIGNED_INT, nullptr));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-std::vector<std::string> split (const std::string &s, char delim) {
-    std::vector<std::string> result;
-    std::stringstream        ss(s);
-    std::string              item;
+vector<string> split (const string &s, char delim) {
+    vector<string>    result;
+    std::stringstream ss(s);
+    string            item;
 
     while (getline(ss, item, delim)) {
         result.push_back(item);

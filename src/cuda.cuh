@@ -1,7 +1,6 @@
-#ifndef _CUDA_CUH
-#define _CUDA_CUH
-
-#include <vector>
+#pragma once
+#ifndef CUDA_CUH
+#define CUDA_CUH
 
 #include "../include/cuda_helpers.cuh"
 
@@ -16,12 +15,12 @@ public:
         CUDA_CHECK(cudaEventDestroy(m_event));
     };
 
-    void record () {
+    void record () const {
         CUDA_CHECK(cudaEventRecord(m_event));
         CUDA_CHECK(cudaEventSynchronize(m_event));
     }
 
-    cudaEvent_t m_event;
+    cudaEvent_t m_event{};
 };
 
 float eventElapsedTime (const event &e1, const event &e2);

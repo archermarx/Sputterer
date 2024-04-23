@@ -8,12 +8,12 @@
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
     curand_init(seed, tid, 0, &rng[tid]);
 }
 
 ParticleContainer::ParticleContainer(string name, double mass, int charge)
-    : name(name)
+    : name(std::move(name))
     , mass(mass)
     , charge(charge) {
 
@@ -26,14 +26,13 @@ ParticleContainer::ParticleContainer(string name, double mass, int charge)
 
     // Set up RNG for later use
     size_t block_size = 512;
-    k_setup_rng<<<MAX_PARTICLES / block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(NULL));
+    k_setup_rng<<<MAX_PARTICLES / block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
     std::cout << "GPU RNG state initialized." << std::endl;
 }
 
 void ParticleContainer::addParticles(vector<float> x, vector<float> y, vector<float> z, vector<float> ux,
                                      vector<float> uy, vector<float> uz, vector<float> w) {
-
-    auto N = std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()});
+    auto N = static_cast<int>(std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()}));
 
     if (N == 0) {
         return;
@@ -119,8 +118,7 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
 __global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
                         const size_t numTriangles, const size_t *ids, const Material *materials, int *collected,
                         const curandState *rng, const float dt) {
-
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid < N) {
 
         auto pos = position[tid];
@@ -134,12 +132,12 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
         HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
         HitInfo current_hit;
 
-        for (size_t i = 0; i < numTriangles; i++) {
+        for (int i = 0; i < numTriangles; i++) {
             current_hit = hits_triangle(ray, tris[i]);
             if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {
                 closest_hit     = current_hit;
                 hit_triangle_id = i;
-                hit_material_id = ids[i];
+                hit_material_id = static_cast<int>(ids[i]);
             }
         }
 
@@ -165,7 +163,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 // set weight negative to flag for removal
                 // magnitude indicates which triangle we hit
                 // TODO: floats may be bad for this purpose, could convert weight to int64
-                weight[tid] = -hit_triangle_id;
+                weight[tid] = static_cast<float>(-hit_triangle_id);
 
             } else {
                 float3 vel_norm = dot(vel, norm) * norm;
@@ -183,7 +181,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
 }
 
 std::pair<dim3, dim3> ParticleContainer::getKernelLaunchParams(size_t block_size) const {
-    auto grid_size = static_cast<int>(ceil(static_cast<float>(numParticles) / block_size));
+    auto grid_size = static_cast<int>(ceil(static_cast<float>(numParticles) / static_cast<float>(block_size)));
     dim3 grid(grid_size, 1, 1);
     dim3 block(block_size, 1, 1);
     return std::make_pair(grid, block);
@@ -211,21 +209,23 @@ void ParticleContainer::push(const float dt, const thrust::device_vector<Triangl
 }
 
 float randUniform (float min = 0.0f, float max = 1.0f) {
-    static std::default_random_engine     rng;
+    static std::default_random_engine rng;
+
     std::uniform_real_distribution<float> dist(min, max);
     return dist(rng);
 }
 
 float randNormal (float mean = 0.0f, float std = 1.0f) {
     static std::default_random_engine rng;
-    std::normal_distribution<float>   dist(mean, std);
+
+    std::normal_distribution<float> dist(mean, std);
     return dist(rng);
 }
 
 void ParticleContainer::emit(Triangle &triangle, Emitter emitter, float dt) {
     auto numEmit    = emitter.flux * triangle.area * dt;
     int  intNumEmit = static_cast<int>(numEmit);
-    auto remainder  = numEmit - intNumEmit;
+    auto remainder  = numEmit - static_cast<float>(intNumEmit);
 
     auto u = randUniform();
     if (u < remainder) {
@@ -255,7 +255,7 @@ void ParticleContainer::emit(Triangle &triangle, Emitter emitter, float dt) {
 }
 
 __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float halflength, size_t N) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < N && weight[id] > 0) {
         auto r     = pos[id];
         auto dist2 = r.x * r.x + r.y * r.y;
@@ -297,7 +297,7 @@ void ParticleContainer::removeFlaggedParticles() {
     auto ret = thrust::partition(d_weight.begin(), d_weight.begin() + numParticles, d_tmp.begin(), is_positive());
 
     // Reset number of particles to the middle of the partition
-    numParticles = thrust::distance(d_weight.begin(), ret);
+    numParticles = static_cast<int>(thrust::distance(d_weight.begin(), ret));
 }
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {

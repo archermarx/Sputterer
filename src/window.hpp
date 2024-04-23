@@ -1,5 +1,6 @@
-#ifndef _WINDOW_HPP
-#define _WINDOW_HPP
+#pragma once
+#ifndef WINDOW_HPP
+#define WINDOW_HPP
 
 #include "glad/glad.h"
 
@@ -22,8 +23,8 @@ public:
 
     Window(string name, unsigned int width, unsigned int height);
     ~Window();
-    void beginRenderLoop ();
-    void endRenderLoop ();
+    static void beginRenderLoop ();
+    void        endRenderLoop ();
 };
 
 #endif
