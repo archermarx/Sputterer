@@ -156,7 +156,7 @@ void Input::read() {
             }
         }
 
-        // object transformations (optional)
+        // object positions (optional)
         auto &transform = surf.transform;
 
         if (tab->contains("translate")) {

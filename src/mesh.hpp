@@ -68,9 +68,13 @@ public:
     void draw (Shader &shader) const;
     void draw (const Shader &shader, const Transform &transform, const vec3 &color) const;
 
+    // Vertex array buffer
+    // Public so we can access this from InstancedArray
+    unsigned int VAO{}, EBO{};
+
 private:
     // OpenGL buffers
-    unsigned int VAO{}, VBO{}, EBO{};
+    unsigned int VBO{};
 };
 
 std::ostream &operator<< (std::ostream &os, const Mesh &m);

@@ -198,6 +198,7 @@ void Mesh::draw(Shader &shader) const {
 }
 
 void Mesh::draw(const Shader &shader, const Transform &transform, const vec3 &color) const {
+    // activate shader
     shader.use();
 
     // Bind uniforms from transform
@@ -205,15 +206,16 @@ void Mesh::draw(const Shader &shader, const Transform &transform, const vec3 &co
     shader.setVec3("objectColor", color);
 
     // draw mesh
-    GL_CHECK(glBindVertexArray(VAO));
+    // std::cout << "VAO, VBO, EBO: " << VAO << ", " << VBO << ", " << EBO << "\n";
+    GL_CHECK(glBindVertexArray(this->VAO));
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO));
 
     GL_CHECK(glDrawElements(GL_TRIANGLES, 3 * numTriangles, GL_UNSIGNED_INT, nullptr));
 
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    GL_CHECK(glBindVertexArray(0));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
 vector<string> split (const string &s, char delim) {

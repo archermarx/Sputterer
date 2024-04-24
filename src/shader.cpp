@@ -8,6 +8,7 @@
 
 #include "shader.hpp"
 #include "glad/glad.h"
+#include "gl_helpers.hpp"
 
 // Constructor for Shader type
 Shader::Shader(const char *vertexPath, const char *fragmentPath) {
@@ -20,11 +21,12 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath) {
 }
 
 void Shader::use() const {
-    glUseProgram(ID);
+    GL_CHECK(glUseProgram(ID));
 }
 
 GLint Shader::getUniformLocation(const std::string &name) const {
-    GLint loc = glGetUniformLocation(ID, name.c_str());
+    GLint loc;
+    GL_CHECK(loc = glGetUniformLocation(ID, name.c_str()));
     if (loc < 0) {
         std::cout << "ERROR::SHADER::UNIFORM_NOT_FOUND: " << name << std::endl;
     }
@@ -32,23 +34,23 @@ GLint Shader::getUniformLocation(const std::string &name) const {
 }
 
 void Shader::setBool(const std::string &name, bool value) const {
-    glUniform1i(getUniformLocation(name), (int)value);
+    GL_CHECK(glUniform1i(getUniformLocation(name), (int)value));
 }
 
 void Shader::setInt(const std::string &name, int value) const {
-    glUniform1i(getUniformLocation(name), value);
+    GL_CHECK(glUniform1i(getUniformLocation(name), value));
 }
 
 void Shader::setFloat(const std::string &name, float value) const {
-    glUniform1f(getUniformLocation(name), value);
+    GL_CHECK(glUniform1f(getUniformLocation(name), value));
 }
 
 void Shader::setVec3(const std::string &name, glm::vec3 value) const {
-    glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(value));
+    GL_CHECK(glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(value)));
 }
 
 void Shader::setMat4(const std::string &name, glm::mat4 value) const {
-    glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(value));
+    GL_CHECK(glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(value)));
 }
 
 void Shader::updateView(const Camera &camera, const float aspectRatio) const {

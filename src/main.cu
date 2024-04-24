@@ -12,10 +12,10 @@
 // My headers (c++)
 #include "app.hpp"
 #include "input.hpp"
-#include "mesh.hpp"
 #include "shader.hpp"
 #include "surface.hpp"
 #include "window.hpp"
+#include "instanced_mesh.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
@@ -121,20 +121,20 @@ int main (int argc, char *argv[]) {
     glfwSetScrollCallback(window.window, app::scrollCallback);
 
     Shader shader("../shaders/shader.vert", "../shaders/shader.frag");
-    shader.use();
 
     // initialize mesh buffers
     for (auto &surf : input.surfaces) {
         surf.mesh.setBuffers();
     }
 
-    // Read particle mesh from file
+    // Set up particle mesh for drawing
     vec3 particleColor{0.05f};
-    vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
     vec3 particleScale{0.01f};
-    Mesh particleMesh{};
-    particleMesh.readFromObj("../o_sphere.obj");
-    particleMesh.setBuffers();
+
+    InstancedMesh iParticleMesh{MAX_PARTICLES};
+    Shader        particleShader("../shaders/particle.vert", "../shaders/particle.frag");
+    iParticleMesh.mesh.readFromObj("../o_sphere.obj");
+    iParticleMesh.setBuffers();
 
     // Create timing objects
     size_t frame = 0;
@@ -210,7 +210,7 @@ int main (int argc, char *argv[]) {
         deltaTimeSmoothed = (1 - timeConst) * deltaTimeSmoothed + timeConst * app::deltaTime * 1000;
 
         // record compute start time
-        if (frame > 1) {
+        if (frame > 0) {
             start.record();
 
             // Emit particles
@@ -254,23 +254,33 @@ int main (int argc, char *argv[]) {
             avgTimeTotal   = (1 - timeConst) * avgTimeTotal + timeConst * elapsedCopy;
         }
 
-        // update camera projection
+        // update camera projection in both shaders
+        shader.use();
         shader.updateView(app::camera, app::aspectRatio);
 
         for (const auto &surface : input.surfaces) {
             // set the model matrix
+            shader.use();
             surface.mesh.draw(shader, surface.transform, surface.color);
         }
 
+        particleShader.use();
+        particleShader.setMat4("view", app::camera.getViewMatrix());
+        particleShader.setMat4("projection", app::camera.getProjectionMatrix(app::aspectRatio));
+        glm::mat4 scale = glm::scale(glm::mat4{1.0f}, particleScale);
+        particleShader.setMat4("scale", scale);
+
         for (int i = 0; i < pc.numParticles; i++) {
-            // this is pretty inefficient, as we have to copy a lot of identical vertex and normal data over to the
-            // GPU for each particle Ideally, we'd use instancing to do better, and only transfer the model matrix
-            // over at each timestep see https://learnopengl.com/Advanced-OpenGL/Instancing
-            Transform t;
-            t.scale     = particleScale;
-            t.translate = glm::vec3{pc.position[i].x, pc.position[i].y, pc.position[i].z};
-            auto color  = pc.weight[i] > 0 ? particleColor : particleColorOOB;
-            particleMesh.draw(shader, t, color);
+            // transfer particle positions to mesh instance
+            iParticleMesh.positions.at(i) = {pc.position[i].x, pc.position[i].y, pc.position[i].z};
+        }
+
+        // draw particles (instanced!)
+        if (pc.numParticles > 0) {
+            // activate particle shader
+            particleShader.setVec3("objectColor", particleColor);
+            iParticleMesh.numInstances = pc.numParticles;
+            iParticleMesh.draw(particleShader);
         }
 
         window.endRenderLoop();
