@@ -92,7 +92,7 @@ std::string readFromFile (const char *path) {
 unsigned int compileShader (const char *source, const unsigned int type) {
     unsigned int shader;
     shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
+    glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
 
     int  success;
@@ -100,7 +100,7 @@ unsigned int compileShader (const char *source, const unsigned int type) {
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 
     if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
         std::cout << "ERROR::SHADER::";
 
         switch (type) {
@@ -138,7 +138,7 @@ unsigned int createShaderProgram (const std::vector<std::string> &sources, const
     char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
         std::cout << "ERROR::SHADER::LINK_FAILED\n" << infoLog << std::endl;
     }
 

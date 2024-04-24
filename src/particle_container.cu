@@ -5,6 +5,7 @@
 
 #include "particle_container.cuh"
 #include "cuda_helpers.cuh"
+#include "gl_helpers.hpp"
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
@@ -63,6 +64,42 @@ void ParticleContainer::copyToCPU() {
     position = host_vector<float3>(d_position.begin(), d_position.begin() + numParticles);
     velocity = host_vector<float3>(d_velocity.begin(), d_velocity.begin() + numParticles);
     weight   = host_vector<float>(d_weight.begin(), d_weight.begin() + numParticles);
+}
+
+void ParticleContainer::setBuffers() {
+    // enable buffer
+    this->mesh.setBuffers();
+    glGenBuffers(1, &this->buffer);
+}
+
+void ParticleContainer::draw(Shader shader) {
+
+    // Bind vertex array
+    auto VAO = this->mesh.VAO;
+    GL_CHECK(glBindVertexArray(VAO));
+
+    // Send over model matrix data
+    auto matVectorSize = static_cast<GLsizei>(this->numParticles * sizeof(vec3));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, this->buffer));
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, matVectorSize, &position[0], GL_DYNAMIC_DRAW));
+
+    // Set attribute pointers for translation
+    GL_CHECK(glEnableVertexAttribArray(2));
+    GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), nullptr));
+    GL_CHECK(glVertexAttribDivisor(2, 1));
+
+    // Bind element array buffer
+    GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->mesh.EBO));
+
+    // Draw meshes
+    shader.use();
+    GL_CHECK(glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(3 * this->mesh.numTriangles),
+                                     GL_UNSIGNED_INT, nullptr, numParticles));
+
+    // unbind buffers
+    GL_CHECK(glBindVertexArray(0));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
 #define MIN_T 100'000
@@ -133,7 +170,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
     const double mass = 12.011 * m_u;
 
     // k_B / m_u (for thermal speed calculations)
-    const float thermalSpeedFactor = static_cast<float>(sqrt(k_B / mass));
+    const auto thermalSpeedFactor = static_cast<float>(sqrt(k_B / mass));
 
     if (tid < N) {
 
@@ -197,7 +234,6 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 // get notangent vectors
                 // TODO: may be worth pre-computing these?
                 auto tri  = tris[hit_triangle_id];
-                auto norm = closest_hit.norm;
                 auto tan1 = normalize(tri.v1 - tri.v0);
                 auto tan2 = cross(tan1, norm);
 

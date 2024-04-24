@@ -22,7 +22,7 @@ translate = { x = 0.0, y = 0.125, z = -2.0 }
 color = { x = 0.2, y = 0.2, z = 0.8 }
 
 [geometry.emitter]
-flux = 3_000_000
+flux = 10_000_000
 velocity = 300
 spread = 0.1
 reverse_direction = false

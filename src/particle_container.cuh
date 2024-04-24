@@ -54,6 +54,11 @@ public:
 
     device_vector<float> d_tmp;
 
+    // Particle mesh
+    Mesh mesh{};
+    void draw (Shader shader);
+    void setBuffers ();
+
     // Constructor
     ParticleContainer(string name, double mass, int charge);
 
@@ -80,7 +85,8 @@ public:
     // Copy particles on GPU to CPU
     void copyToCPU ();
 
-    ~ParticleContainer() = default;
+private:
+    unsigned int buffer{};
 };
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);

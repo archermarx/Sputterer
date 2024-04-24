@@ -15,7 +15,6 @@
 #include "shader.hpp"
 #include "surface.hpp"
 #include "window.hpp"
-#include "instanced_mesh.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
@@ -127,14 +126,17 @@ int main (int argc, char *argv[]) {
         surf.mesh.setBuffers();
     }
 
-    // Set up particle mesh for drawing
-    vec3 particleColor{0.05f};
-    vec3 particleScale{0.01f};
+    // Set up particle shader
+    Shader particleShader("../shaders/particle.vert", "../shaders/particle.frag");
+    particleShader.use();
+    constexpr vec3 particleColor{0.05f};
+    constexpr vec3 particleScale{0.01f};
+    particleShader.setMat4("scale", glm::scale(glm::mat4{1.0f}, particleScale));
+    particleShader.setVec3("objectColor", particleColor);
 
-    InstancedMesh iParticleMesh{MAX_PARTICLES};
-    Shader        particleShader("../shaders/particle.vert", "../shaders/particle.frag");
-    iParticleMesh.mesh.readFromObj("../o_sphere.obj");
-    iParticleMesh.setBuffers();
+    // Set up particle mesh
+    pc.mesh.readFromObj("../o_sphere.obj");
+    pc.setBuffers();
 
     // Create timing objects
     size_t frame = 0;
@@ -264,23 +266,17 @@ int main (int argc, char *argv[]) {
             surface.mesh.draw(shader, surface.transform, surface.color);
         }
 
-        particleShader.use();
-        particleShader.setMat4("view", app::camera.getViewMatrix());
-        particleShader.setMat4("projection", app::camera.getProjectionMatrix(app::aspectRatio));
-        glm::mat4 scale = glm::scale(glm::mat4{1.0f}, particleScale);
-        particleShader.setMat4("scale", scale);
-
-        for (int i = 0; i < pc.numParticles; i++) {
-            // transfer particle positions to mesh instance
-            iParticleMesh.positions.at(i) = {pc.position[i].x, pc.position[i].y, pc.position[i].z};
-        }
-
         // draw particles (instanced!)
         if (pc.numParticles > 0) {
             // activate particle shader
-            particleShader.setVec3("objectColor", particleColor);
-            iParticleMesh.numInstances = pc.numParticles;
-            iParticleMesh.draw(particleShader);
+            particleShader.use();
+
+            // send camera information to shader
+            particleShader.setMat4("view", app::camera.getViewMatrix());
+            particleShader.setMat4("projection", app::camera.getProjectionMatrix(app::aspectRatio));
+
+            // draw particles
+            pc.draw(particleShader);
         }
 
         window.endRenderLoop();
