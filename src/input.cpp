@@ -191,7 +191,6 @@ void Input::read() {
         // Read mesh data
         auto &mesh = surf.mesh;
         mesh.readFromObj({meshPath});
-        mesh.setBuffers();
 
         id++;
     }

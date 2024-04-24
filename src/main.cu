@@ -52,15 +52,6 @@ int main (int argc, char *argv[]) {
         filename = argv[1];
     }
 
-    Window window("Sputterer", app::SCR_WIDTH, app::SCR_HEIGHT);
-
-    glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
-    glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
-    glfwSetScrollCallback(window.window, app::scrollCallback);
-
-    Shader shader("../shaders/shader.vert", "../shaders/shader.frag");
-    shader.use();
-
     Input input(filename);
     input.read();
 
@@ -76,15 +67,6 @@ int main (int argc, char *argv[]) {
     ParticleContainer pc{"noname", 1.0f, 1};
     pc.addParticles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy,
                     input.particle_vz, input.particle_w);
-
-    vec3 particleColor{0.05f};
-    vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
-    vec3 particleScale{0.01f};
-
-    // Read mesh from file
-    Mesh particleMesh{};
-    particleMesh.readFromObj("../o_sphere.obj");
-    particleMesh.setBuffers();
 
     // construct triangles
     host_vector<Triangle> h_triangles;
@@ -131,6 +113,28 @@ int main (int argc, char *argv[]) {
     device_vector<int> d_collected(h_triangles.size(), 0);
 
     std::cout << "Mesh data sent to GPU." << std::endl;
+
+    Window window("Sputterer", app::SCR_WIDTH, app::SCR_HEIGHT);
+
+    glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
+    glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
+    glfwSetScrollCallback(window.window, app::scrollCallback);
+
+    Shader shader("../shaders/shader.vert", "../shaders/shader.frag");
+    shader.use();
+
+    // initialize mesh buffers
+    for (auto &surf : input.surfaces) {
+        surf.mesh.setBuffers();
+    }
+
+    // Read particle mesh from file
+    vec3 particleColor{0.05f};
+    vec3 particleColorOOB{1.0f, 0.2f, 0.2f};
+    vec3 particleScale{0.01f};
+    Mesh particleMesh{};
+    particleMesh.readFromObj("../o_sphere.obj");
+    particleMesh.setBuffers();
 
     // Create timing objects
     size_t frame = 0;
