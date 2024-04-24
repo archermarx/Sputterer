@@ -131,7 +131,7 @@ int main (int argc, char *argv[]) {
     particleShader.use();
     constexpr vec3 particleColor{0.05f};
     constexpr vec3 particleScale{0.01f};
-    particleShader.setMat4("scale", glm::scale(glm::mat4{1.0f}, particleScale));
+    particleShader.setVec3("scale", particleScale);
     particleShader.setVec3("objectColor", particleColor);
 
     // Set up particle mesh
@@ -272,8 +272,8 @@ int main (int argc, char *argv[]) {
             particleShader.use();
 
             // send camera information to shader
-            particleShader.setMat4("view", app::camera.getViewMatrix());
-            particleShader.setMat4("projection", app::camera.getProjectionMatrix(app::aspectRatio));
+            auto cam = app::camera.getProjectionMatrix(app::aspectRatio) * app::camera.getViewMatrix();
+            particleShader.setMat4("camera", cam);
 
             // draw particles
             pc.draw(particleShader);
