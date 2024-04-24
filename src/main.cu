@@ -136,7 +136,7 @@ int main (int argc, char *argv[]) {
     size_t frame = 0;
 
     float  avgTimeCompute = 0.0f, avgTimeTotal = 0.0f;
-    float  iterReset    = 100;
+    float  iterReset    = 25;
     float  timeConst    = 1 / iterReset;
     double physicalTime = 0, physicalTimestep = 0;
     float  deltaTimeSmoothed = 0;
