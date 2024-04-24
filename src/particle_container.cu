@@ -118,7 +118,23 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
 __global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
                         const size_t numTriangles, const size_t *ids, const Material *materials, int *collected,
                         const curandState *rng, const float dt) {
+
+    // Thread ID, i.e. what particle we're currently moving
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    // Boltzmann constant
+    constexpr double k_B = 1.3806e-23;
+
+    // atomic mass unit
+    constexpr double m_u = 1.66054e-27;
+
+    // Particle mass
+    // FIXME: currently hard-coded to carbon, easy to fix by passing in mass as a param
+    const double mass = 12.011 * m_u;
+
+    // k_B / m_u (for thermal speed calculations)
+    const float thermalSpeedFactor = static_cast<float>(sqrt(k_B / mass));
+
     if (tid < N) {
 
         auto pos = position[tid];
@@ -147,6 +163,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
             // Get material info where we hit
             auto &mat            = materials[hit_material_id];
             auto  sticking_coeff = mat.sticking_coeff;
+            auto  diffuse_coeff  = mat.diffuse_coeff;
             auto  hit_pos        = pos + t * dt * vel;
 
             // Generate a random number
@@ -154,6 +171,7 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
             auto uniform    = curand_uniform(&localState);
 
             if (uniform < sticking_coeff) {
+                // Particle sticks to surface
                 position[tid] = hit_pos;
                 velocity[tid] = float3(0.0f, 0.0f, 0.0f);
 
@@ -165,7 +183,36 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 // TODO: floats may be bad for this purpose, could convert weight to int64
                 weight[tid] = static_cast<float>(-hit_triangle_id);
 
+            } else if (uniform < diffuse_coeff + sticking_coeff) {
+                // Particle reflects diffusely based on surface temperature
+                // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
+                auto sqrt_temp     = sqrtf(mat.temperature_K);
+                auto thermal_speed = thermalSpeedFactor * sqrt_temp;
+
+                // sample from a cosine distribution
+                auto c_tan1 = curand_normal(&localState);
+                auto c_tan2 = curand_normal(&localState);
+                auto c_norm = sqrtf(-2 * logf(curand_uniform(&localState)));
+
+                // get notangent vectors
+                // TODO: may be worth pre-computing these?
+                auto tri  = tris[hit_triangle_id];
+                auto norm = closest_hit.norm;
+                auto tan1 = normalize(tri.v1 - tri.v0);
+                auto tan2 = cross(tan1, norm);
+
+                // Compute new velocity vector
+                auto vel_refl = thermal_speed * (c_norm * norm + c_tan1 * tan1 + c_tan2 * tan2);
+
+                // Get particle position
+                // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
+                // TODO: most of this code is shared with below--worth unifying?
+                auto final_pos = hit_pos + (1 - t) * dt * vel_refl;
+                position[tid]  = final_pos;
+                velocity[tid]  = vel_refl;
+
             } else {
+                // Particle reflects specularly
                 float3 vel_norm = dot(vel, norm) * norm;
                 float3 vel_refl = vel - 2 * vel_norm;
 
@@ -173,7 +220,6 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 position[tid]  = final_pos;
                 velocity[tid]  = vel_refl;
             }
-
         } else {
             position[tid] = pos + dt * vel;
         }
@@ -243,12 +289,14 @@ void ParticleContainer::emit(Triangle &triangle, Emitter emitter, float dt) {
     for (int i = 0; i < intNumEmit; i++) {
         auto pt   = triangle.sample(randUniform(), randUniform());
         auto norm = emitter.reverse ? -triangle.norm : triangle.norm;
-        x.at(i)   = pt.x;
-        y.at(i)   = pt.y;
-        z.at(i)   = pt.z;
-        ux.at(i)  = emitter.velocity * (norm.x + randNormal(0, emitter.spread));
-        uy.at(i)  = emitter.velocity * (norm.y + randNormal(0, emitter.spread));
-        uz.at(i)  = emitter.velocity * (norm.z + randNormal(0, emitter.spread));
+        // offset particle very slightly by norm
+        auto tol = 0.0001f;
+        x.at(i)  = pt.x + tol * norm.x;
+        y.at(i)  = pt.y + tol * norm.y;
+        z.at(i)  = pt.z + tol * norm.z;
+        ux.at(i) = emitter.velocity * (norm.x + randNormal(0, emitter.spread));
+        uy.at(i) = emitter.velocity * (norm.y + randNormal(0, emitter.spread));
+        uz.at(i) = emitter.velocity * (norm.z + randNormal(0, emitter.spread));
     }
 
     addParticles(x, y, z, ux, uy, uz, w);

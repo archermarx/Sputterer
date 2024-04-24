@@ -166,12 +166,14 @@ int main (int argc, char *argv[]) {
         ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
         ImGui::Begin("Particle collection info", nullptr, flags);
-        if (ImGui::BeginTable("Table", 3, tableFlags)) {
+        if (ImGui::BeginTable("Table", 4, tableFlags)) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Surface name");
             ImGui::TableNextColumn();
             ImGui::Text("Triangle ID");
+            ImGui::TableNextColumn();
+            ImGui::Text("Particles collected");
             ImGui::TableNextColumn();
             ImGui::Text("Collection rate (#/s)");
             for (int row = 0; row < collect_inds.size(); row++) {
@@ -181,6 +183,8 @@ int main (int argc, char *argv[]) {
                 ImGui::Text("%s", surfaceNames.at(h_materialIDs[triangleID]).c_str());
                 ImGui::TableNextColumn();
                 ImGui::Text("%i", static_cast<int>(triangleID));
+                ImGui::TableNextColumn();
+                ImGui::Text("%d", collected[row]);
                 ImGui::TableNextColumn();
                 ImGui::Text("%.3e", static_cast<double>(collected[row]) / physicalTime);
             }
