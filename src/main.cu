@@ -230,10 +230,8 @@ int main (int argc, char *argv[]) {
 
             // Track particles collected by each triangle flagged 'collect'
             for (int id = 0; id < collect_inds.size(); id++) {
-                auto oldVal  = collected[id];
                 auto d_begin = d_collected.begin() + collect_inds[id];
                 thrust::copy(d_begin, d_begin + 1, collected.begin() + id);
-                collected[id] += oldVal;
             }
 
             // Copy particle data back to CPU
