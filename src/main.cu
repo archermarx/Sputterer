@@ -163,9 +163,9 @@ int main (int argc, char *argv[]) {
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
         ImGui::Begin("Frame time", nullptr, flags);
         ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
-                    "transfer)\nFrame time: %.3f ms (%.2f%% compute)\nParticles: %i",
+                    "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i",
                     frame, printTime(physicalTimestep).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
-                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, deltaTimeSmoothed,
+                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, deltaTimeSmoothed, 1000 / deltaTimeSmoothed,
                     (avgTimeTotal / deltaTimeSmoothed) * 100, pc.numParticles);
         ImGui::End();
 
