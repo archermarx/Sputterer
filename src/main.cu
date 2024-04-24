@@ -139,6 +139,7 @@ int main (int argc, char *argv[]) {
     float  iterReset    = 100;
     float  timeConst    = 1 / iterReset;
     double physicalTime = 0, physicalTimestep = 0;
+    float  deltaTimeSmoothed = 0;
 
     cuda::event start{}, stopCompute{}, stopCopy{};
 
@@ -155,10 +156,11 @@ int main (int argc, char *argv[]) {
         ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
         ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
         ImGui::Begin("Frame time", nullptr, flags);
-        ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data transfer)  "
-                    "\nParticles: %i",
+        ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
+                    "transfer)\nFrame time: %.3f ms (%.2f%% compute)\nParticles: %i",
                     frame, printTime(physicalTimestep).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
-                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, pc.numParticles);
+                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, deltaTimeSmoothed,
+                    (avgTimeTotal / deltaTimeSmoothed) * 100, pc.numParticles);
         ImGui::End();
 
         // Table of collected particle amounts
@@ -200,7 +202,8 @@ int main (int argc, char *argv[]) {
 
         auto thisTimestep = input.timestep * app::deltaTime;
         physicalTime += thisTimestep;
-        physicalTimestep = (1 - timeConst) * physicalTimestep + timeConst * input.timestep * app::deltaTime;
+        physicalTimestep  = (1 - timeConst) * physicalTimestep + timeConst * input.timestep * app::deltaTime;
+        deltaTimeSmoothed = (1 - timeConst) * deltaTimeSmoothed + timeConst * app::deltaTime * 1000;
 
         // record compute start time
         if (frame > 1) {
