@@ -119,30 +119,38 @@ int main (int argc, char *argv[]) {
 
     std::cout << "Mesh data sent to GPU." << std::endl;
 
-    Window window("Sputterer", app::SCR_WIDTH, app::SCR_HEIGHT);
+    // Display objects
+    Window window{.name = "Sputterer", .width = app::SCR_WIDTH, .height = app::SCR_HEIGHT};
+    Shader meshShader{}, particleShader{};
+    if (display) {
+        // enable window
+        window.enable();
 
-    glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
-    glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
-    glfwSetScrollCallback(window.window, app::scrollCallback);
+        // Register window callbacks
+        glfwSetFramebufferSizeCallback(window.window, app::framebufferSizeCallback);
+        glfwSetCursorPosCallback(window.window, app::mouseCursorCallback);
+        glfwSetScrollCallback(window.window, app::scrollCallback);
 
-    Shader shader("../shaders/shader.vert", "../shaders/shader.frag");
+        // Load mesh shader
+        meshShader.load("../shaders/shader.vert", "../shaders/shader.frag");
 
-    // initialize mesh buffers
-    for (auto &surf : input.surfaces) {
-        surf.mesh.setBuffers();
+        // initialize mesh buffers
+        for (auto &surf : input.surfaces) {
+            surf.mesh.setBuffers();
+        }
+
+        // Load particle shader
+        particleShader.load("../shaders/particle.vert", "../shaders/particle.frag");
+        particleShader.use();
+        constexpr vec3 particleColor{0.05f};
+        constexpr vec3 particleScale{0.01f};
+        particleShader.setVec3("scale", particleScale);
+        particleShader.setVec3("objectColor", particleColor);
+
+        // Set up particle mesh
+        pc.mesh.readFromObj("../o_sphere.obj");
+        pc.setBuffers();
     }
-
-    // Set up particle shader
-    Shader particleShader("../shaders/particle.vert", "../shaders/particle.frag");
-    particleShader.use();
-    constexpr vec3 particleColor{0.05f};
-    constexpr vec3 particleScale{0.01f};
-    particleShader.setVec3("scale", particleScale);
-    particleShader.setVec3("objectColor", particleColor);
-
-    // Set up particle mesh
-    pc.mesh.readFromObj("../o_sphere.obj");
-    pc.setBuffers();
 
     // Create timing objects
     size_t frame = 0;
@@ -164,67 +172,76 @@ int main (int argc, char *argv[]) {
 
     while ((display && window.open) || (!display && physicalTime < input.max_time)) {
 
-        Window::beginRenderLoop();
+        if (display) {
+            Window::beginRenderLoop();
 
-        // Timing info
-        auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
-                     ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
-        float  padding      = 0.0f;
-        ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
-        ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
-        ImGui::Begin("Frame time", nullptr, flags);
-        ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
-                    "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i",
-                    frame, printTime(physicalTimestep).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
-                    (1.0f - avgTimeCompute / avgTimeTotal) * 100, deltaTimeSmoothed, 1000 / deltaTimeSmoothed,
-                    (avgTimeTotal / deltaTimeSmoothed) * 100, pc.numParticles);
-        ImGui::End();
+            // Timing info
+            auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
+            float  padding = 0.0f;
+            ImVec2 bottom_right =
+                ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
+            ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
+            ImGui::Begin("Frame time", nullptr, flags);
+            ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
+                        "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i",
+                        frame, printTime(physicalTimestep).c_str(), printTime(physicalTime).c_str(), avgTimeCompute,
+                        (1.0f - avgTimeCompute / avgTimeTotal) * 100, deltaTimeSmoothed, 1000 / deltaTimeSmoothed,
+                        (avgTimeTotal / deltaTimeSmoothed) * 100, pc.numParticles);
+            ImGui::End();
 
-        // Table of collected particle amounts
-        auto   tableFlags  = ImGuiTableFlags_BordersH;
-        ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
-        ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
-        ImGui::Begin("Particle collection info", nullptr, flags);
-        if (ImGui::BeginTable("Table", 4, tableFlags)) {
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            ImGui::Text("Surface name");
-            ImGui::TableNextColumn();
-            ImGui::Text("Triangle ID");
-            ImGui::TableNextColumn();
-            ImGui::Text("Particles collected");
-            ImGui::TableNextColumn();
-            ImGui::Text("Collection rate (#/s)");
-            for (int row = 0; row < collect_inds.size(); row++) {
-                auto triangleID = collect_inds[row];
+            // Table of collected particle amounts
+            auto   tableFlags  = ImGuiTableFlags_BordersH;
+            ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
+            ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
+            ImGui::Begin("Particle collection info", nullptr, flags);
+            if (ImGui::BeginTable("Table", 4, tableFlags)) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::Text("%s", surfaceNames.at(h_materialIDs[triangleID]).c_str());
+                ImGui::Text("Surface name");
                 ImGui::TableNextColumn();
-                ImGui::Text("%i", static_cast<int>(triangleID));
+                ImGui::Text("Triangle ID");
                 ImGui::TableNextColumn();
-                ImGui::Text("%d", collected[row]);
+                ImGui::Text("Particles collected");
                 ImGui::TableNextColumn();
-                ImGui::Text("%.3e", static_cast<double>(collected[row]) / physicalTime);
+                ImGui::Text("Collection rate (#/s)");
+                for (int row = 0; row < collect_inds.size(); row++) {
+                    auto triangleID = collect_inds[row];
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", surfaceNames.at(h_materialIDs[triangleID]).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%i", static_cast<int>(triangleID));
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%d", collected[row]);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%.3e", static_cast<double>(collected[row]) / physicalTime);
+                }
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
+            ImGui::End();
         }
-        ImGui::End();
 
-        // frame timing for rendering
+        // Record iteration timing information
         current_time   = std::chrono::system_clock::now();
         app::deltaTime = static_cast<double>(
                              std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count()) /
                          1e6;
-
         last_time = current_time;
 
-        auto thisTimestep = input.timestep * app::deltaTime;
+        // set physical timestep. if we're displaying a window, we set the physical timestep based on the rendering
+        // timestep to get smooth performance at different window sizes. If not, we just use the user-provided timestep
+        float thisTimestep{0};
+        if (display) {
+            thisTimestep = input.timestep * app::deltaTime / (15e-3);
+        } else {
+            thisTimestep = input.timestep;
+        }
         physicalTime += thisTimestep;
-        physicalTimestep  = (1 - timeConst) * physicalTimestep + timeConst * input.timestep * app::deltaTime;
+        physicalTimestep  = (1 - timeConst) * physicalTimestep + timeConst * thisTimestep;
         deltaTimeSmoothed = (1 - timeConst) * deltaTimeSmoothed + timeConst * app::deltaTime * 1000;
 
-        // record compute start time
+        // Main computations
         if (frame > 0) {
             start.record();
 
@@ -269,39 +286,47 @@ int main (int argc, char *argv[]) {
             avgTimeTotal   = (1 - timeConst) * avgTimeTotal + timeConst * elapsedCopy;
         }
 
-        // update camera projection in both shaders
-        shader.use();
-        shader.updateView(app::camera, app::aspectRatio);
+        // Rendering
+        if (display) {
+            // update camera projection mesh shader
+            meshShader.use();
+            meshShader.updateView(app::camera, app::aspectRatio);
 
-        for (const auto &surface : input.surfaces) {
-            // set the model matrix
-            shader.use();
-            surface.mesh.draw(shader, surface.transform, surface.color);
-        }
+            // draw meshes
+            for (const auto &surface : input.surfaces) {
+                // set the model matrix
+                meshShader.use();
+                surface.mesh.draw(meshShader, surface.transform, surface.color);
+            }
 
-        // draw particles (instanced!)
-        if (pc.numParticles > 0) {
-            // activate particle shader
-            particleShader.use();
+            // draw particles (instanced!)
+            if (pc.numParticles > 0) {
+                // activate particle shader
+                particleShader.use();
 
-            // send camera information to shader
-            auto cam = app::camera.getProjectionMatrix(app::aspectRatio) * app::camera.getViewMatrix();
-            particleShader.setMat4("camera", cam);
+                // send camera information to shader
+                auto cam = app::camera.getProjectionMatrix(app::aspectRatio) * app::camera.getViewMatrix();
+                particleShader.setMat4("camera", cam);
 
-            // draw particles
-            pc.draw(particleShader);
+                // draw particles
+                pc.draw(particleShader);
+            }
         }
 
         if (physicalTime > nextOutputTime || (!display && physicalTime >= input.max_time) ||
             (display && !window.open)) {
             // Write output to console at regular intervals, plus one additional when simulation terminates
             std::cout << "Step " << frame << ", Simulation time: " << printTime(physicalTime)
-                      << ", Avg. step time: " << deltaTimeSmoothed << " ms" << std::endl;
+                      << ", Timestep: " << printTime(physicalTimestep) << ", Avg. step time: " << deltaTimeSmoothed
+                      << " ms" << std::endl;
             nextOutputTime += input.output_interval;
         }
 
-        window.endRenderLoop();
-        app::processInput(window.window);
+        if (display) {
+            window.endRenderLoop();
+            app::processInput(window.window);
+        }
+
         frame += 1;
     }
 

@@ -20,9 +20,11 @@ public:
     unsigned int height;
     bool         open;
     GLFWwindow  *window;
+    bool         enabled{false};
 
-    Window(string name, unsigned int width, unsigned int height);
     ~Window();
+
+    void        enable ();
     static void beginRenderLoop ();
     void        endRenderLoop ();
 };

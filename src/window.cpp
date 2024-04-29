@@ -10,10 +10,7 @@
 
 #include "window.hpp"
 
-Window::Window(std::string name, unsigned int width, unsigned int height)
-    : name(std::move(name))
-    , width(width)
-    , height(height) {
+void Window::enable() {
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
@@ -56,6 +53,8 @@ Window::Window(std::string name, unsigned int width, unsigned int height)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
+    this->enabled = true;
+
     std::cout << "ImGUI initialized." << std::endl;
 }
 
@@ -90,11 +89,13 @@ void Window::endRenderLoop() {
 }
 
 Window::~Window() {
-    // Shut down ImGui
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    if (enabled) {
+        // Shut down ImGui
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
 
-    // Shut down GLFW
-    glfwTerminate();
+        // Shut down GLFW
+        glfwTerminate();
+    }
 }

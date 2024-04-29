@@ -10,8 +10,7 @@
 #include "glad/glad.h"
 #include "gl_helpers.hpp"
 
-// Constructor for Shader type
-Shader::Shader(const char *vertexPath, const char *fragmentPath) {
+void Shader::load(const char *vertexPath, const char *fragmentPath) {
     // 1. Retrieve vertex and fragment source code from file path
     const auto vertexCode   = readFromFile(vertexPath);
     const auto fragmentCode = readFromFile(fragmentPath);

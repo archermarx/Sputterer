@@ -56,6 +56,7 @@ public:
     size_t numTriangles{0};
 
     bool smooth{false};
+    bool buffers_set{false};
 
     vector<Vertex>     vertices{};
     vector<TriElement> triangles{};

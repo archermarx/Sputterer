@@ -21,7 +21,8 @@ public:
     // Program ID
     unsigned int ID;
 
-    Shader(const char *vertexPath, const char *fragmentPath);
+    Shader() = default;
+    void load (const char *vertexPath, const char *fragmentPath);
     void use () const;
 
     [[maybe_unused]] void setBool (const std::string &name, bool value) const;
