@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <chrono>
 
 // GLM headers
 #include <glm/glm.hpp>
@@ -158,6 +159,9 @@ int main (int argc, char *argv[]) {
 
     std::cout << "Beginning main loop." << std::endl;
 
+    auto current_time = std::chrono::system_clock::now();
+    auto last_time    = std::chrono::system_clock::now();
+
     while ((display && window.open) || (!display && physicalTime < input.max_time)) {
 
         Window::beginRenderLoop();
@@ -208,10 +212,12 @@ int main (int argc, char *argv[]) {
         ImGui::End();
 
         // frame timing for rendering
-        auto currentFrame = static_cast<float>(glfwGetTime());
-        app::deltaTime    = currentFrame - app::lastFrame;
-        app::lastFrame    = currentFrame;
-        app::processInput(window.window);
+        current_time   = std::chrono::system_clock::now();
+        app::deltaTime = static_cast<double>(
+                             std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count()) /
+                         1e6;
+
+        last_time = current_time;
 
         auto thisTimestep = input.timestep * app::deltaTime;
         physicalTime += thisTimestep;
@@ -286,15 +292,17 @@ int main (int argc, char *argv[]) {
             pc.draw(particleShader);
         }
 
-        window.endRenderLoop();
-        frame += 1;
-
         if (physicalTime > nextOutputTime || (!display && physicalTime >= input.max_time) ||
             (display && !window.open)) {
             // Write output to console at regular intervals, plus one additional when simulation terminates
-            std::cout << "Step " << frame << ", sim time: " << printTime(physicalTime) << std::endl;
+            std::cout << "Step " << frame << ", Simulation time: " << printTime(physicalTime)
+                      << ", Avg. step time: " << deltaTimeSmoothed << " ms" << std::endl;
             nextOutputTime += input.output_interval;
         }
+
+        window.endRenderLoop();
+        app::processInput(window.window);
+        frame += 1;
     }
 
     std::cout << "Program terminated successfully." << std::endl;
