@@ -1,5 +1,6 @@
 // C++ headers
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -79,8 +80,10 @@ int main (int argc, char *argv[]) {
     host_vector<size_t>   h_materialIDs;
     host_vector<Material> h_materials;
 
-    host_vector<char>   h_to_collect;
-    std::vector<int>    collect_inds;
+    host_vector<char> h_to_collect;
+    std::vector<int>  collect_inds_global;
+    std::vector<int>  collect_inds_local;
+
     std::vector<string> surfaceNames;
 
     for (size_t id = 0; id < input.surfaces.size(); id++) {
@@ -91,6 +94,7 @@ int main (int argc, char *argv[]) {
         surfaceNames.push_back(surf.name);
         h_materials.push_back(surf.material);
 
+        auto ind = 0;
         for (const auto &[i1, i2, i3] : mesh.triangles) {
             auto model = surf.transform.getMatrix();
             auto v1    = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
@@ -100,12 +104,14 @@ int main (int argc, char *argv[]) {
             h_triangles.push_back({v1, v2, v3});
             h_materialIDs.push_back(id);
             if (material.collect) {
-                collect_inds.push_back(static_cast<int>(h_triangles.size()) - 1);
+                collect_inds_global.push_back(static_cast<int>(h_triangles.size()) - 1);
+                collect_inds_local.push_back(ind);
             }
+            ind++;
         }
     }
 
-    host_vector<int> collected(collect_inds.size(), 0);
+    host_vector<int> collected(collect_inds_global.size(), 0);
 
     std::cout << "Meshes read." << std::endl;
 
@@ -170,6 +176,13 @@ int main (int argc, char *argv[]) {
     auto current_time = std::chrono::system_clock::now();
     auto last_time    = std::chrono::system_clock::now();
 
+    // Create output file for deposition
+    string        output_filename{"deposition.csv"};
+    std::ofstream output_file;
+    output_file.open(output_filename);
+    output_file << "Time(s),Surface name,Local triangle ID,Global triangle ID,Particles collected" << std::endl;
+    output_file.close();
+
     while ((display && window.open) || (!display && physicalTime < input.max_time)) {
 
         if (display) {
@@ -205,13 +218,13 @@ int main (int argc, char *argv[]) {
                 ImGui::Text("Particles collected");
                 ImGui::TableNextColumn();
                 ImGui::Text("Collection rate (#/s)");
-                for (int row = 0; row < collect_inds.size(); row++) {
-                    auto triangleID = collect_inds[row];
+                for (int row = 0; row < collect_inds_global.size(); row++) {
+                    auto triangleID = collect_inds_global[row];
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     ImGui::Text("%s", surfaceNames.at(h_materialIDs[triangleID]).c_str());
                     ImGui::TableNextColumn();
-                    ImGui::Text("%i", static_cast<int>(triangleID));
+                    ImGui::Text("%i", static_cast<int>(collect_inds_local[row]));
                     ImGui::TableNextColumn();
                     ImGui::Text("%d", collected[row]);
                     ImGui::TableNextColumn();
@@ -268,8 +281,8 @@ int main (int argc, char *argv[]) {
             stopCompute.record();
 
             // Track particles collected by each triangle flagged 'collect'
-            for (int id = 0; id < collect_inds.size(); id++) {
-                auto d_begin = d_collected.begin() + collect_inds[id];
+            for (int id = 0; id < collect_inds_global.size(); id++) {
+                auto d_begin = d_collected.begin() + collect_inds_global[id];
                 thrust::copy(d_begin, d_begin + 1, collected.begin() + id);
             }
 
@@ -319,6 +332,19 @@ int main (int argc, char *argv[]) {
             std::cout << "Step " << frame << ", Simulation time: " << printTime(physicalTime)
                       << ", Timestep: " << printTime(physicalTimestep) << ", Avg. step time: " << deltaTimeSmoothed
                       << " ms" << std::endl;
+
+            // Log deposition rate info
+            output_file.open(output_filename, std::ios_base::app);
+            for (int i = 0; i < collect_inds_global.size(); i++) {
+                auto triangle_id_global = collect_inds_global[i];
+                output_file << physicalTime << ",";
+                output_file << surfaceNames.at(h_materialIDs[triangle_id_global]) << ",";
+                output_file << collect_inds_local.at(i) << ",";
+                output_file << triangle_id_global << ",";
+                output_file << collected[i] << "\n";
+            }
+            output_file.close();
+
             nextOutputTime += input.output_interval;
         }
 
