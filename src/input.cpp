@@ -75,8 +75,10 @@ void Input::read() {
         std::cerr << "Parsing failed:\n" << err << "\n";
     }
 
-    auto sim = getTable(input, "simulation");
-    timestep = readTableEntryAs<float>(sim, "timestep_s");
+    auto sim        = getTable(input, "simulation");
+    timestep        = readTableEntryAs<float>(sim, "timestep_s");
+    max_time        = readTableEntryAs<float>(sim, "max_time_s");
+    output_interval = readTableEntryAs<float>(sim, "output_interval_s");
 
     // Read chamber features
     auto chamber  = getTable(input, "chamber");

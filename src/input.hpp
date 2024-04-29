@@ -22,6 +22,8 @@ public:
     vector<Surface> surfaces;
 
     float timestep{0.0};
+    float max_time{0.0};
+    float output_interval{0.0};
     float chamberRadius{-1.0};
     float chamberLength{-1.0};
 

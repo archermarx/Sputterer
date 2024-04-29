@@ -1,5 +1,7 @@
 [simulation]
 timestep_s = 0.005
+max_time_s = 0.1
+output_interval_s = 0.01
 
 [chamber]
 radius_m = 3
@@ -22,7 +24,7 @@ translate = { x = 0.0, y = 0.125, z = -2.0 }
 color = { x = 0.2, y = 0.2, z = 0.8 }
 
 [geometry.emitter]
-flux = 50_000_000
+flux = 5_000_000
 velocity = 300
 spread = 0.1
 reverse_direction = false

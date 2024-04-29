@@ -46,9 +46,14 @@ string printTime (double time_s) {
 
 int main (int argc, char *argv[]) {
     // Handle command line arguments
-    string filename("../input.toml");
+    string filename{"../input.toml"};
+    bool   display{true};
+
     if (argc > 1) {
         filename = argv[1];
+    }
+    if (argc > 2) {
+        display = static_cast<bool>(std::stoi(argv[2]));
     }
 
     Input input(filename);
@@ -147,11 +152,13 @@ int main (int argc, char *argv[]) {
     double physicalTime = 0, physicalTimestep = 0;
     float  deltaTimeSmoothed = 0;
 
+    auto nextOutputTime = 0.0f;
+
     cuda::event start{}, stopCompute{}, stopCopy{};
 
     std::cout << "Beginning main loop." << std::endl;
 
-    while (window.open) {
+    while ((display && window.open) || (!display && physicalTime < input.max_time)) {
 
         Window::beginRenderLoop();
 
@@ -281,6 +288,13 @@ int main (int argc, char *argv[]) {
 
         window.endRenderLoop();
         frame += 1;
+
+        if (physicalTime > nextOutputTime || (!display && physicalTime >= input.max_time) ||
+            (display && !window.open)) {
+            // Write output to console at regular intervals, plus one additional when simulation terminates
+            std::cout << "Step " << frame << ", sim time: " << printTime(physicalTime) << std::endl;
+            nextOutputTime += input.output_interval;
+        }
     }
 
     std::cout << "Program terminated successfully." << std::endl;
