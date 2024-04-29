@@ -112,18 +112,13 @@ int main (int argc, char *argv[]) {
     }
 
     host_vector<int> collected(collect_inds_global.size(), 0);
-
     std::cout << "Meshes read." << std::endl;
 
     // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-    device_vector<Triangle> d_triangles{h_triangles};
-
+    device_vector<Triangle> d_triangles = h_triangles;
     device_vector<size_t>   d_surfaceIDs{h_materialIDs};
     device_vector<Material> d_materials{h_materials};
-
-    device_vector<int> d_collected(h_triangles.size(), 0);
-
-    std::cout << "Mesh data sent to GPU." << std::endl;
+    device_vector<int>      d_collected(h_triangles.size(), 0);
 
     // Display objects
     Window window{.name = "Sputterer", .width = app::SCR_WIDTH, .height = app::SCR_HEIGHT};

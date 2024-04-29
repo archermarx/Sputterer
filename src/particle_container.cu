@@ -152,12 +152,26 @@ __host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
     return info;
 }
 
+__host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_eV) {
+    // fit parameters
+    constexpr auto angle_offset  = 1.6823f;
+    constexpr auto energy_offset = 65.6925f;
+    constexpr auto energy_scale  = 34.5302f;
+
+    auto fac = (cos_incident_angle - angle_offset) * logf((incident_energy_eV + energy_offset) / energy_scale);
+    auto diffuse_coeff = 0.003f + fac * fac;
+    return diffuse_coeff;
+}
+
 __global__ void k_push (float3 *position, float3 *velocity, float *weight, const int N, const Triangle *tris,
                         const size_t numTriangles, const size_t *ids, const Material *materials, int *collected,
                         const curandState *rng, const float dt) {
 
     // Thread ID, i.e. what particle we're currently moving
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    // Fundamental chrge
+    constexpr double q_e = 1.6e-19;
 
     // Boltzmann constant
     constexpr double k_B = 1.3806e-23;
@@ -168,6 +182,9 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
     // Particle mass
     // FIXME: currently hard-coded to carbon, easy to fix by passing in mass as a param
     const double mass = 12.011 * m_u;
+
+    // Particle energy
+    const double energy_factor = 0.5 * mass / q_e;
 
     // k_B / m_u (for thermal speed calculations)
     const auto thermalSpeedFactor = static_cast<float>(sqrt(k_B / mass));
@@ -198,14 +215,23 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
             auto &[_, t, norm] = closest_hit;
 
             // Get material info where we hit
-            auto &mat            = materials[hit_material_id];
-            auto  sticking_coeff = mat.sticking_coeff;
-            auto  diffuse_coeff  = mat.diffuse_coeff;
-            auto  hit_pos        = pos + t * dt * vel;
+            auto &mat = materials[hit_material_id];
+            // auto  sticking_coeff = mat.sticking_coeff;
+            // auto  diffuse_coeff  = mat.diffuse_coeff;
+            auto hit_pos = pos + t * dt * vel;
 
             // Generate a random number
             auto localState = rng[tid];
             auto uniform    = curand_uniform(&localState);
+
+            // get incident angle and energy
+            auto velnorm_2          = dot(vel, vel);
+            auto cos_incident_angle = abs(dot(vel, -norm) / sqrt(velnorm_2));
+            auto incident_energy_eV = static_cast<float>(energy_factor * velnorm_2);
+
+            // Get sticking and diffuse coeff from model
+            auto diffuse_coeff  = carbon_diffuse_prob(cos_incident_angle, incident_energy_eV);
+            auto sticking_coeff = 1.0f - diffuse_coeff;
 
             if (uniform < sticking_coeff) {
                 // Particle sticks to surface
@@ -219,10 +245,10 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 // magnitude indicates which triangle we hit
                 // TODO: floats may be bad for this purpose, could convert weight to int64
                 weight[tid] = static_cast<float>(-hit_triangle_id);
-
             } else if (uniform < diffuse_coeff + sticking_coeff) {
                 // Particle reflects diffusely based on surface temperature
                 // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
+                //
                 auto sqrt_temp     = sqrtf(mat.temperature_K);
                 auto thermal_speed = thermalSpeedFactor * sqrt_temp;
 
@@ -246,7 +272,6 @@ __global__ void k_push (float3 *position, float3 *velocity, float *weight, const
                 auto final_pos = hit_pos + (1 - t) * dt * vel_refl;
                 position[tid]  = final_pos;
                 velocity[tid]  = vel_refl;
-
             } else {
                 // Particle reflects specularly
                 float3 vel_norm = dot(vel, norm) * norm;

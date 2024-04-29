@@ -89,6 +89,8 @@ private:
     unsigned int buffer{};
 };
 
+__host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_eV);
+
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
 
 #endif
