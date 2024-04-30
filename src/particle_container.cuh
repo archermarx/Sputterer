@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PARTICLE_CONTAINER_CUH
-#define PARTICLE_CONTAINER_CUH
+#ifndef SPUTTERER_PARTICLE_CONTAINER_CUH
+#define SPUTTERER_PARTICLE_CONTAINER_CUH
 
 // STL headers
 #include <iostream>
@@ -25,72 +25,74 @@ using thrust::host_vector, thrust::device_vector;
 
 using std::vector, std::string;
 
-constexpr size_t MAX_PARTICLES = 35'000'000;
+constexpr size_t max_particles = 35'000'000;
 
-class ParticleContainer {
-    // Holds information for many particles of a specific species.
-    // Species are differentiated by charge state and mass.
+class particle_container {
+  // Holds information for many particles of a specific species.
+  // Species are differentiated by charge state and mass.
 
 public:
-    string name;            // name of particles
-    double mass;            // mass in atomic mass units
-    int    charge;          // charge number
-    int    numParticles{0}; // number of particles in container
+  string name;            // name of particles
+  double mass;            // mass in atomic mass units
+  int charge;          // charge number
+  int num_particles{0}; // number of particles in container
 
-    // RNG state
-    device_vector<curandState> d_rng;
+  // RNG state
+  device_vector<curandState> d_rng;
 
-    // Position in meters
-    host_vector<float3>   position;
-    device_vector<float3> d_position;
+  // Position in meters
+  host_vector<float3> position;
+  device_vector<float3> d_position;
 
-    // Velocity in m/s
-    host_vector<float3>   velocity;
-    device_vector<float3> d_velocity;
+  // Velocity in m/s
+  host_vector<float3> velocity;
+  device_vector<float3> d_velocity;
 
-    // Particle weight (computational particles per real particle
-    host_vector<float>   weight;
-    device_vector<float> d_weight;
+  // Particle weight (computational particles per real particle
+  host_vector<float> weight;
+  device_vector<float> d_weight;
 
-    device_vector<float> d_tmp;
+  device_vector<float> d_tmp;
 
-    // Particle mesh
-    Mesh mesh{};
-    void draw (Shader shader);
-    void setBuffers ();
+  // Particle mesh
+  mesh mesh{};
 
-    // Constructor
-    ParticleContainer(string name, double mass, int charge);
+  void draw (shader shader);
 
-    // push particles to next positions (for now just use forward Euler)
-    void push (float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids,
-               const thrust::device_vector<Material> &mats, thrust::device_vector<int> &collected);
+  void set_buffers ();
 
-    // add particles to the container
-    void addParticles (vector<float> x, vector<float> y, vector<float> z, vector<float> vx, vector<float> vy,
-                       vector<float> vz, vector<float> w);
+  // Constructor
+  particle_container (string name, double mass, int charge);
 
-    // Emit particles from a given triangle
-    void emit (Triangle &triangle, Emitter emitter, float dt);
+  // push particles to next positions (for now just use forward Euler)
+  void push (float dt, const thrust::device_vector<triangle> &tris, const thrust::device_vector<size_t> &ids
+             , const thrust::device_vector<material> &mats, thrust::device_vector<int> &collected);
 
-    // Returns kernel launch params
-    [[nodiscard]] std::pair<dim3, dim3> getKernelLaunchParams (size_t block_size = 32) const;
+  // add particles to the container
+  void add_particles (vector<float> x, vector<float> y, vector<float> z, vector<float> ux, vector<float> uy
+                      , vector<float> uz, vector<float> w);
 
-    // Set particles that leave bounds to have negative weights
-    void flagOutOfBounds (float radius, float length);
+  // Emit particles from a given triangle
+  void emit (triangle &triangle, emitter emitter, float dt);
 
-    // Remove particles with negative weights
-    void removeFlaggedParticles ();
+  // Returns kernel launch params
+  [[nodiscard]] std::pair<dim3, dim3> get_kernel_launch_params (size_t block_size = 32) const;
 
-    // Copy particles on GPU to CPU
-    void copyToCPU ();
+  // Set particles that leave bounds to have negative weights
+  void flag_out_of_bounds (float radius, float length);
+
+  // Remove particles with negative weights
+  void remove_flagged_particles ();
+
+  // Copy particles on GPU to CPU
+  void copy_to_cpu ();
 
 private:
-    unsigned int buffer{};
+  unsigned int buffer{};
 };
 
-__host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_eV);
+__host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev);
 
-std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
+std::ostream &operator<< (std::ostream &os, particle_container const &pc);
 
 #endif
