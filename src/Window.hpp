@@ -13,16 +13,16 @@
 
 using std::string;
 
-class window {
+class Window {
 public:
   string name;
   unsigned int width;
   unsigned int height;
   bool open;
-  GLFWwindow *glfw_window;
+  GLFWwindow *window;
   bool enabled{false};
 
-  ~window ();
+  ~Window ();
 
   void enable ();
 

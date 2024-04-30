@@ -9,35 +9,35 @@
 #include <vector>
 #include <memory>
 
-#include "shader.hpp"
+#include "Shader.hpp"
 #include "vec3.hpp"
 
 using std::string, std::vector;
 
-struct vertex {
+struct Vertex {
   vec3 pos;
   vec3 norm;
 };
 
-std::ostream &operator<< (std::ostream &os, const vertex &v);
+std::ostream &operator<< (std::ostream &os, const Vertex &v);
 
-struct tri_element {
+struct TriElement {
   unsigned int i1, i2, i3;
 };
 
-std::ostream &operator<< (std::ostream &os, const tri_element &t);
+std::ostream &operator<< (std::ostream &os, const TriElement &t);
 
-struct transform {
+struct Transform {
   vec3 scale{1.0};
   vec3 translate{0.0, 0.0, 0.0};
   vec3 rotation_axis{0.0, 1.0, 0.0};
   float rotation_angle{0.0};
 
-  transform () = default;
+  Transform () = default;
 
-  [[maybe_unused]] transform (vec3 scale, vec3 translate, vec3 rotation_axis, float rotation_angle)
-          : scale(scale), translate(translate), rotation_axis(glm::normalize(rotation_axis)),
-            rotation_angle(rotation_angle) {}
+  [[maybe_unused]] Transform (vec3 scale, vec3 translate, vec3 rotation_axis, float rotation_angle)
+    : scale(scale), translate(translate), rotation_axis(glm::normalize(rotation_axis)),
+      rotation_angle(rotation_angle) {}
 
   [[nodiscard]] glm::mat4 get_matrix () const {
     glm::mat4 model{1.0f};
@@ -48,7 +48,7 @@ struct transform {
   }
 };
 
-class mesh {
+class Mesh {
 public:
   size_t num_vertices{0};
   size_t num_triangles{0};
@@ -56,20 +56,20 @@ public:
   bool smooth{false};
   bool buffers_set{false};
 
-  vector<vertex> vertices{};
-  vector<tri_element> triangles{};
+  vector<Vertex> vertices{};
+  vector<TriElement> triangles{};
 
-  mesh () = default;
+  Mesh () = default;
 
-  ~mesh ();
+  ~Mesh ();
 
   void read_from_obj (const string &path);
 
   void set_buffers ();
 
-  void draw (shader &shader) const;
+  void draw (Shader &shader) const;
 
-  void draw (const shader &shader, const transform &transform, const vec3 &color) const;
+  void draw (const Shader &shader, const Transform &transform, const vec3 &color) const;
 
   // Vertex array buffer
   // Public so we can access this from InstancedArray
@@ -80,6 +80,6 @@ private:
   unsigned int vbo{};
 };
 
-std::ostream &operator<< (std::ostream &os, const mesh &m);
+std::ostream &operator<< (std::ostream &os, const Mesh &m);
 
 #endif

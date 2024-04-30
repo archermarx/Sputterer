@@ -3,20 +3,20 @@
 #include <sstream>
 #include <filesystem>
 
-#include "mesh.hpp"
+#include "Mesh.hpp"
 #include "gl_helpers.hpp"
 
-std::ostream &operator<< (std::ostream &os, const vertex &v) {
+std::ostream &operator<< (std::ostream &os, const Vertex &v) {
   os << "{ pos: " << v.pos << ", norm: " << v.norm << "}";
   return os;
 }
 
-std::ostream &operator<< (std::ostream &os, const tri_element &e) {
+std::ostream &operator<< (std::ostream &os, const TriElement &e) {
   os << "[" << e.i1 << ", " << e.i2 << ", " << e.i3 << "]";
   return os;
 }
 
-std::ostream &operator<< (std::ostream &os, const mesh &m) {
+std::ostream &operator<< (std::ostream &os, const Mesh &m) {
   os << "Vertices\n=======================\n";
   for (size_t i = 0; i < m.num_vertices; i++) {
     os << i << ": " << m.vertices[i] << "\n";
@@ -32,7 +32,7 @@ std::ostream &operator<< (std::ostream &os, const mesh &m) {
 
 vector<string> split (const string &s, char delim);
 
-void mesh::read_from_obj (const string &path) {
+void Mesh::read_from_obj (const string &path) {
 
   if (!(std::filesystem::exists(path))) {
     std::ostringstream msg;
@@ -41,7 +41,7 @@ void mesh::read_from_obj (const string &path) {
   }
 
   vector<glm::vec3> vertexCoords;
-  vector<tri_element> triangleInds;
+  vector<TriElement> triangleInds;
 
   // Read basic vertex information from file
   std::ifstream objFile(path);
@@ -107,7 +107,7 @@ void mesh::read_from_obj (const string &path) {
     num_triangles = triangleInds.size();
     num_vertices = vertexCoords.size();
     triangles = triangleInds;
-    vertices = vector<vertex>(num_vertices);
+    vertices = vector<Vertex>(num_vertices);
 
     for (const auto &[i1, i2, i3]: triangles) {
       // Get vertex coordinates
@@ -153,9 +153,9 @@ void mesh::read_from_obj (const string &path) {
   }
 }
 
-void mesh::set_buffers () {
-  auto vertSize = num_vertices*sizeof(vertex);
-  auto triSize = num_triangles*sizeof(tri_element);
+void Mesh::set_buffers () {
+  auto vertSize = num_vertices*sizeof(Vertex);
+  auto triSize = num_triangles*sizeof(TriElement);
 
   // Set up buffers
   GL_CHECK(glGenVertexArrays(1, &vao));
@@ -187,7 +187,7 @@ void mesh::set_buffers () {
   buffers_set = true;
 }
 
-mesh::~mesh () {
+Mesh::~Mesh () {
   if (buffers_set) {
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
@@ -195,13 +195,13 @@ mesh::~mesh () {
   }
 }
 
-void mesh::draw (shader &shader) const {
-  transform transform;
+void Mesh::draw (Shader &shader) const {
+  Transform transform;
   vec3 color{0.3, 0.3, 0.3};
   draw(shader, transform, color);
 }
 
-void mesh::draw (const shader &shader, const transform &transform, const vec3 &color) const {
+void Mesh::draw (const Shader &shader, const Transform &transform, const vec3 &color) const {
   // activate shader
   shader.use();
 

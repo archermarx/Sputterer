@@ -5,19 +5,19 @@
 #include <string>
 #include <vector>
 
-#include "mesh.hpp"
+#include "Mesh.hpp"
 #include "vec3.hpp"
 
 using std::vector, std::string;
 
-struct material {
+struct Material {
   bool collect{false};
   float sticking_coeff{0.0f};
   float diffuse_coeff{0.0f};
   float temperature_k{300.0f};
 };
 
-struct emitter {
+struct Emitter {
   bool emit{false};
   float flux{0.0};
   float velocity{1.0};
@@ -25,19 +25,19 @@ struct emitter {
   bool reverse{false};
 };
 
-struct surface {
+struct Surface {
   // Name of surface
   string name{"noname"};
 
   // Emitter options
-  emitter emitter{};
+  Emitter emitter{};
 
   // Material options
-  material material{};
+  Material material{};
 
   // Geometric options
-  mesh mesh{};
-  transform transform{};
+  Mesh mesh{};
+  Transform transform{};
   vec3 color{0.5f, 0.5f, 0.5f};
 };
 

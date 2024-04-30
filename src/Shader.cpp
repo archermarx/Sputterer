@@ -6,11 +6,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "shader.hpp"
+#include "Shader.hpp"
 #include "glad/glad.h"
 #include "gl_helpers.hpp"
 
-void shader::load (const char *vertex_path, const char *fragment_path) {
+void Shader::load (const char *vertex_path, const char *fragment_path) {
   // 1. Retrieve vertex and fragment source code from file path
   const auto vertexCode = read_from_file(vertex_path);
   const auto fragmentCode = read_from_file(fragment_path);
@@ -19,11 +19,11 @@ void shader::load (const char *vertex_path, const char *fragment_path) {
   id = create_shader_program({vertexCode, fragmentCode}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
 }
 
-void shader::use () const {
+void Shader::use () const {
   GL_CHECK(glUseProgram(id));
 }
 
-GLint shader::get_uniform_location (const std::string &name) const {
+GLint Shader::get_uniform_location (const std::string &name) const {
   GLint loc;
   GL_CHECK(loc = glGetUniformLocation(id, name.c_str()));
   if (loc < 0) {
@@ -32,27 +32,27 @@ GLint shader::get_uniform_location (const std::string &name) const {
   return loc;
 }
 
-void shader::set_bool (const std::string &name, bool value) const {
+void Shader::set_bool (const std::string &name, bool value) const {
   GL_CHECK(glUniform1i(get_uniform_location(name), (int) value));
 }
 
-void shader::set_int (const std::string &name, int value) const {
+void Shader::set_int (const std::string &name, int value) const {
   GL_CHECK(glUniform1i(get_uniform_location(name), value));
 }
 
-void shader::set_float (const std::string &name, float value) const {
+void Shader::set_float (const std::string &name, float value) const {
   GL_CHECK(glUniform1f(get_uniform_location(name), value));
 }
 
-void shader::set_vec3 (const std::string &name, glm::vec3 value) const {
+void Shader::set_vec3 (const std::string &name, glm::vec3 value) const {
   GL_CHECK(glUniform3fv(get_uniform_location(name), 1, glm::value_ptr(value)));
 }
 
-void shader::set_mat4 (const std::string &name, glm::mat4 value) const {
+void Shader::set_mat4 (const std::string &name, glm::mat4 value) const {
   GL_CHECK(glUniformMatrix4fv(get_uniform_location(name), 1, GL_FALSE, glm::value_ptr(value)));
 }
 
-void shader::update_view (const camera &camera, float aspect_ratio) const {
+void Shader::update_view (const Camera &camera, float aspect_ratio) const {
   set_mat4("view", camera.get_view_matrix());
   set_mat4("projection", camera.get_projection_matrix(aspect_ratio));
   set_vec3("viewPos", camera.distance*camera.orientation);

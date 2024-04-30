@@ -13,15 +13,15 @@
 
 // My headers (c++)
 #include "app.hpp"
-#include "input.hpp"
-#include "shader.hpp"
-#include "surface.hpp"
-#include "window.hpp"
+#include "Input.hpp"
+#include "Shader.hpp"
+#include "Surface.hpp"
+#include "Window.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
-#include "particle_container.cuh"
-#include "triangle.cuh"
+#include "ParticleContainer.cuh"
+#include "Triangle.cuh"
 
 using std::vector, std::string;
 
@@ -58,7 +58,7 @@ int main (int argc, char *argv[]) {
     display = static_cast<bool>(std::stoi(argv[2]));
   }
 
-  input input(filename);
+  Input input(filename);
   input.read();
 
   std::cout << "Input read." << std::endl;
@@ -70,15 +70,15 @@ int main (int argc, char *argv[]) {
   app::camera.update_vectors();
 
   // Create particle container, including any explicitly-specified initial particles
-  particle_container pc{"noname", 1.0f, 1};
+  ParticleContainer pc{"noname", 1.0f, 1};
   pc.add_particles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy
                    , input.particle_vz, input.particle_w);
 
   // construct triangles
-  host_vector<triangle> h_triangles;
+  host_vector<Triangle> h_triangles;
 
   host_vector<size_t> h_material_ids;
-  host_vector<material> h_materials;
+  host_vector<Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -115,22 +115,22 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector<triangle> d_triangles = h_triangles;
+  device_vector<Triangle> d_triangles = h_triangles;
   device_vector<size_t> d_surface_ids{h_material_ids};
-  device_vector<material> d_materials{h_materials};
+  device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   // Display objects
-  window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-  shader mesh_shader{}, particle_shader{};
+  Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
+  Shader mesh_shader{}, particle_shader{};
   if (display) {
     // enable window
     window.enable();
 
     // Register window callbacks
-    glfwSetFramebufferSizeCallback(window.glfw_window, app::framebuffer_size_callback);
-    glfwSetCursorPosCallback(window.glfw_window, app::mouse_cursor_callback);
-    glfwSetScrollCallback(window.glfw_window, app::scroll_callback);
+    glfwSetFramebufferSizeCallback(window.window, app::framebuffer_size_callback);
+    glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
+    glfwSetScrollCallback(window.window, app::scroll_callback);
 
     // Load mesh shader
     mesh_shader.load("../shaders/shader.vert", "../shaders/shader.frag");
@@ -164,7 +164,7 @@ int main (int argc, char *argv[]) {
 
   auto next_output_time = 0.0f;
 
-  cuda::event start{}, stop_compute{}, stop_copy{};
+  cuda::Event start{}, stop_compute{}, stop_copy{};
 
   std::cout << "Beginning main loop." << std::endl;
 
@@ -181,21 +181,21 @@ int main (int argc, char *argv[]) {
   while ((display && window.open) || (!display && physical_time < input.max_time)) {
 
     if (display) {
-      window::begin_render_loop();
+      Window::begin_render_loop();
 
       // Timing info
       auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
       float padding = 0.0f;
       ImVec2 bottom_right =
-              ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
+        ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
       ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
       ImGui::Begin("Frame time", nullptr, flags);
       ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
                   "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame
                   , print_time(physical_timestep).c_str(), print_time(physical_time).c_str(), avg_time_compute,
-              (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
-              (avg_time_total/delta_time_smoothed)*100, pc.num_particles);
+        (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
+        (avg_time_total/delta_time_smoothed)*100, pc.num_particles);
       ImGui::End();
 
       // Table of collected particle amounts
@@ -233,8 +233,8 @@ int main (int argc, char *argv[]) {
     // Record iteration timing information
     current_time = std::chrono::system_clock::now();
     app::delta_time = static_cast<float>(
-                              std::chrono::duration_cast<std::chrono::microseconds>(
-                                      current_time - last_time).count())/
+                        std::chrono::duration_cast<std::chrono::microseconds>(
+                          current_time - last_time).count())/
                       1e6;
     last_time = current_time;
 
@@ -346,7 +346,7 @@ int main (int argc, char *argv[]) {
 
     if (display) {
       window.end_render_loop();
-      app::process_input(window.glfw_window);
+      app::process_input(window.window);
     }
 
     frame += 1;

@@ -52,20 +52,20 @@ inline __host__ __device__ float3 make_float3 (const glm::vec4 &v) {
   return {v.x, v.y, v.z};
 }
 
-struct ray {
+struct Ray {
   float3 origin;
   float3 direction;
 };
 
-struct triangle {
+struct Triangle {
   float3 v0;
   float3 v1;
   float3 v2;
   float3 norm;
   float area;
 
-  __host__ __device__ triangle (float3 v0, float3 v1, float3 v2)
-          : v0(v0), v1(v1), v2(v2), norm{0.0f}, area{-1.0f} {
+  __host__ __device__ Triangle (float3 v0, float3 v1, float3 v2)
+    : v0(v0), v1(v1), v2(v2), norm{0.0f}, area{-1.0f} {
     auto e1 = v1 - v0;
     auto e2 = v2 - v0;
 
@@ -91,12 +91,12 @@ struct triangle {
   }
 };
 
-struct hit_info {
+struct HitInfo {
   bool hits{false};
   float t{0.0};
   float3 norm{0.0};
 };
 
-__host__ __device__ hit_info hits_triangle (ray ray, triangle tri);
+__host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri);
 
 #endif

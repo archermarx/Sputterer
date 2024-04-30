@@ -6,13 +6,13 @@
 
 namespace cuda {
 
-  class event {
+  class Event {
   public:
-    event () {
+    Event () {
       CUDA_CHECK(cudaEventCreate(&m_event));
     }
 
-    ~event () {
+    ~Event () {
       CUDA_CHECK(cudaEventDestroy(m_event));
     };
 
@@ -24,7 +24,7 @@ namespace cuda {
     cudaEvent_t m_event{};
   };
 
-  float event_elapsed_time (const event &e1, const event &e2);
+  float event_elapsed_time (const Event &e1, const Event &e2);
 
 } // namespace cuda
 

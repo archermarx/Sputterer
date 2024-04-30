@@ -9,7 +9,7 @@
 
 #include "glad/glad.h"
 
-#include "camera.hpp"
+#include "Camera.hpp"
 
 // Declarations
 unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
@@ -18,12 +18,12 @@ unsigned int compile_shader (const char *source, unsigned int type);
 
 std::string read_from_file (const char *path);
 
-class shader {
+class Shader {
 public:
   // Program ID
   unsigned int id;
 
-  shader () = default;
+  Shader () = default;
 
   void load (const char *vertex_path, const char *fragment_path);
 
@@ -41,7 +41,7 @@ public:
 
   [[nodiscard]] GLint get_uniform_location (const std::string &name) const;
 
-  void update_view (const camera &camera, float aspect_ratio) const;
+  void update_view (const Camera &camera, float aspect_ratio) const;
 };
 
 #endif

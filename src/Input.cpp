@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <unordered_map>
 
-#include "input.hpp"
+#include "Input.hpp"
 
 namespace fs = std::filesystem;
 
@@ -67,7 +67,7 @@ toml::table get_table (toml::table input, const std::string &name) {
   }
 }
 
-void input::read () {
+void Input::read () {
 
   toml::table input;
   try {
@@ -87,7 +87,7 @@ void input::read () {
   chamber_length = read_table_entry_as<float>(chamber, "length_m");
 
   // Read materials
-  std::unordered_map<string, material> materials;
+  std::unordered_map<string, Material> materials;
   std::unordered_map<string, vec3> material_colors;
 
   auto input_materials = *input.get_as<toml::array>("material");
@@ -96,7 +96,7 @@ void input::read () {
     auto material_table = material_node.as_table();
 
     // Populate material
-    material material;
+    Material material;
 
     auto material_name = read_table_entry_as<string>(*material_table, "name");
     auto material_color = read_table_entry_as<vec3>(*material_table, "color");

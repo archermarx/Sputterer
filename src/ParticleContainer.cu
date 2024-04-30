@@ -3,7 +3,7 @@
 #include <thrust/distance.h>
 #include <thrust/partition.h>
 
-#include "particle_container.cuh"
+#include "ParticleContainer.cuh"
 #include "cuda_helpers.cuh"
 #include "gl_helpers.hpp"
 
@@ -13,8 +13,8 @@ __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
   curand_init(seed, tid, 0, &rng[tid]);
 }
 
-particle_container::particle_container (string name, double mass, int charge)
-        : name(std::move(name)), mass(mass), charge(charge) {
+ParticleContainer::ParticleContainer (string name, double mass, int charge)
+  : name(std::move(name)), mass(mass), charge(charge) {
 
   // Allocate memory on GPU
   d_position.resize(max_particles);
@@ -30,8 +30,8 @@ particle_container::particle_container (string name, double mass, int charge)
 }
 
 void
-particle_container::add_particles (vector<float> x, vector<float> y, vector<float> z, vector<float> ux, vector<float> uy
-                                   , vector<float> uz, vector<float> w) {
+ParticleContainer::add_particles (vector<float> x, vector<float> y, vector<float> z, vector<float> ux, vector<float> uy
+                                  , vector<float> uz, vector<float> w) {
   auto n = static_cast<int>(std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()}));
 
   if (n == 0) {
@@ -59,19 +59,19 @@ particle_container::add_particles (vector<float> x, vector<float> y, vector<floa
   num_particles += n;
 }
 
-void particle_container::copy_to_cpu () {
+void ParticleContainer::copy_to_cpu () {
   position = host_vector<float3>(d_position.begin(), d_position.begin() + num_particles);
   velocity = host_vector<float3>(d_velocity.begin(), d_velocity.begin() + num_particles);
   weight = host_vector<float>(d_weight.begin(), d_weight.begin() + num_particles);
 }
 
-void particle_container::set_buffers () {
+void ParticleContainer::set_buffers () {
   // enable buffer
   this->mesh.set_buffers();
   glGenBuffers(1, &this->buffer);
 }
 
-void particle_container::draw (shader shader) {
+void ParticleContainer::draw (Shader shader) {
 
   // Bind vertex array
   auto vao = this->mesh.vao;
@@ -104,8 +104,8 @@ void particle_container::draw (shader shader) {
 #define MIN_T 100'000
 #define TOL 1e-6
 
-__host__ __device__ hit_info hits_triangle (ray ray, triangle tri) {
-  hit_info info;
+__host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
+  HitInfo info;
 
   // Find vectors for two edges sharing v1
   auto edge1 = tri.v1 - tri.v0;
@@ -163,8 +163,8 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
 }
 
 __global__ void
-k_push (float3 *position, float3 *velocity, float *weight, const int n, const triangle *tris, const size_t num_triangles
-        , const size_t *ids, const material *materials, int *collected, const curandState *rng, const float dt) {
+k_push (float3 *position, float3 *velocity, float *weight, const int n, const Triangle *tris, const size_t num_triangles
+        , const size_t *ids, const Material *materials, int *collected, const curandState *rng, const float dt) {
 
   // Thread ID, i.e. what particle we're currently moving
   unsigned int tid = threadIdx.x + blockIdx.x*blockDim.x;
@@ -194,12 +194,12 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const tr
     auto vel = velocity[tid];
 
     // Check for intersections with boundaries
-    ray ray{.origin = pos, .direction = dt*vel};
+    Ray ray{.origin = pos, .direction = dt*vel};
 
     int hit_triangle_id = -1;
     int hit_material_id = -1;
-    hit_info closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
-    hit_info current_hit;
+    HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
+    HitInfo current_hit;
 
     for (int i = 0; i < num_triangles; i++) {
       current_hit = hits_triangle(ray, tris[i]);
@@ -286,16 +286,16 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const tr
   }
 }
 
-std::pair<dim3, dim3> particle_container::get_kernel_launch_params (size_t block_size) const {
+std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t block_size) const {
   auto grid_size = static_cast<int>(ceil(static_cast<float>(num_particles)/static_cast<float>(block_size)));
   dim3 grid(grid_size, 1, 1);
   dim3 block(block_size, 1, 1);
   return std::make_pair(grid, block);
 }
 
-void particle_container::push (const float dt, const thrust::device_vector<triangle> &tris
-                               , const thrust::device_vector<size_t> &ids, const thrust::device_vector<material> &mats
-                               , thrust::device_vector<int> &collected) {
+void ParticleContainer::push (const float dt, const thrust::device_vector<Triangle> &tris
+                              , const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats
+                              , thrust::device_vector<int> &collected) {
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
   auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
   auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
@@ -328,7 +328,7 @@ float rand_normal (float mean = 0.0f, float std = 1.0f) {
   return dist(rng);
 }
 
-void particle_container::emit (triangle &triangle, emitter emitter, float dt) {
+void ParticleContainer::emit (Triangle &triangle, Emitter emitter, float dt) {
   auto num_emit = emitter.flux*triangle.area*dt;
   int num_emit_int = static_cast<int>(num_emit);
   auto remainder = num_emit - static_cast<float>(num_emit_int);
@@ -374,7 +374,7 @@ __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float hal
   }
 }
 
-void particle_container::flag_out_of_bounds (float radius, float length) {
+void ParticleContainer::flag_out_of_bounds (float radius, float length) {
   auto [grid, block] = get_kernel_launch_params();
 
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
@@ -389,7 +389,7 @@ struct is_positive {
   }
 };
 
-void particle_container::remove_flagged_particles () {
+void ParticleContainer::remove_flagged_particles () {
   // reorder positions and velocities so that particles with negative weight follow those with positive weight
   thrust::partition(d_position.begin(), d_position.begin() + num_particles, d_weight.begin(), is_positive());
   thrust::partition(d_velocity.begin(), d_velocity.begin() + num_particles, d_weight.begin(), is_positive());
@@ -408,7 +408,7 @@ void particle_container::remove_flagged_particles () {
   num_particles = static_cast<int>(thrust::distance(d_weight.begin(), ret));
 }
 
-std::ostream &operator<< (std::ostream &os, particle_container const &pc) {
+std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
   os << "==========================================================\n";
   os << "Particle container \"" << pc.name << "\"\n";
   os << "==========================================================\n";

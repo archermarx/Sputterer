@@ -35,6 +35,8 @@ file(GLOB sources
         "${PROJECT_SOURCE_DIR}/imgui/backends/imgui_impl_glfw.cpp"
         "${PROJECT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
         "${PROJECT_SOURCE_DIR}/cpp/imgui_stdlib.*"
+        "${PROJECT_SOURCE_DIR}/include/Faddeeva.cpp"
+        "${PROJECT_SOURCE_DIR}/include/glad.c"
 )
 
 add_executable(sputterer ${sources})

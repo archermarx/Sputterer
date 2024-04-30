@@ -5,22 +5,22 @@
 #include <string>
 #include <vector>
 
-#include "surface.hpp"
-#include "window.hpp"
+#include "Surface.hpp"
+#include "Window.hpp"
 
 using std::string, std::vector;
 
-class input {
+class Input {
 public:
-  input () = default;
+  Input () = default;
 
-  explicit input (string filename)
-          : filename{std::move(filename)} {}
+  explicit Input (string filename)
+    : filename{std::move(filename)} {}
 
   string filename{"input.toml"};
   string current_path{"."};
 
-  vector<surface> surfaces;
+  vector<Surface> surfaces;
 
   float timestep{0.0};
   float max_time{0.0};
