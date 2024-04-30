@@ -137,7 +137,7 @@ int main (int argc, char *argv[]) {
 
     // initialize mesh buffers
     for (auto &surf: input.surfaces) {
-      surf.mesh.setBuffers();
+      surf.mesh.set_buffers();
     }
 
     // Load particle shader

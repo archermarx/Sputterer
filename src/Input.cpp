@@ -86,6 +86,20 @@ void Input::read () {
   chamber_radius = read_table_entry_as<float>(chamber, "radius_m");
   chamber_length = read_table_entry_as<float>(chamber, "length_m");
 
+  // Read plume parameters
+  auto plume = get_table(input, "plume_model");
+  this->plume_origin = read_table_entry_as<vec3>(plume, "plume_origin");
+  this->plume_direction = read_table_entry_as<vec3>(plume, "plume_direction");
+  this->background_pressure_Torr = read_table_entry_as<double>(plume, "background_pressure_Torr");
+  this->divergence_angle_deg = read_table_entry_as<double>(plume, "divergence_angle_deg");
+  this->ion_current_A = read_table_entry_as<double>(plume, "ion_current_A");
+  auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
+  auto ind = 0;
+  for (auto &&plume_param: *plume_params_arr) {
+    this->plume_model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
+    ind++;
+  }
+
   // Read materials
   std::unordered_map<string, Material> materials;
   std::unordered_map<string, vec3> material_colors;

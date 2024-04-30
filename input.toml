@@ -3,6 +3,14 @@ timestep_s = 200e-6
 max_time_s = 100e-3
 output_interval_s = 0.01
 
+[plume_model]
+plume_origin = { x = 0.0, y = 0.0, z = 0.0 }
+plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
+background_pressure_Torr = 5e-6
+divergence_angle_deg = 15.0
+ion_current_A = 4.0
+model_parameters = [0.92, 0.81, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]
+
 [chamber]
 radius_m = 3
 length_m = 6
