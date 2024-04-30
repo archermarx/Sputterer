@@ -1,6 +1,6 @@
 #pragma once
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef SPUTTERER_WINDOW_HPP
+#define SPUTTERER_WINDOW_HPP
 
 #include "glad/glad.h"
 
@@ -13,20 +13,22 @@
 
 using std::string;
 
-class Window {
+class window {
 public:
-    string       name;
-    unsigned int width;
-    unsigned int height;
-    bool         open;
-    GLFWwindow  *window;
-    bool         enabled{false};
+  string name;
+  unsigned int width;
+  unsigned int height;
+  bool open;
+  GLFWwindow *glfw_window;
+  bool enabled{false};
 
-    ~Window();
+  ~window ();
 
-    void        enable ();
-    static void beginRenderLoop ();
-    void        endRenderLoop ();
+  void enable ();
+
+  static void begin_render_loop ();
+
+  void end_render_loop ();
 };
 
 #endif

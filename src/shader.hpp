@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SHADER_HPP
-#define SHADER_HPP
+#ifndef SPUTTERER_SHADER_HPP
+#define SPUTTERER_SHADER_HPP
 
 #include <string>
 #include <vector>
@@ -12,29 +12,36 @@
 #include "camera.hpp"
 
 // Declarations
-unsigned int createShaderProgram (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
-unsigned int compileShader (const char *source, unsigned int type);
-std::string  readFromFile (const char *path);
+unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
 
-class Shader {
+unsigned int compile_shader (const char *source, unsigned int type);
+
+std::string read_from_file (const char *path);
+
+class shader {
 public:
-    // Program ID
-    unsigned int ID;
+  // Program ID
+  unsigned int id;
 
-    Shader() = default;
-    void load (const char *vertexPath, const char *fragmentPath);
-    void use () const;
+  shader () = default;
 
-    [[maybe_unused]] void setBool (const std::string &name, bool value) const;
-    [[maybe_unused]] void setInt (const std::string &name, int value) const;
-    [[maybe_unused]] void setFloat (const std::string &name, float value) const;
+  void load (const char *vertex_path, const char *fragment_path);
 
-    void setVec3 (const std::string &name, glm::vec3 value) const;
-    void setMat4 (const std::string &name, glm::mat4 value) const;
+  void use () const;
 
-    [[nodiscard]] GLint getUniformLocation (const std::string &name) const;
+  [[maybe_unused]] void set_bool (const std::string &name, bool value) const;
 
-    void updateView (const Camera &camera, float aspectRatio) const;
+  [[maybe_unused]] void set_int (const std::string &name, int value) const;
+
+  [[maybe_unused]] void set_float (const std::string &name, float value) const;
+
+  void set_vec3 (const std::string &name, glm::vec3 value) const;
+
+  void set_mat4 (const std::string &name, glm::mat4 value) const;
+
+  [[nodiscard]] GLint get_uniform_location (const std::string &name) const;
+
+  void update_view (const camera &camera, float aspect_ratio) const;
 };
 
 #endif

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef INPUT_HPP
-#define INPUT_HPP
+#ifndef SPUTTERER_INPUT_HPP
+#define SPUTTERER_INPUT_HPP
 
 #include <string>
 #include <vector>
@@ -10,32 +10,33 @@
 
 using std::string, std::vector;
 
-class Input {
+class input {
 public:
-    Input() = default;
-    explicit Input(string filename)
-        : filename{std::move(filename)} {}
+  input () = default;
 
-    string filename{"input.toml"};
-    string current_path{"."};
+  explicit input (string filename)
+          : filename{std::move(filename)} {}
 
-    vector<Surface> surfaces;
+  string filename{"input.toml"};
+  string current_path{"."};
 
-    float timestep{0.0};
-    float max_time{0.0};
-    float output_interval{0.0};
-    float chamberRadius{-1.0};
-    float chamberLength{-1.0};
+  vector<surface> surfaces;
 
-    std::vector<float> particle_w;
-    std::vector<float> particle_x;
-    std::vector<float> particle_y;
-    std::vector<float> particle_z;
-    std::vector<float> particle_vx;
-    std::vector<float> particle_vy;
-    std::vector<float> particle_vz;
+  float timestep{0.0};
+  float max_time{0.0};
+  float output_interval{0.0};
+  float chamber_radius{-1.0};
+  float chamber_length{-1.0};
 
-    void read ();
+  std::vector<float> particle_w;
+  std::vector<float> particle_x;
+  std::vector<float> particle_y;
+  std::vector<float> particle_z;
+  std::vector<float> particle_vx;
+  std::vector<float> particle_vy;
+  std::vector<float> particle_vz;
+
+  void read ();
 };
 
 #endif

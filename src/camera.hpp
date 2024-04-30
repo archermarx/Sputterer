@@ -1,6 +1,6 @@
 #pragma once
-#ifndef CAMERA_HPP
-#define CAMERA_HPP
+#ifndef SPUTTERER_CAMERA_HPP
+#define SPUTTERER_CAMERA_HPP
 
 #include <iosfwd>
 
@@ -13,76 +13,74 @@
 
 #include "vec3.hpp"
 
-enum class Direction {
-    Forward,
-    Backward,
-    Left,
-    Right,
-    Up,
-    Down,
+enum class direction {
+    forward, backward, left, right, up, down
 };
 
-enum class CameraMovement { Pan, Orbit };
+enum class camera_movement {
+    pan, orbit
+};
 
 // Default camera values
-constexpr float YAW   = -90.0f;
-constexpr float PITCH = 0.0f;
+constexpr auto default_yaw = -90.0f;
+constexpr auto default_pitch = 0.0f;
 
-constexpr float PAN_SENSITIVITY   = 0.05f;
-constexpr float ORBIT_SENSITIVITY = 0.1f;
+constexpr auto default_pan_sensitivity = 0.05f;
+constexpr auto default_orbit_sensitivity = 0.1f;
 
-constexpr float FOV          = 75.0f;
-constexpr float YAW_SPEED    = 100.0f;
-constexpr float PITCH_SPEED  = 100.0f;
-constexpr float ZOOM_SPEED   = 0.5f;
-constexpr float MAX_DISTANCE = 20.0f;
+constexpr auto default_fov = 75.0f;
+constexpr auto default_yaw_speed = 100.0f;
+constexpr auto default_pitch_speed = 100.0f;
+constexpr auto default_zoom_speed = 0.5f;
 
-class Camera {
+constexpr auto min_zoom_distance = 0.1f;
+constexpr auto max_zoom_distance = 20.0f;
+
+class camera {
 public:
     // camera attributes
     vec3 orientation;
     vec3 front{0.0f, 0.0f, -1.0f};
     vec3 up{0.0f, 1.0f, 0.0f};
     vec3 right{1.0f, 0.0f, 0.0f};
-    vec3 worldUp{0.0f, 1.0f, 0.0f};
+    vec3 world_up{0.0f, 1.0f, 0.0f};
     vec3 center{0.0f, 0.0f, 0.0f};
 
     // Euler angles
-    float yaw{YAW};
-    float pitch{PITCH};
+    float yaw{default_yaw};
+    float pitch{default_pitch};
     float distance;
 
     // camera options
-    float pitchSpeed{PITCH_SPEED};
-    float yawSpeed{YAW_SPEED};
-    float orbitSensitivity{ORBIT_SENSITIVITY};
-    float panSensitivity{PAN_SENSITIVITY};
-    float zoomSpeed{ZOOM_SPEED};
-    float fov{FOV};
+    float pitch_speed{default_pitch_speed};
+    float yaw_speed{default_yaw_speed};
+    float orbit_sensitivity{default_orbit_sensitivity};
+    float pan_sensitivity{default_pan_sensitivity};
+    float zoom_speed{default_zoom_speed};
+    float fov{default_fov};
 
     // Returns the view matrix calculated using euler angles and the glfw look at matrix
-    [[nodiscard]] glm::mat4 getViewMatrix () const;
+    [[nodiscard]] glm::mat4 get_view_matrix () const;
 
     // Returns the projection matrix, given an aspect ratio
-    [[nodiscard]] glm::mat4 getProjectionMatrix (float aspectRatio, float min = 0.1f, float max = 100.0f) const;
+    [[nodiscard]] glm::mat4 get_projection_matrix (float aspect_ratio, float min = 0.1f, float max = 100.0f) const;
 
     // Processes input received from keyboard. Expects a movement direction and a timestep.
-    void processKeyboard (Direction direction, float deltaTime);
+    void process_keyboard (direction direction, float delta_time);
 
     // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-    void processMouseMovement (float xoffset, float yoffset, CameraMovement movementType);
+    void process_mouse_movement (float xoffset, float yoffset, camera_movement movement_type);
 
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
-    void processMouseScroll (float yoffset);
+    void process_mouse_scroll (float yoffset);
 
     // After a change, update camera orientation and position vectors
-    void updateVectors (CameraMovement movementType = CameraMovement::Orbit);
+    void update_vectors (camera_movement movement_type = camera_movement::orbit);
 
     // Constructor with vectors
-    explicit Camera(vec3 position = {0.0f, 0.0f, 0.0f})
-        : orientation(glm::normalize(position))
-        , distance(glm::length(position)) {
-        updateVectors();
+    explicit camera (vec3 position = {0.0f, 0.0f, 0.0f})
+            : orientation(glm::normalize(position)), distance(glm::length(position)) {
+        update_vectors();
     }
 };
 
