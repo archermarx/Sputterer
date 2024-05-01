@@ -125,9 +125,12 @@ int main (int argc, char *argv[]) {
   ThrusterPlume plume{};
   plume.location = input.plume_origin;
   plume.direction = glm::normalize(input.plume_direction);
-  plume.beam_current = input.ion_current_A;
-  plume.background_pressure = input.background_pressure_Torr;
+  plume.beam_current = input.ion_current_a;
+  plume.background_pressure = input.background_pressure_torr;
   plume.model_params = input.plume_model_params;
+  plume.beam_energy_ev = input.beam_energy_ev;
+  plume.scattered_energy_ev = input.scattered_energy_ev;
+  plume.cex_energy_ev = input.cex_energy_ev;
 
   // Display objects
   Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};

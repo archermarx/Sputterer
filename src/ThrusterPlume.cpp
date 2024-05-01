@@ -14,7 +14,6 @@
 
 using std::numbers::pi;
 
-// Convert a
 vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
 
   // vector from plume origin to position

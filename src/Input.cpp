@@ -77,10 +77,12 @@ void Input::read () {
     std::cerr << "Parsing failed:\n" << err << "\n";
   }
 
+  // Read simulation parameters
   auto sim = get_table(input, "simulation");
   timestep = read_table_entry_as<float>(sim, "timestep_s");
   max_time = read_table_entry_as<float>(sim, "max_time_s");
   output_interval = read_table_entry_as<float>(sim, "output_interval_s");
+  particle_weight = read_table_entry_as<int>(sim, "particle_weight");
 
   // Read chamber features
   auto chamber = get_table(input, "chamber");
@@ -88,18 +90,22 @@ void Input::read () {
   chamber_length = read_table_entry_as<float>(chamber, "length_m");
 
   // Read plume parameters
+  // TODO: would be good to read these directly into ThrusterPlume structure
   auto plume = get_table(input, "plume_model");
   this->plume_origin = read_table_entry_as<vec3>(plume, "plume_origin");
   this->plume_direction = read_table_entry_as<vec3>(plume, "plume_direction");
-  this->background_pressure_Torr = read_table_entry_as<double>(plume, "background_pressure_Torr");
+  this->background_pressure_torr = read_table_entry_as<double>(plume, "background_pressure_Torr");
   this->divergence_angle_deg = read_table_entry_as<double>(plume, "divergence_angle_deg");
-  this->ion_current_A = read_table_entry_as<double>(plume, "ion_current_A");
+  this->ion_current_a = read_table_entry_as<double>(plume, "ion_current_A");
   auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
   auto ind = 0;
   for (auto &&plume_param: *plume_params_arr) {
     this->plume_model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
     ind++;
   }
+  this->beam_energy_ev = read_table_entry_as<double>(plume, "beam_energy_eV");
+  this->scattered_energy_ev = read_table_entry_as<double>(plume, "scattered_energy_eV");
+  this->cex_energy_ev = read_table_entry_as<double>(plume, "cex_energy_eV");
 
   // Read materials
   std::unordered_map<string, Material> materials;

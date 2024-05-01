@@ -38,10 +38,17 @@ public:
   // plume model inputs
   vec3 plume_origin{};
   vec3 plume_direction{};
-  double background_pressure_Torr{};
+  double background_pressure_torr{};
   double divergence_angle_deg{};
-  double ion_current_A{};
+  double ion_current_a{};
   std::array<double, 7> plume_model_params{};
+  double beam_energy_ev{};
+  double scattered_energy_ev{};
+  double cex_energy_ev{};
+
+
+  // particle weight
+  int particle_weight{1};
 
   // initial particles (if any)
   std::vector<float> particle_w;

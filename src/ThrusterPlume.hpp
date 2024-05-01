@@ -28,6 +28,11 @@ public:
   double background_pressure{0.0}; // normalized background pressure
   double beam_current{5.0};
 
+  // Beam energy
+  double beam_energy_ev{300.0};
+  double scattered_energy_ev{250.0};
+  double cex_energy_ev{50.0};
+
   [[nodiscard]] double main_divergence_angle () const;
 
   [[nodiscard]] double scattered_divergence_angle () const;
