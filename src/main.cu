@@ -166,8 +166,6 @@ int main (int argc, char *argv[]) {
     plume_shader.use();
     float plume_length = input.chamber_length/2 - plume.location.z;
     plume_shader.set_float("length", plume_length);
-    auto div_angle = 15.0*3.14159/180.0;
-    plume_shader.set_float("radius", plume_length*tan(div_angle));
     plume.set_buffers();
   }
 
@@ -348,6 +346,16 @@ int main (int argc, char *argv[]) {
       // 3. draw plume
       plume_shader.use();
       plume_shader.set_mat4("camera", cam);
+
+      // draw main beam
+      auto div_angle = plume.main_divergence_angle();
+      plume_shader.set_bool("main_beam", true);
+      plume_shader.set_float("angle", div_angle);
+      plume.draw();
+
+      div_angle = plume.scattered_divergence_angle();
+      plume_shader.set_bool("main_beam", false);
+      plume_shader.set_float("angle", div_angle);
       plume.draw();
     }
 
