@@ -17,6 +17,7 @@
 #include "Shader.hpp"
 #include "Surface.hpp"
 #include "Window.hpp"
+#include "ThrusterPlume.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
@@ -120,9 +121,17 @@ int main (int argc, char *argv[]) {
   device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
+  // Create plume model
+  ThrusterPlume plume{};
+  plume.location = input.plume_origin;
+  plume.direction = input.plume_direction;
+  plume.beam_current = input.ion_current_A;
+  plume.background_pressure = input.background_pressure_Torr;
+  plume.model_params = input.plume_model_params;
+
   // Display objects
   Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-  Shader mesh_shader{}, particle_shader{};
+  Shader mesh_shader{}, particle_shader{}, plume_shader{};
   if (display) {
     // enable window
     window.enable();
@@ -151,6 +160,10 @@ int main (int argc, char *argv[]) {
     // Set up particle mesh
     pc.mesh.read_from_obj("../o_sphere.obj");
     pc.set_buffers();
+
+    // Load plume shader
+    plume_shader.load("../shaders/plume.vert", "../shaders/plume.frag", "../shaders/plume.geom");
+    plume.set_buffers();
   }
 
   // Create timing objects
@@ -297,29 +310,41 @@ int main (int argc, char *argv[]) {
 
     // Rendering
     if (display) {
-      // update camera projection mesh shader
+
+      // get camera matrix for use in particle and plume shaders
+      auto cam = app::camera.get_projection_matrix(app::aspect_ratio)*app::camera.get_view_matrix();
+
+      // 1. draw user-provided geometry
+
+      // update update camera uniforms
       mesh_shader.use();
       mesh_shader.update_view(app::camera, app::aspect_ratio);
 
-      // draw meshes
       for (const auto &surface: input.surfaces) {
-        // set the model matrix
+        // set the model matrix and object color per surface
         mesh_shader.use();
-        surface.mesh.draw(mesh_shader, surface.transform, surface.color);
+        mesh_shader.set_mat4("model", surface.transform.get_matrix());
+        mesh_shader.set_vec3("objectColor", surface.color);
+        surface.mesh.draw();
       }
 
-      // draw particles (instanced!)
+      // 2. draw particles (instanced!)
       if (pc.num_particles > 0) {
         // activate particle shader
         particle_shader.use();
 
         // send camera information to shader
-        auto cam = app::camera.get_projection_matrix(app::aspect_ratio)*app::camera.get_view_matrix();
         particle_shader.set_mat4("camera", cam);
 
         // draw particles
-        pc.draw(particle_shader);
+        pc.draw();
       }
+
+      // 3. draw plume
+      plume_shader.use();
+      plume_shader.set_mat4("camera", cam);
+      plume.draw();
+
     }
 
     if (physical_time > next_output_time || (!display && physical_time >= input.max_time) ||

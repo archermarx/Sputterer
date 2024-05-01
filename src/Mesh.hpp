@@ -9,7 +9,6 @@
 #include <vector>
 #include <memory>
 
-#include "Shader.hpp"
 #include "vec3.hpp"
 
 using std::string, std::vector;
@@ -67,9 +66,7 @@ public:
 
   void set_buffers ();
 
-  void draw (Shader &shader) const;
-
-  void draw (const Shader &shader, const Transform &transform, const vec3 &color) const;
+  void draw () const;
 
   // Vertex array buffer
   // Public so we can access this from InstancedArray

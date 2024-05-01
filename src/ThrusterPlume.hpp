@@ -33,6 +33,13 @@ public:
 
   [[nodiscard]] double current_density (vec3 position) const;
 
+  void set_buffers ();
+
+  void draw ();
+
+private:
+  unsigned int vbo{}, vao{};
+
 };
 
 #endif // SPUTTERER_THRUSTERPLUME_HPP

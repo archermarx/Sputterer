@@ -195,19 +195,7 @@ Mesh::~Mesh () {
   }
 }
 
-void Mesh::draw (Shader &shader) const {
-  Transform transform;
-  vec3 color{0.3, 0.3, 0.3};
-  draw(shader, transform, color);
-}
-
-void Mesh::draw (const Shader &shader, const Transform &transform, const vec3 &color) const {
-  // activate shader
-  shader.use();
-
-  // Bind uniforms from transform
-  shader.set_mat4("model", transform.get_matrix());
-  shader.set_vec3("objectColor", color);
+void Mesh::draw () const {
 
   // draw mesh
   // std::cout << "VAO, VBO, EBO: " << VAO << ", " << VBO << ", " << EBO << "\n";

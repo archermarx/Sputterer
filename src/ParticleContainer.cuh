@@ -57,7 +57,7 @@ public:
   // Particle mesh
   Mesh mesh{};
 
-  void draw (Shader shader);
+  void draw ();
 
   void set_buffers ();
 

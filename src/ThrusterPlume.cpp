@@ -5,6 +5,8 @@
 #include <numbers>
 #include <complex>
 
+#include "gl_helpers.hpp"
+
 // header for erfi
 #include "../include/Faddeeva.hpp"
 
@@ -85,3 +87,22 @@ double ThrusterPlume::current_density (const vec3 position) const {
   // total beam current density is sum of main, scattered, and cex beams
   return main_current_density + scattered_current_density + cex_current_density;
 }
+
+void ThrusterPlume::set_buffers () {
+  glGenBuffers(1, &vbo);
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  vec3 verts[] = {this->location};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vec3), verts, GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
+  glBindVertexArray(0);
+}
+
+void ThrusterPlume::draw () {
+  glBindVertexArray(vao);
+  glDrawArrays(GL_POINTS, 0, 1);
+  glBindVertexArray(0);
+}
+

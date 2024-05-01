@@ -71,7 +71,7 @@ void ParticleContainer::set_buffers () {
   glGenBuffers(1, &this->buffer);
 }
 
-void ParticleContainer::draw (Shader shader) {
+void ParticleContainer::draw () {
 
   // Bind vertex array
   auto vao = this->mesh.vao;
@@ -91,7 +91,6 @@ void ParticleContainer::draw (Shader shader) {
   GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->mesh.ebo));
 
   // Draw meshes
-  shader.use();
   GL_CHECK(glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(3*this->mesh.num_triangles), GL_UNSIGNED_INT
                                    , nullptr, num_particles));
 
