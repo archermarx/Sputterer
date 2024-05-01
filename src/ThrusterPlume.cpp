@@ -49,8 +49,16 @@ double current_density_scale (const double angle, const double div_angle, const 
   return numer/denom.real();
 }
 
-double ThrusterPlume::current_density (const vec3 position) const {
 
+double ThrusterPlume::scattered_divergence_angle () const {
+  return (this->main_divergence_angle())/(this->model_params[1]);
+}
+
+double ThrusterPlume::main_divergence_angle () const {
+  return this->model_params[2]*this->background_pressure + this->model_params[3];
+}
+
+double ThrusterPlume::current_density (const vec3 position) const {
 
   const auto coords = convert_to_thruster_coords(position);
   auto radius = coords.x;
@@ -65,8 +73,8 @@ double ThrusterPlume::current_density (const vec3 position) const {
 
   // divergence angles
   const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = this->model_params;
-  auto div_angle_scattered = t2*this->background_pressure + t3;
-  auto div_angle_main = t1*div_angle_scattered;
+  auto div_angle_scattered = this->scattered_divergence_angle();
+  auto div_angle_main = this->main_divergence_angle();
 
   // neutral density
   auto neutral_density = t4*this->background_pressure + t5;
@@ -93,16 +101,17 @@ void ThrusterPlume::set_buffers () {
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  vec3 verts[] = {this->location};
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vec3), verts, GL_STATIC_DRAW);
+
+  float points[] = {this->location.x, this->location.y, this->location.z};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);
   glBindVertexArray(0);
 }
 
 void ThrusterPlume::draw () {
   glBindVertexArray(vao);
   glDrawArrays(GL_POINTS, 0, 1);
-  glBindVertexArray(0);
 }
+
 

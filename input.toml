@@ -4,7 +4,7 @@ max_time_s = 100e-3
 output_interval_s = 0.01
 
 [plume_model]
-plume_origin = { x = 0.0, y = 0.0, z = 0.0 }
+plume_origin = { x = 0.0, y = 0.0, z = -2.0 }
 plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
 background_pressure_Torr = 5e-6
 divergence_angle_deg = 15.0
@@ -28,7 +28,7 @@ file = "o_rect.obj"
 material = "carbon"
 emit = true
 scale = { x = 0.25, y = 0.25, z = 0.25 }
-translate = { x = 0.0, y = 0.125, z = -2.0 }
+translate = { x = 0.0, y = 0.0, z = -2.0 }
 color = { x = 0.2, y = 0.2, z = 0.8 }
 
 [geometry.emitter]

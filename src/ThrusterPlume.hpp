@@ -25,8 +25,12 @@ public:
   };
 
   // Design parameters
-  double background_pressure{0.0}; // normalized backgorund pressure
+  double background_pressure{0.0}; // normalized background pressure
   double beam_current{5.0};
+
+  [[nodiscard]] double main_divergence_angle () const;
+
+  [[nodiscard]] double scattered_divergence_angle () const;
 
   // convert 3D Cartesian coordinates (x, y, z) to thruster-relative polar coordinates (r, alpha)
   [[nodiscard]] vec2 convert_to_thruster_coords (vec3 position) const;

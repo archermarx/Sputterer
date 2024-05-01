@@ -47,7 +47,8 @@ void Shader::set_int (const std::string &name, int value) const {
 }
 
 void Shader::set_float (const std::string &name, float value) const {
-  GL_CHECK(glUniform1f(get_uniform_location(name), value));
+  auto loc = get_uniform_location(name);
+  GL_CHECK(glUniform1f(loc, value));
 }
 
 void Shader::set_vec3 (const std::string &name, glm::vec3 value) const {

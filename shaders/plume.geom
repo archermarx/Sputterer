@@ -1,27 +1,37 @@
 #version 330 core
-layout (points) in;
-layout (triangle_strip, max_vertices = 5) out;
 
+#define MAX_VERTICES 26
 #define PI 3.1415926538
 
+layout (points) in;
+layout (triangle_strip, max_vertices = MAX_VERTICES) out;
+
 uniform mat4 camera;
+uniform float length;
+uniform float radius;
 
-float r1 = 0.1;
-float r2 = 1.0;
+void build_cone(vec4 position) {
+    int resolution = (MAX_VERTICES - 2) / 2;
+    float r0 = 0.0;
 
-void build_cone(vec4 origin, int resolution, float offset) {
-    for (float i = 0.0; i < resolution; i++) {
-        float angle = 2 * PI * i / resolution;
+    for (int i = 0; i <= resolution; i++) {
+
+        int ind = i % resolution;
+        float angle = 2 * PI * ind / resolution;
         float s = sin(angle);
         float c = cos(angle);
-        gl_Position = camera * (origin + vec4(r1 * c, r1 * s, 0.0, 0.0));
+        vec4 v1 = position + vec4(r0 * c, r0 * s, 0.0, 1.0);
+        vec4 v2 = position + vec4(radius * c, radius * s, length, 1.0);
+
+        gl_Position = camera * v1;
         EmitVertex();
-        gl_Position = camera * (origin + vec4(r2 * c, r2 * s, offset, 0.0));
+
+        gl_Position = camera * v2;
         EmitVertex();
     }
-    EndPrimitive();
 }
 
+
 void main() {
-    build_cone(gl_in[0].gl_Position, 4, 1.0);
+    build_cone(gl_in[0].gl_Position);
 }

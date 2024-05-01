@@ -163,6 +163,11 @@ int main (int argc, char *argv[]) {
 
     // Load plume shader
     plume_shader.load("../shaders/plume.vert", "../shaders/plume.frag", "../shaders/plume.geom");
+    plume_shader.use();
+    float plume_length = input.chamber_length/2 - plume.location.z;
+    plume_shader.set_float("length", plume_length);
+    auto div_angle = 15.0*3.14159/180.0;
+    plume_shader.set_float("radius", plume_length*tan(div_angle));
     plume.set_buffers();
   }
 
@@ -344,7 +349,6 @@ int main (int argc, char *argv[]) {
       plume_shader.use();
       plume_shader.set_mat4("camera", cam);
       plume.draw();
-
     }
 
     if (physical_time > next_output_time || (!display && physical_time >= input.max_time) ||
