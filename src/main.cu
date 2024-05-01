@@ -76,10 +76,10 @@ int main (int argc, char *argv[]) {
                    , input.particle_vz, input.particle_w);
 
   // construct triangles
-  host_vector<Triangle> h_triangles;
+  host_vector <Triangle> h_triangles;
 
-  host_vector<size_t> h_material_ids;
-  host_vector<Material> h_materials;
+  host_vector <size_t> h_material_ids;
+  host_vector <Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -116,15 +116,15 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector<Triangle> d_triangles = h_triangles;
-  device_vector<size_t> d_surface_ids{h_material_ids};
-  device_vector<Material> d_materials{h_materials};
+  device_vector <Triangle> d_triangles = h_triangles;
+  device_vector <size_t> d_surface_ids{h_material_ids};
+  device_vector <Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   // Create plume model
   ThrusterPlume plume{};
   plume.location = input.plume_origin;
-  plume.direction = input.plume_direction;
+  plume.direction = glm::normalize(input.plume_direction);
   plume.beam_current = input.ion_current_A;
   plume.background_pressure = input.background_pressure_Torr;
   plume.model_params = input.plume_model_params;
@@ -166,6 +166,9 @@ int main (int argc, char *argv[]) {
     plume_shader.use();
     float plume_length = input.chamber_length/2 - plume.location.z;
     plume_shader.set_float("length", plume_length);
+    plume_shader.set_vec3("direction", plume.direction);
+    glm::mat4 rot = glm::lookAt(vec3(0.0f), plume.direction, vec3(0.0, 1.0, 0.0));
+    plume_shader.set_mat4("rotation", rot);
     plume.set_buffers();
   }
 
