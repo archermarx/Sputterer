@@ -25,7 +25,7 @@ public:
 
   Shader () = default;
 
-  void load (const char *vertex_path, const char *fragment_path);
+  void load (const char *vertex_path, const char *fragment_path, const char *geometry_path = nullptr);
 
   void use () const;
 

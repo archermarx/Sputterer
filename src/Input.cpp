@@ -68,6 +68,7 @@ toml::table get_table (toml::table input, const std::string &name) {
 }
 
 void Input::read () {
+  // TODO: need nice error checking
 
   toml::table input;
   try {

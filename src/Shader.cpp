@@ -3,20 +3,26 @@
 #include <sstream>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Shader.hpp"
 #include "glad/glad.h"
 #include "gl_helpers.hpp"
 
-void Shader::load (const char *vertex_path, const char *fragment_path) {
+void Shader::load (const char *vertex_path, const char *fragment_path, const char *geometry_path) {
   // 1. Retrieve vertex and fragment source code from file path
-  const auto vertexCode = read_from_file(vertex_path);
-  const auto fragmentCode = read_from_file(fragment_path);
+  const auto vertex_code = read_from_file(vertex_path);
+  const auto fragment_code = read_from_file(fragment_path);
 
   // 2. Compile shaders and link
-  id = create_shader_program({vertexCode, fragmentCode}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
+  if (geometry_path == nullptr) {
+    id = create_shader_program({vertex_code, fragment_code}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
+  } else {
+    const auto geometry_code = read_from_file(geometry_path);
+    id = create_shader_program(
+      {vertex_code, fragment_code, geometry_code}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER}
+    );
+  }
 }
 
 void Shader::use () const {
@@ -65,21 +71,21 @@ void Shader::update_view (const Camera &camera, float aspect_ratio) const {
 // Read the contents of a file into a string
 std::string read_from_file (const char *path) {
   std::string contents;
-  std::ifstream vFile;
+  std::ifstream v_file;
 
   // ensure ifstream objects can throw exceptsions
-  vFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+  v_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
   try {
     // open file
-    vFile.open(path);
-    std::stringstream vStream;
+    v_file.open(path);
+    std::stringstream v_stream;
     // read file's buffer contents into streams
-    vStream << vFile.rdbuf();
+    v_stream << v_file.rdbuf();
     // close file handlers
-    vFile.close();
+    v_file.close();
     // convert stream into string
-    contents = vStream.str();
+    contents = v_stream.str();
   } catch (std::ifstream::failure const &) {
     std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
   }
@@ -95,11 +101,11 @@ unsigned int compile_shader (const char *source, const unsigned int type) {
   glCompileShader(shader);
 
   int success;
-  char infoLog[512];
+  char info_log[512];
   glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 
   if (!success) {
-    glGetShaderInfoLog(shader, 512, nullptr, infoLog);
+    glGetShaderInfoLog(shader, 512, nullptr, info_log);
     std::cout << "ERROR::SHADER::";
 
     switch (type) {
@@ -113,7 +119,7 @@ unsigned int compile_shader (const char *source, const unsigned int type) {
         std::cout << "UNKNOWN";
         break;
     }
-    std::cout << "::COMPILATION_FAILED\n" << infoLog << std::endl;
+    std::cout << "::COMPILATION_FAILED\n" << info_log << std::endl;
   }
   return shader;
 }
@@ -121,25 +127,25 @@ unsigned int compile_shader (const char *source, const unsigned int type) {
 // Given a list of shader source code and a list of types (e.g. GL_FRAGMENT_SHADER), compile the shaders and link into a
 // program
 unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types) {
-  unsigned int shaderProgram = glCreateProgram();
-  int N = std::min(sources.size(), types.size());
+  unsigned int shader_program = glCreateProgram();
+  int n = std::min(sources.size(), types.size());
 
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < n; i++) {
     auto shader = compile_shader(sources[i].c_str(), types[i]);
-    glAttachShader(shaderProgram, shader);
+    glAttachShader(shader_program, shader);
     glDeleteShader(shader);
   }
 
-  glLinkProgram(shaderProgram);
+  glLinkProgram(shader_program);
 
   // check for success
   int success;
-  char infoLog[512];
-  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+  char info_log[512];
+  glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
   if (!success) {
-    glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-    std::cout << "ERROR::SHADER::LINK_FAILED\n" << infoLog << std::endl;
+    glGetProgramInfoLog(shader_program, 512, nullptr, info_log);
+    std::cout << "ERROR::SHADER::LINK_FAILED\n" << info_log << std::endl;
   }
 
-  return shaderProgram;
+  return shader_program;
 }
