@@ -2,7 +2,6 @@
 // Created by marksta on 4/30/24.
 //
 
-#include <numbers>
 #include <complex>
 
 #include "gl_helpers.hpp"
@@ -10,9 +9,9 @@
 // header for erfi
 #include "../include/Faddeeva.hpp"
 
+#include "Constants.hpp"
 #include "ThrusterPlume.hpp"
 
-using std::numbers::pi;
 
 vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
 
@@ -31,6 +30,7 @@ vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
 double current_density_scale (const double angle, const double div_angle, const double frac) {
   using namespace std::complex_literals;
   using namespace Faddeeva;
+  using namespace constants;
 
   const auto pi_threehalves = sqrt(pi*pi*pi);
   auto erfi_arg1 = 0.5*div_angle;
@@ -48,7 +48,6 @@ double current_density_scale (const double angle, const double div_angle, const 
   return numer/denom.real();
 }
 
-
 double ThrusterPlume::scattered_divergence_angle () const {
   return (this->main_divergence_angle())/(this->model_params[1]);
 }
@@ -58,6 +57,8 @@ double ThrusterPlume::main_divergence_angle () const {
 }
 
 double ThrusterPlume::current_density (const vec3 position) const {
+
+  using namespace constants;
 
   const auto coords = convert_to_thruster_coords(position);
   auto radius = coords.x;
@@ -93,6 +94,46 @@ double ThrusterPlume::current_density (const vec3 position) const {
 
   // total beam current density is sum of main, scattered, and cex beams
   return main_current_density + scattered_current_density + cex_current_density;
+}
+
+double sputtering_yield (double energy, double angle, double incident_mass, double target_mass, double incident_z
+                         , double target_z) {
+
+  using namespace constants;
+
+  // Model fitting parameters
+  constexpr auto threshold_energy = 10.92;
+  constexpr auto q = 2.18;
+  constexpr auto lambda = 4.05;
+  constexpr auto mu = 1.97;
+  constexpr auto f = 2.29;
+  constexpr auto a = 0.44;
+  constexpr auto b = 0.71;
+
+  // no sputtering if energy below the threshold energy
+  if (energy < threshold_energy) {
+    return 0.0;
+  }
+
+  // model computation
+  constexpr auto twothirds = 2.0/3.0;
+  constexpr auto arg1 = 9*pi*pi/128;
+  constexpr auto arg2 = a_0*4*pi*eps_0/q_e;
+  auto a1 = cbrt(arg1)*arg2;
+  auto a2 = sqrt(pow(incident_z, twothirds) + pow(incident_z, twothirds));
+  auto eps_l = a1*target_mass*(target_z*incident_z*(target_mass + incident_mass))*a2*energy;
+
+  // Nuclear stopping power for KrC potential
+  auto w = eps_l + 0.1728*sqrt(eps_l) + 0.008*pow(eps_l, 0.1504);
+  auto inv_w = 1.0/w;
+  auto s_n = 0.5*log(1.0 + 1.2288*eps_l)*inv_w;
+
+  // sputtering yield
+  auto term_1 = pow(energy/threshold_energy - 1, mu);
+  auto term_2 = 1.0/cos(pow(angle, a));
+  auto numerator = q*s_n*term_1*pow(term_2, f)*exp(b*(1 - term_2));
+  auto denominator = lambda*inv_w + term_1;
+  return numerator/denominator;
 }
 
 void ThrusterPlume::set_buffers () {

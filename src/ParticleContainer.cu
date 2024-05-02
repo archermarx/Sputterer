@@ -6,6 +6,7 @@
 #include "ParticleContainer.cuh"
 #include "cuda_helpers.cuh"
 #include "gl_helpers.hpp"
+#include "Constants.hpp"
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
@@ -168,14 +169,7 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
   // Thread ID, i.e. what particle we're currently moving
   unsigned int tid = threadIdx.x + blockIdx.x*blockDim.x;
 
-  // Fundamental chrge
-  constexpr double q_e = 1.6e-19;
-
-  // Boltzmann constant
-  constexpr double k_b = 1.3806e-23;
-
-  // atomic mass unit
-  constexpr double m_u = 1.66054e-27;
+  using namespace constants;
 
   // Particle mass
   // FIXME: currently hard-coded to carbon, easy to fix by passing in mass as a param
@@ -382,7 +376,7 @@ void ParticleContainer::flag_out_of_bounds (float radius, float length) {
   cudaDeviceSynchronize();
 }
 
-struct is_positive {
+struct IsPositive {
   __host__ __device__ bool operator() (const float &w) {
     return w > 0;
   }
@@ -390,8 +384,8 @@ struct is_positive {
 
 void ParticleContainer::remove_flagged_particles () {
   // reorder positions and velocities so that particles with negative weight follow those with positive weight
-  thrust::partition(d_position.begin(), d_position.begin() + num_particles, d_weight.begin(), is_positive());
-  thrust::partition(d_velocity.begin(), d_velocity.begin() + num_particles, d_weight.begin(), is_positive());
+  thrust::partition(d_position.begin(), d_position.begin() + num_particles, d_weight.begin(), IsPositive());
+  thrust::partition(d_velocity.begin(), d_velocity.begin() + num_particles, d_weight.begin(), IsPositive());
 
   // reorder weights according to the same scheme as above
   // copy weights to temporary vector first
@@ -401,7 +395,7 @@ void ParticleContainer::remove_flagged_particles () {
   // Alternatively, could use CUB device partition, which gives us more control to allocate temporary data
   // c.f. https://nvidia.github.io/cccl/cub/api/structcub_1_1DevicePartition.html#_CPPv4N3cub15DevicePartitionE
   thrust::copy(d_weight.begin(), d_weight.begin() + num_particles, d_tmp.begin());
-  auto ret = thrust::partition(d_weight.begin(), d_weight.begin() + num_particles, d_tmp.begin(), is_positive());
+  auto ret = thrust::partition(d_weight.begin(), d_weight.begin() + num_particles, d_tmp.begin(), IsPositive());
 
   // Reset number of particles to the middle of the partition
   num_particles = static_cast<int>(thrust::distance(d_weight.begin(), ret));

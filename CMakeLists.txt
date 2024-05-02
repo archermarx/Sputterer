@@ -39,7 +39,8 @@ file(GLOB sources
         "${PROJECT_SOURCE_DIR}/include/glad.c"
 )
 
-add_executable(sputterer ${sources})
+add_executable(sputterer ${sources}
+        src/Constants.hpp)
 target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus glfw)
 target_compile_features(sputterer PUBLIC cxx_std_20)
 
