@@ -86,11 +86,16 @@ struct Triangle {
   }
 };
 
+
+#define MIN_T 100'000
+#define TOL 1e-6
+
 struct HitInfo {
   bool hits{false};
-  float t{0.0};
+  float t{MIN_T};
+  float3 pos{0.0};
   float3 norm{0.0};
-  int id;
+  int id{-1};
 };
 
 struct Ray {

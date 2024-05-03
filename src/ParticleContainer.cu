@@ -160,11 +160,10 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
     auto closest_hit = ray.cast(tris, num_triangles);
 
     if (closest_hit.t <= 1) {
-      auto &[_, t, norm, hit_triangle_id] = closest_hit;
+      auto &[_, t, hit_pos, norm, hit_triangle_id] = closest_hit;
 
       // Get material info where we hit
       auto &mat = materials[ids[hit_triangle_id]];
-      auto hit_pos = ray.at(t);
 
       // Generate a random number
       auto local_state = rng[tid];

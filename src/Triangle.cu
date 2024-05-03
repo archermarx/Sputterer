@@ -6,9 +6,6 @@ std::ostream &operator<< (std::ostream &os, const float3 &v) {
   return os;
 }
 
-#define MIN_T 100'000
-#define TOL 1e-6
-
 __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
   HitInfo info;
 
@@ -47,6 +44,7 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
   info.hits = true;
   info.t = t;
   info.id = id;
+  info.pos = this->at(t);
 
   // Orient direction properly
   if (dot(this->direction, tri.norm) > 0) {
@@ -59,7 +57,7 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
 }
 
 __host__ __device__ HitInfo Ray::cast (const Triangle *tris, size_t num_triangles) const {
-  HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}, .id = -1};
+  HitInfo closest_hit{};
   for (int i = 0; i < num_triangles; i++) {
     auto current_hit = this->hits(tris[i], i);
     if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {

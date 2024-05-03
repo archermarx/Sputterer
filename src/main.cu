@@ -352,7 +352,7 @@ int main (int argc, char *argv[]) {
         }
 
         auto &hit = hits[id];
-        auto &hit_pos = hit_positions[id];
+        auto &hit_pos = hit.pos;
 
         const auto thermal_speed_factor = static_cast<float>(sqrt(
           constants::k_b/constants::carbon.mass/constants::m_u));
