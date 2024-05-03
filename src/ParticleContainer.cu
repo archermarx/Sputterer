@@ -208,7 +208,7 @@ k_evolve (DeviceParticleContainer pc
         // magnitude indicates which triangle we hit
         pc.weight[tid] = static_cast<float>(-hit_triangle_id);
 
-      } else if (false && uniform < diffuse_coeff + sticking_coeff) {
+      } else if (uniform < diffuse_coeff + sticking_coeff) {
         // Particle reflects diffusely based on surface temperature
         // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
         //
