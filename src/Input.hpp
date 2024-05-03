@@ -27,8 +27,8 @@ public:
   vector<Surface> surfaces;
 
   // simulation variables
-  float timestep{0.0};
-  float max_time{0.0};
+  float timestep_s{0.0};
+  float max_time_s{0.0};
   float output_interval{0.0};
 
   // chamber geometry
@@ -45,9 +45,8 @@ public:
   double scattered_energy_ev{};
   double cex_energy_ev{};
 
-
   // particle weight
-  int particle_weight{1};
+  double particle_weight{1.0f};
 
   // initial particles (if any)
   std::vector<float> particle_w;

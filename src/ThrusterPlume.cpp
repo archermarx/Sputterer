@@ -96,10 +96,11 @@ double ThrusterPlume::current_density (const vec3 position) const {
   return main_current_density + scattered_current_density + cex_current_density;
 }
 
-double sputtering_yield (double energy, double angle, double incident_mass, double target_mass, double incident_z
-                         , double target_z) {
+double sputtering_yield (double energy, double angle, Species incident, Species target) {
 
   using namespace constants;
+  auto [incident_mass, incident_z] = incident;
+  auto [target_mass, target_z] = target;
 
   // Model fitting parameters
   constexpr auto threshold_energy = 10.92;
@@ -120,8 +121,10 @@ double sputtering_yield (double energy, double angle, double incident_mass, doub
   constexpr auto arg1 = 9*pi*pi/128;
   constexpr auto arg2 = a_0*4*pi*eps_0/q_e;
   auto a1 = cbrt(arg1)*arg2;
-  auto a2 = sqrt(pow(incident_z, twothirds) + pow(incident_z, twothirds));
-  auto eps_l = a1*target_mass*(target_z*incident_z*(target_mass + incident_mass))*a2*energy;
+
+  // lindhard screening length
+  auto a_l = a1/sqrt(pow(incident_z, twothirds) + pow(incident_z, twothirds));
+  auto eps_l = a_l*energy*target_mass/(target_z*incident_z*(target_mass + incident_mass));
 
   // Nuclear stopping power for KrC potential
   auto w = eps_l + 0.1728*sqrt(eps_l) + 0.008*pow(eps_l, 0.1504);

@@ -51,4 +51,8 @@ private:
 
 };
 
+struct Species;
+
+double sputtering_yield (double energy, double angle, Species incident, Species target);
+
 #endif // SPUTTERER_THRUSTERPLUME_HPP

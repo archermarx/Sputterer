@@ -79,10 +79,10 @@ void Input::read () {
 
   // Read simulation parameters
   auto sim = get_table(input, "simulation");
-  timestep = read_table_entry_as<float>(sim, "timestep_s");
-  max_time = read_table_entry_as<float>(sim, "max_time_s");
+  timestep_s = read_table_entry_as<float>(sim, "timestep_s");
+  max_time_s = read_table_entry_as<float>(sim, "max_time_s");
   output_interval = read_table_entry_as<float>(sim, "output_interval_s");
-  particle_weight = read_table_entry_as<int>(sim, "particle_weight");
+  particle_weight = read_table_entry_as<double>(sim, "particle_weight");
 
   // Read chamber features
   auto chamber = get_table(input, "chamber");

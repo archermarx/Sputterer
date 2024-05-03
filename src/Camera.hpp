@@ -65,7 +65,7 @@ public:
   // Returns the projection matrix, given an aspect ratio
   [[nodiscard]] glm::mat4 get_projection_matrix (float aspect_ratio, float min = 0.1f, float max = 100.0f) const;
 
-  // Processes input received from keyboard. Expects a movement direction and a timestep.
+  // Processes input received from keyboard. Expects a movement direction and a timestep_s.
   void process_keyboard (Direction direction, float delta_time);
 
   // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.

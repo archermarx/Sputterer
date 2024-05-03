@@ -202,24 +202,36 @@ int main (int argc, char *argv[]) {
   host_vector<float3> pos;
   host_vector<float3> vel;
   host_vector<float> ws;
+  vector<float> num_emit;
 
   // plume coordinate system
   auto up = vec3{0.0, 1.0, 0.0};
   auto right = cross(plume.direction, up);
   up = cross(right, plume.direction);
+
+  auto incident = constants::xenon;
+  auto target = constants::carbon;
+
   for (int i = 0; i < num_rays; i++) {
 
     auto azimuth = rand_uniform(0, 2*constants::pi);
     auto elevation = abs(rand_normal(0, plume.main_divergence_angle()/sqrt(2.0)));
 
     auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-    Ray r{.origin = make_float3(plume.location + plume.direction*1e-3f), .direction=make_float3(direction)};
+    Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction=normalize(make_float3(direction))};
     auto hit = r.cast(h_triangles.data(), h_triangles.size());
     if (hit.hits) {
       auto hit_pos = r.at(hit.t);
       pos.push_back(hit_pos);
       vel.push_back({0.0f, 0.0f, 0.0f});
       ws.push_back(0.0f);
+
+      auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
+      auto hit_angle = acos(cos_hit_angle);
+
+      auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
+      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight;
+      num_emit.push_back(n_emit);
     }
   }
 
@@ -232,7 +244,7 @@ int main (int argc, char *argv[]) {
 
   std::cout << "Beginning main loop." << std::endl;
 
-  while ((display && window.open) || (!display && physical_time < input.max_time)) {
+  while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
     if (display) {
       Window::begin_render_loop();
@@ -292,13 +304,13 @@ int main (int argc, char *argv[]) {
                       1e6;
     last_time = current_time;
 
-    // set physical timestep. if we're displaying a window, we set the physical timestep based on the rendering
-    // timestep to get smooth performance at different window sizes. If not, we just use the user-provided timestep
+    // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
+    // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
     float this_timestep{0};
     if (display) {
-      this_timestep = static_cast<float>(input.timestep*app::delta_time/(15e-3));
+      this_timestep = static_cast<float>(input.timestep_s*app::delta_time/(15e-3));
     } else {
-      this_timestep = input.timestep;
+      this_timestep = input.timestep_s;
     }
     physical_time += this_timestep;
     physical_timestep = (1 - time_const)*physical_timestep + time_const*this_timestep;
@@ -405,7 +417,7 @@ int main (int argc, char *argv[]) {
       plume.draw();
     }
 
-    if (physical_time > next_output_time || (!display && physical_time >= input.max_time) ||
+    if (physical_time > next_output_time || (!display && physical_time >= input.max_time_s) ||
         (display && !window.open)) {
       // Write output to console at regular intervals, plus one additional when simulation terminates
       std::cout << "Step " << frame << ", Simulation time: " << print_time(physical_time)
