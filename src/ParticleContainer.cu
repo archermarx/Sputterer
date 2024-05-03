@@ -250,8 +250,8 @@ k_evolve (DeviceParticleContainer pc
     auto u = curand_uniform(local_rng);
 
     // add new particles (negative weight if not real)
-    if (u < p_emit) {
-      pc.position[tid] = hit.pos + dt*vel;
+    if (u < p_emit*dt) {
+      pc.position[tid] = hit.pos + 1e-2*dt*vel;
       pc.velocity[tid] = vel;
       pc.weight[tid] = input_weight;
     } else {

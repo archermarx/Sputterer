@@ -78,10 +78,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector <Triangle> h_triangles;
+  host_vector<Triangle> h_triangles;
 
-  host_vector <size_t> h_material_ids;
-  host_vector <Material> h_materials;
+  host_vector<size_t> h_material_ids;
+  host_vector<Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -118,9 +118,9 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector <Triangle> d_triangles = h_triangles;
-  device_vector <size_t> d_surface_ids{h_material_ids};
-  device_vector <Material> d_materials{h_materials};
+  device_vector<Triangle> d_triangles = h_triangles;
+  device_vector<size_t> d_surface_ids{h_material_ids};
+  device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
@@ -201,10 +201,10 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 50'000;
-  host_vector <HitInfo> hits;
-  host_vector <float3> hit_positions;
+  host_vector<HitInfo> hits;
+  host_vector<float3> hit_positions;
   vector<float> num_emit;
-  host_vector <float3> vel;
+  host_vector<float3> vel;
   host_vector<float> ws;
 
   float max_emit = 0.0;
@@ -236,12 +236,16 @@ int main (int argc, char *argv[]) {
       auto hit_angle = acos(cos_hit_angle);
 
       auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
-      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight*input.timestep_s;
-      if (n_emit > max_emit) max_emit = n_emit;
+      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight;
+      if (n_emit > max_emit) max_emit = n_emit*input.timestep_s;
       num_emit.push_back(n_emit);
     }
   }
 
+  if (max_emit > 1.0) {
+    std::cout << "WARNING: decreasing timestep so that max 1 particle emitted per location per timestep" << std::endl;
+    input.timestep_s /= max_emit;
+  }
   std::cout << "Max emission probability: " << max_emit << std::endl;
 
   ParticleContainer pc_plume{"plume", hit_positions.size()};
@@ -251,7 +255,7 @@ int main (int argc, char *argv[]) {
     pc_plume.set_buffers();
   }
 
-  device_vector <HitInfo> d_hits{hits};
+  device_vector<HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   std::cout << "Beginning main loop." << std::endl;
