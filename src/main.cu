@@ -18,11 +18,13 @@
 #include "Surface.hpp"
 #include "Window.hpp"
 #include "ThrusterPlume.hpp"
+#include "Constants.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
 #include "ParticleContainer.cuh"
 #include "Triangle.cuh"
+
 
 using std::vector, std::string;
 
@@ -70,10 +72,8 @@ int main (int argc, char *argv[]) {
   app::camera.pitch = 30;
   app::camera.update_vectors();
 
-  // Create particle container, including any explicitly-specified initial particles
-  ParticleContainer pc{"noname", 1.0f, 1};
-  pc.add_particles(input.particle_x, input.particle_y, input.particle_z, input.particle_vx, input.particle_vy
-                   , input.particle_vz, input.particle_w);
+  // Create particle container
+  ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
   host_vector<Triangle> h_triangles;
@@ -121,6 +121,8 @@ int main (int argc, char *argv[]) {
   device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
+  std::cout << "Mesh data sent to GPU" << std::endl;
+
   // Create plume model
   ThrusterPlume plume{};
   plume.location = input.plume_origin;
@@ -155,10 +157,8 @@ int main (int argc, char *argv[]) {
     // Load particle shader
     particle_shader.load("../shaders/particle.vert", "../shaders/particle.frag");
     particle_shader.use();
-    constexpr vec3 particle_color{0.05f};
     constexpr vec3 particle_scale{0.01f};
     particle_shader.set_vec3("scale", particle_scale);
-    particle_shader.set_vec3("objectColor", particle_color);
 
     // Set up particle mesh
     pc.mesh.read_from_obj("../o_sphere.obj");
@@ -186,8 +186,6 @@ int main (int argc, char *argv[]) {
 
   cuda::Event start{}, stop_compute{}, stop_copy{};
 
-  std::cout << "Beginning main loop." << std::endl;
-
   auto current_time = std::chrono::system_clock::now();
   auto last_time = std::chrono::system_clock::now();
 
@@ -197,6 +195,50 @@ int main (int argc, char *argv[]) {
   output_file.open(output_filename);
   output_file << "Time(s),Surface name,Local triangle ID,Global triangle ID,Particles collected" << std::endl;
   output_file.close();
+
+  // Cast initial rays from plume
+  int num_rays = 10'000;
+  //host_vector<HitInfo> hits;
+  vector<float> xs;
+  vector<float> ys;
+  vector<float> zs;
+  vector<float> vxs;
+  vector<float> vys;
+  vector<float> vzs;
+  vector<float> ws;
+
+  // plume coordinate system
+  auto up = vec3{0.0, 1.0, 0.0};
+  auto right = cross(plume.direction, up);
+  up = cross(right, plume.direction);
+  for (int i = 0; i < num_rays; i++) {
+
+    auto azimuth = rand_uniform(0, 2*constants::pi);
+    auto elevation = abs(rand_normal(0, plume.main_divergence_angle()/sqrt(2.0)));
+
+    auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
+    Ray r{.origin = make_float3(plume.location + plume.direction*1e-3f), .direction=make_float3(direction)};
+    auto hit = r.cast(h_triangles.data(), h_triangles.size());
+    if (hit.hits) {
+      auto hit_pos = r.at(hit.t);
+      xs.push_back(hit_pos.x);
+      ys.push_back(hit_pos.y);
+      zs.push_back(hit_pos.z);
+      vxs.push_back(0.0f);
+      vys.push_back(0.0f);
+      vzs.push_back(0.0f);
+      ws.push_back(0.0f);
+    }
+  }
+
+  ParticleContainer pc_plume{"plume", xs.size()};
+  pc_plume.add_particles(xs, ys, zs, vxs, vys, vzs, ws);
+  if (display) {
+    pc_plume.mesh.read_from_obj("../o_sphere.obj");
+    pc_plume.set_buffers();
+  }
+
+  std::cout << "Beginning main loop." << std::endl;
 
   while ((display && window.open) || (!display && physical_time < input.max_time)) {
 
@@ -340,14 +382,22 @@ int main (int argc, char *argv[]) {
         // activate particle shader
         particle_shader.use();
 
+        constexpr vec3 particle_color{0.05f};
         // send camera information to shader
+        particle_shader.set_vec3("objectColor", particle_color);
         particle_shader.set_mat4("camera", cam);
 
         // draw particles
         pc.draw();
       }
 
-      // 3. draw plume
+      // Draw plume particles
+      particle_shader.use();
+      particle_shader.set_vec3("objectColor", {0.2, 0.75, 0.94});
+      particle_shader.set_mat4("camera", cam);
+      pc_plume.draw();
+
+      // 3. draw plume cones
       plume_shader.use();
       plume_shader.set_mat4("camera", cam);
 

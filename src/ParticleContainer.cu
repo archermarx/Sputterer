@@ -14,19 +14,19 @@ __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
   curand_init(seed, tid, 0, &rng[tid]);
 }
 
-ParticleContainer::ParticleContainer (string name, double mass, int charge)
+ParticleContainer::ParticleContainer (string name, size_t num, double mass, int charge)
   : name(std::move(name)), mass(mass), charge(charge) {
 
   // Allocate memory on GPU
-  d_position.resize(max_particles);
-  d_velocity.resize(max_particles);
-  d_weight.resize(max_particles);
-  d_tmp.resize(max_particles);
-  d_rng.resize(max_particles);
+  d_position.resize(num);
+  d_velocity.resize(num);
+  d_weight.resize(num);
+  d_tmp.resize(num);
+  d_rng.resize(num);
 
   // Set up RNG for later use
   size_t block_size = 512;
-  k_setup_rng<<<max_particles/block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
+  k_setup_rng<<<num/block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
   std::cout << "GPU RNG state initialized." << std::endl;
 }
 
@@ -146,7 +146,7 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
 
       // Get material info where we hit
       auto &mat = materials[ids[hit_triangle_id]];
-      auto hit_pos = pos + t*dt*vel;
+      auto hit_pos = ray.at(t);
 
       // Generate a random number
       auto local_state = rng[tid];
@@ -222,8 +222,8 @@ std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t block_
   return std::make_pair(grid, block);
 }
 
-void ParticleContainer::push (const float dt, const thrust::device_vector <Triangle> &tris
-                              , const thrust::device_vector <size_t> &ids, const thrust::device_vector <Material> &mats
+void ParticleContainer::push (const float dt, const thrust::device_vector<Triangle> &tris
+                              , const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats
                               , thrust::device_vector<int> &collected) {
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
   auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
@@ -243,14 +243,14 @@ void ParticleContainer::push (const float dt, const thrust::device_vector <Trian
   cudaDeviceSynchronize();
 }
 
-float rand_uniform (float min = 0.0f, float max = 1.0f) {
+float rand_uniform (float min, float max) {
   static std::default_random_engine rng;
 
   std::uniform_real_distribution<float> dist(min, max);
   return dist(rng);
 }
 
-float rand_normal (float mean = 0.0f, float std = 1.0f) {
+float rand_normal (float mean, float std) {
   static std::default_random_engine rng;
 
   std::normal_distribution<float> dist(mean, std);

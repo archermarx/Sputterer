@@ -95,7 +95,6 @@ void Input::read () {
   this->plume_origin = read_table_entry_as<vec3>(plume, "plume_origin");
   this->plume_direction = read_table_entry_as<vec3>(plume, "plume_direction");
   this->background_pressure_torr = read_table_entry_as<double>(plume, "background_pressure_Torr");
-  this->divergence_angle_deg = read_table_entry_as<double>(plume, "divergence_angle_deg");
   this->ion_current_a = read_table_entry_as<double>(plume, "ion_current_A");
   auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
   auto ind = 0;

@@ -8,7 +8,6 @@ particle_weight = 100_000
 plume_origin = { x = 0.0, y = 0.0, z = -2.0 }
 plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
 background_pressure_Torr = 5e-6
-divergence_angle_deg = 15.0
 ion_current_A = 4.0
 model_parameters = [0.92, 0.81, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]
 beam_energy_eV = 300.0
@@ -26,28 +25,20 @@ sticking_coeff = 0.2
 diffuse_coeff = 0.8
 temperature_K = 300
 
-[[geometry]]
-name = "Emitter"
-file = "o_rect.obj"
-material = "carbon"
-emit = true
-scale = { x = 0.25, y = 0.25, z = 0.25 }
-translate = { x = 0.0, y = 0.0, z = -2.0 }
-color = { x = 0.2, y = 0.2, z = 0.8 }
-
-[geometry.emitter]
-flux = 5_000_000
-velocity = 300
-spread = 0.1
-reverse_direction = false
-
 #[[geometry]]
-#name = "Reflector (flat)"
+#name = "Emitter"
 #file = "o_rect.obj"
 #material = "carbon"
-#translate = { x = 0.0, y = 0.0, z = 2.0 }
-#scale = { x = 2.0, y = 2.0, z = 2.0 }
-#color = { x = 0.8, y = 0.8, z = 0.8 }
+#emit = true
+#scale = { x = 0.25, y = 0.25, z = 0.25 }
+#translate = { x = 0.0, y = 0.0, z = -2.0 }
+#color = { x = 0.2, y = 0.2, z = 0.8 }
+#
+#[geometry.emitter]
+#flux = 5_000_000
+#velocity = 300
+#spread = 0.1
+#reverse_direction = false
 
 [[geometry]]
 name = "Reflector l2"

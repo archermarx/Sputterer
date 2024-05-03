@@ -62,7 +62,7 @@ public:
   void set_buffers ();
 
   // Constructor
-  ParticleContainer (string name, double mass, int charge);
+  ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
   // push particles to next positions (for now just use forward Euler)
   void push (float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids
@@ -91,8 +91,13 @@ private:
   unsigned int buffer{};
 };
 
+float rand_uniform (float min = 0.0f, float max = 1.0f);
+
+float rand_normal (float mean = 0.0f, float std = 1.0f);
+
 __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev);
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
+
 
 #endif

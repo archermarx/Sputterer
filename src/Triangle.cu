@@ -68,3 +68,7 @@ __host__ __device__ HitInfo Ray::cast (const Triangle *tris, size_t num_triangle
   }
   return closest_hit;
 }
+
+__host__ __device__ float3 Ray::at (float t) const {
+  return this->origin + t*this->direction;
+}

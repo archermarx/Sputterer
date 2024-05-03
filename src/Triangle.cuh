@@ -97,6 +97,8 @@ struct Ray {
   float3 origin;
   float3 direction;
 
+  [[nodiscard]] __host__ __device__ float3 at (float t) const;
+
   [[nodiscard]] __host__ __device__ HitInfo hits (const Triangle &tri, int id = -1) const;
 
   [[nodiscard]] __host__ __device__ HitInfo cast (const Triangle *tris, size_t num_triangles) const;

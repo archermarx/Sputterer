@@ -16,7 +16,7 @@ public:
   // Model parameters
   std::array<double, 7> model_params{
     1.0f,   // ratio of the main beam to the total beam
-    0.25f,  // ratio for divergence ange of the main to scattered beam
+    0.25f,  // ratio for divergence angle of the main to scattered beam
     0.0f,   // "slope" for linear divergence angle function
     0.0f,   // "intercept" for linear divergence angle function
     0.0f,   // "slope" for linear neutral density function

@@ -39,7 +39,6 @@ public:
   vec3 plume_origin{};
   vec3 plume_direction{};
   double background_pressure_torr{};
-  double divergence_angle_deg{};
   double ion_current_a{};
   std::array<double, 7> plume_model_params{};
   double beam_energy_ev{};
