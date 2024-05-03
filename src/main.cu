@@ -199,13 +199,9 @@ int main (int argc, char *argv[]) {
   // Cast initial rays from plume
   int num_rays = 10'000;
   //host_vector<HitInfo> hits;
-  vector<float> xs;
-  vector<float> ys;
-  vector<float> zs;
-  vector<float> vxs;
-  vector<float> vys;
-  vector<float> vzs;
-  vector<float> ws;
+  host_vector<float3> pos;
+  host_vector<float3> vel;
+  host_vector<float> ws;
 
   // plume coordinate system
   auto up = vec3{0.0, 1.0, 0.0};
@@ -221,18 +217,14 @@ int main (int argc, char *argv[]) {
     auto hit = r.cast(h_triangles.data(), h_triangles.size());
     if (hit.hits) {
       auto hit_pos = r.at(hit.t);
-      xs.push_back(hit_pos.x);
-      ys.push_back(hit_pos.y);
-      zs.push_back(hit_pos.z);
-      vxs.push_back(0.0f);
-      vys.push_back(0.0f);
-      vzs.push_back(0.0f);
+      pos.push_back(hit_pos);
+      vel.push_back({0.0f, 0.0f, 0.0f});
       ws.push_back(0.0f);
     }
   }
 
-  ParticleContainer pc_plume{"plume", xs.size()};
-  pc_plume.add_particles(xs, ys, zs, vxs, vys, vzs, ws);
+  ParticleContainer pc_plume{"plume", pos.size()};
+  pc_plume.add_particles(pos, vel, ws);
   if (display) {
     pc_plume.mesh.read_from_obj("../o_sphere.obj");
     pc_plume.set_buffers();

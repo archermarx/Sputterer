@@ -31,25 +31,21 @@ ParticleContainer::ParticleContainer (string name, size_t num, double mass, int 
 }
 
 void
-ParticleContainer::add_particles (vector<float> x, vector<float> y, vector<float> z, vector<float> ux, vector<float> uy
-                                  , vector<float> uz, vector<float> w) {
-  auto n = static_cast<int>(std::min({x.size(), y.size(), z.size(), ux.size(), uy.size(), uz.size(), w.size()}));
-
-  if (n == 0) {
-    return;
-  }
+ParticleContainer::add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel
+                                  , const host_vector<float> &w) {
+  auto n = static_cast<int>(std::min({pos.size(), vel.size(), w.size()}));
+  if (n == 0) return;
 
   position.resize(num_particles + n);
   velocity.resize(num_particles + n);
   weight.resize(num_particles + n);
 
-  // Add particles to CPU arrays
+  // Copy particles to CPU arrays
   for (size_t i = 0; i < n; i++) {
     auto id = num_particles + i;
-
-    position[id] = {x.at(i), y.at(i), z.at(i)};
-    velocity[id] = {ux.at(i), uy.at(i), uz.at(i)};
-    weight[id] = {w.at(i)};
+    position[id] = pos[i];
+    velocity[id] = vel[i];
+    weight[id] = w[i];
   }
 
   // Copy particles to GPU
@@ -271,24 +267,22 @@ void ParticleContainer::emit (Triangle &triangle, Emitter emitter, float dt) {
     return;
   }
 
-  std::vector<float> x(num_emit_int, 0.0), y(num_emit_int, 0.0), z(num_emit_int, 0.0);
-  std::vector<float> ux(num_emit_int, 0.0), uy(num_emit_int, 0.0), uz(num_emit_int, 0.0);
-  std::vector<float> w(num_emit_int, 1.0);
+  host_vector<float3> pos(num_emit_int);
+  host_vector<float3> vel(num_emit_int);
+  host_vector<float> w(num_emit_int, 1.0f);
 
   for (int i = 0; i < num_emit_int; i++) {
     auto pt = triangle.sample(rand_uniform(), rand_uniform());
     auto norm = emitter.reverse ? -triangle.norm : triangle.norm;
     // offset particle very slightly by norm
     auto tol = 0.0001f;
-    x.at(i) = pt.x + tol*norm.x;
-    y.at(i) = pt.y + tol*norm.y;
-    z.at(i) = pt.z + tol*norm.z;
-    ux.at(i) = emitter.velocity*(norm.x + rand_normal(0, emitter.spread));
-    uy.at(i) = emitter.velocity*(norm.y + rand_normal(0, emitter.spread));
-    uz.at(i) = emitter.velocity*(norm.z + rand_normal(0, emitter.spread));
+    pos[i] = pt + tol*norm;
+    auto jitter = float3(
+      rand_normal(0, emitter.spread), rand_normal(0, emitter.spread), rand_normal(0, emitter.spread));
+    vel[i] = emitter.velocity*(norm + jitter);
   }
 
-  add_particles(x, y, z, ux, uy, uz, w);
+  add_particles(pos, vel, w);
 }
 
 __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float halflength, size_t n) {

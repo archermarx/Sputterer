@@ -65,12 +65,11 @@ public:
   ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
   // push particles to next positions (for now just use forward Euler)
-  void push (float dt, const thrust::device_vector<Triangle> &tris, const thrust::device_vector<size_t> &ids
-             , const thrust::device_vector<Material> &mats, thrust::device_vector<int> &collected);
+  void push (float dt, const device_vector<Triangle> &tris, const device_vector<size_t> &ids
+             , const device_vector<Material> &mats, device_vector<int> &collected);
 
   // add particles to the container
-  void add_particles (vector<float> x, vector<float> y, vector<float> z, vector<float> ux, vector<float> uy
-                      , vector<float> uz, vector<float> w);
+  void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
 
   // Emit particles from a given triangle
   void emit (Triangle &triangle, Emitter emitter, float dt);
