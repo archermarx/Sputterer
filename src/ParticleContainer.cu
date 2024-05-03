@@ -109,6 +109,28 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
   return diffuse_coeff;
 }
 
+__host__ __device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed) {
+  // sample from a cosine distribution
+#if defined(CUDA_ARCH)
+  auto c_tan1 = curand_normal(&local_state);
+  auto c_tan2 = curand_normal(&local_state);
+  auto c_norm = abs(curand_normal(&local_state));
+#else
+  auto c_tan1 = rand_normal();
+  auto c_tan2 = rand_normal();
+  auto c_norm = abs(rand_normal());
+#endif
+
+  // get tangent vectors
+  // TODO: may be worth pre-computing these?
+  auto tan1 = normalize(tri.v1 - tri.v0);
+  auto tan2 = cross(tan1, norm);
+
+  // Compute new velocity vector
+  auto vel_refl = thermal_speed*(c_norm*norm + c_tan1*tan1 + c_tan2*tan2);
+  return vel_refl;
+}
+
 __global__ void
 k_push (float3 *position, float3 *velocity, float *weight, const int n, const Triangle *tris, const size_t num_triangles
         , const size_t *ids, const Material *materials, int *collected, const curandState *rng, const float dt) {
@@ -137,7 +159,7 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
     Ray ray{.origin = pos, .direction = dt*vel};
     auto closest_hit = ray.cast(tris, num_triangles);
 
-    if (closest_hit.hits && closest_hit.t <= 1) {
+    if (closest_hit.t <= 1) {
       auto &[_, t, norm, hit_triangle_id] = closest_hit;
 
       // Get material info where we hit
@@ -163,32 +185,19 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
         velocity[tid] = float3(0.0f, 0.0f, 0.0f);
 
         // Record that we hit this triangle
-        atomicAdd(&collected[hit_triangle_id], static_cast<int>(weight[tid]));
+        atomicAdd(&collected[hit_triangle_id], 1);
 
         // set weight negative to flag for removal
         // magnitude indicates which triangle we hit
-        // TODO: floats may be bad for this purpose, could convert weight to int64
         weight[tid] = static_cast<float>(-hit_triangle_id);
+
       } else if (uniform < diffuse_coeff + sticking_coeff) {
         // Particle reflects diffusely based on surface temperature
         // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
         //
         auto sqrt_temp = sqrtf(mat.temperature_k);
         auto thermal_speed = thermal_speed_factor*sqrt_temp;
-
-        // sample from a cosine distribution
-        auto c_tan1 = curand_normal(&local_state);
-        auto c_tan2 = curand_normal(&local_state);
-        auto c_norm = sqrtf(-2*logf(curand_uniform(&local_state)));
-
-        // get notangent vectors
-        // TODO: may be worth pre-computing these?
-        auto tri = tris[hit_triangle_id];
-        auto tan1 = normalize(tri.v1 - tri.v0);
-        auto tan2 = cross(tan1, norm);
-
-        // Compute new velocity vector
-        auto vel_refl = thermal_speed*(c_norm*norm + c_tan1*tan1 + c_tan2*tan2);
+        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed);
 
         // Get particle position
         // (assuming particle reflects ~instantaneously then travels according to new velocity vector)

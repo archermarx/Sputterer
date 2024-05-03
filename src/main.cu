@@ -198,11 +198,11 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 10'000;
-  //host_vector<HitInfo> hits;
-  host_vector<float3> pos;
+  host_vector<HitInfo> hits;
+  host_vector<float3> hit_positions;
+  vector<float> num_emit;
   host_vector<float3> vel;
   host_vector<float> ws;
-  vector<float> num_emit;
 
   // plume coordinate system
   auto up = vec3{0.0, 1.0, 0.0};
@@ -222,7 +222,8 @@ int main (int argc, char *argv[]) {
     auto hit = r.cast(h_triangles.data(), h_triangles.size());
     if (hit.hits) {
       auto hit_pos = r.at(hit.t);
-      pos.push_back(hit_pos);
+      hits.push_back(hit);
+      hit_positions.push_back(hit_pos);
       vel.push_back({0.0f, 0.0f, 0.0f});
       ws.push_back(0.0f);
 
@@ -235,8 +236,8 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  ParticleContainer pc_plume{"plume", pos.size()};
-  pc_plume.add_particles(pos, vel, ws);
+  ParticleContainer pc_plume{"plume", hit_positions.size()};
+  pc_plume.add_particles(hit_positions, vel, ws);
   if (display) {
     pc_plume.mesh.read_from_obj("../o_sphere.obj");
     pc_plume.set_buffers();
@@ -333,6 +334,40 @@ int main (int argc, char *argv[]) {
         }
         tri_count += surf.mesh.num_triangles;
       }
+
+      host_vector<float3> new_pos;
+      host_vector<float3> new_vel;
+      host_vector<float> new_w;
+
+      for (int id = 0; id < hits.size(); id++) {
+        auto n_emit = num_emit[id]*this_timestep;
+        auto n_emit_int = static_cast<int>(n_emit);
+        auto u = rand_uniform();
+        if (u < n_emit - n_emit_int) {
+          n_emit_int++;
+        }
+
+        if (n_emit_int < 1) {
+          continue;
+        }
+
+        auto &hit = hits[id];
+        auto &hit_pos = hit_positions[id];
+
+        const auto thermal_speed_factor = static_cast<float>(sqrt(
+          constants::k_b/constants::carbon.mass/constants::m_u));
+
+        for (int i = 0; i < n_emit_int; i++) {
+          auto temp = h_materials[h_material_ids[hit.id]].temperature_k;
+          auto thermal_speed = thermal_speed_factor*sqrt(temp);
+          auto vel_emit = sample_diffuse(h_triangles[hit.id], hit.norm, thermal_speed);
+          new_pos.push_back(hit_pos + this_timestep*vel_emit);
+          new_vel.push_back(vel_emit);
+          new_w.push_back(input.particle_weight);
+        }
+      }
+
+      pc.add_particles(new_pos, new_vel, new_w);
 
       // Push particles
       pc.push(this_timestep, d_triangles, d_surface_ids, d_materials, d_collected);

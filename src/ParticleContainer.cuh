@@ -96,6 +96,8 @@ float rand_normal (float mean = 0.0f, float std = 1.0f);
 
 __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev);
 
+__host__ __device__ float3 sample_diffuse (const Triangle &tri, float3 norm, float thermal_speed);
+
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
 
 
