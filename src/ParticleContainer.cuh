@@ -73,9 +73,11 @@ public:
   ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
   // push particles to next positions (for now just use forward Euler)
-  void evolve (float dt, const device_vector<Triangle> &tris
+  void evolve (const device_vector<Triangle> &tris
                , const device_vector<Material> &mats, const device_vector<size_t> &ids
-               , device_vector<int> &collected);
+               , device_vector<int> &collected
+               , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
+               , float input_weight, float dt);
 
   // add particles to the container
   void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
@@ -84,7 +86,8 @@ public:
   void emit (Triangle &triangle, Emitter emitter, float dt);
 
   // Returns kernel launch params
-  [[nodiscard]] std::pair<dim3, dim3> get_kernel_launch_params (size_t block_size = 32) const;
+  [[nodiscard]] std::pair<dim3, dim3>
+  get_kernel_launch_params (size_t num_elems, size_t block_size = 32) const;
 
   // Set particles that leave bounds to have negative weights
   void flag_out_of_bounds (float radius, float length);
@@ -108,7 +111,7 @@ float rand_normal (float mean = 0.0f, float std = 1.0f);
 
 __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev);
 
-__host__ __device__ float3 sample_diffuse (const Triangle &tri, float3 norm, float thermal_speed);
+__device__ float3 sample_diffuse (const Triangle &tri, float3 norm, float thermal_speed, curandState *rng);
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
 

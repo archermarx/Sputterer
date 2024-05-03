@@ -243,6 +243,9 @@ int main (int argc, char *argv[]) {
     pc_plume.set_buffers();
   }
 
+  device_vector<HitInfo> d_hits{hits};
+  device_vector<float> d_num_emit{num_emit};
+
   std::cout << "Beginning main loop." << std::endl;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
@@ -307,7 +310,7 @@ int main (int argc, char *argv[]) {
 
     // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
     // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-    float this_timestep{0};
+    float this_timestep{};
     if (display) {
       this_timestep = static_cast<float>(input.timestep_s*app::delta_time/(15e-3));
     } else {
@@ -335,46 +338,18 @@ int main (int argc, char *argv[]) {
         tri_count += surf.mesh.num_triangles;
       }
 
-      host_vector<float3> new_pos;
-      host_vector<float3> new_vel;
-      host_vector<float> new_w;
-
-      for (int id = 0; id < hits.size(); id++) {
-        auto n_emit = num_emit[id]*this_timestep;
-        auto n_emit_int = static_cast<int>(n_emit);
-        auto u = rand_uniform();
-        if (u < n_emit - n_emit_int) {
-          n_emit_int++;
-        }
-
-        if (n_emit_int < 1) {
-          continue;
-        }
-
-        auto &hit = hits[id];
-        auto &hit_pos = hit.pos;
-
-        const auto thermal_speed_factor = static_cast<float>(sqrt(
-          constants::k_b/constants::carbon.mass/constants::m_u));
-
-        for (int i = 0; i < n_emit_int; i++) {
-          auto temp = h_materials[h_material_ids[hit.id]].temperature_k;
-          auto thermal_speed = thermal_speed_factor*sqrt(temp);
-          auto vel_emit = sample_diffuse(h_triangles[hit.id], hit.norm, thermal_speed);
-          new_pos.push_back(hit_pos + this_timestep*vel_emit);
-          new_vel.push_back(vel_emit);
-          new_w.push_back(input.particle_weight);
-        }
-      }
-
-      pc.add_particles(new_pos, new_vel, new_w);
-
-      // Push particles
-      pc.evolve(this_timestep, d_triangles, d_materials, d_surface_ids, d_collected);
+      // Push particles and sputter from surfaces
+      pc.evolve(d_triangles, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit
+                , input.particle_weight, this_timestep);
 
       // Remove particles that are out of bounds
       pc.flag_out_of_bounds(input.chamber_radius, input.chamber_length);
+
+      // remove particles with negative weight (out of bounds and phantom emitted particles)
       pc.remove_flagged_particles();
+
+
+      // record stop time
       stop_compute.record();
 
       // Track particles collected by each triangle flagged 'collect'

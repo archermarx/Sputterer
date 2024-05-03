@@ -109,17 +109,17 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
   return diffuse_coeff;
 }
 
-__host__ __device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed) {
+__device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed, curandState *rng) {
   // sample from a cosine distribution
-#if defined(CUDA_ARCH)
-  auto c_tan1 = curand_normal(&local_state);
-  auto c_tan2 = curand_normal(&local_state);
-  auto c_norm = abs(curand_normal(&local_state));
-#else
-  auto c_tan1 = rand_normal();
-  auto c_tan2 = rand_normal();
-  auto c_norm = abs(rand_normal());
-#endif
+//#if defined(CUDA_ARCH)
+  auto c_tan1 = curand_normal(rng);
+  auto c_tan2 = curand_normal(rng);
+  auto c_norm = abs(curand_normal(rng));
+//#else
+//  auto c_tan1 = rand_normal();
+//  auto c_tan2 = rand_normal();
+//  auto c_norm = abs(rand_normal());
+//#endif
 
   // get tangent vectors
   // TODO: may be worth pre-computing these?
@@ -145,7 +145,9 @@ __global__ void
 k_evolve (DeviceParticleContainer pc
           , const Triangle *tris, const size_t num_triangles
           , const Material *materials, const size_t *material_ids
-          , int *collected, const float dt) {
+          , int *collected
+          , const HitInfo *hits, const float *emit_prob, size_t num_hits
+          , float input_weight, float dt) {
 
   // Thread ID, i.e. what particle we're currently moving
   unsigned int tid = threadIdx.x + blockIdx.x*blockDim.x;
@@ -162,6 +164,7 @@ k_evolve (DeviceParticleContainer pc
   // k_B / m_u (for thermal speed calculations)
   const auto thermal_speed_factor = static_cast<float>(sqrt(k_b/mass));
 
+  // Push particles
   if (tid < pc.num_particles) {
 
     auto pos = pc.position[tid];
@@ -178,8 +181,8 @@ k_evolve (DeviceParticleContainer pc
       auto &mat = materials[material_ids[hit_triangle_id]];
 
       // Generate a random number
-      auto local_state = pc.rng[tid];
-      auto uniform = curand_uniform(&local_state);
+      auto local_rng = pc.rng[tid];
+      auto uniform = curand_uniform(&local_rng);
 
       // get incident angle and energy
       auto velnorm_2 = dot(vel, vel);
@@ -208,7 +211,7 @@ k_evolve (DeviceParticleContainer pc
         //
         auto sqrt_temp = sqrtf(mat.temperature_k);
         auto thermal_speed = thermal_speed_factor*sqrt_temp;
-        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed);
+        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed, &local_rng);
 
         // Get particle position
         // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
@@ -229,19 +232,42 @@ k_evolve (DeviceParticleContainer pc
       pc.position[tid] = pos + dt*vel;
     }
   }
+
+  // Emit new particles
+  if (tid < num_hits) {
+    auto &hit = hits[tid];
+    auto p_emit = emit_prob[tid];
+    auto local_rng = pc.rng[tid];
+
+    // compute diffuse velocity
+    auto &tri = tris[hit.id];
+    auto &mat = materials[material_ids[hit.id]];
+    auto thermal_speed = sqrtf(mat.temperature_k)*thermal_speed_factor;
+    auto vel = sample_diffuse(tri, hit.norm, thermal_speed, &local_rng);
+
+    // generate rng
+    auto u = curand_uniform(&local_rng);
+
+    // add new particles (negative weight if not real)
+    pc.position[tid + pc.num_particles] = hit.pos + 1e-2*dt*vel;
+    pc.velocity[tid + pc.num_particles] = vel;
+    pc.weight[tid + pc.num_particles] = (u < p_emit) ? input_weight : -input_weight;
+  }
 }
 
-std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t block_size) const {
-  auto grid_size = static_cast<int>(ceil(static_cast<float>(num_particles)/static_cast<float>(block_size)));
+std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t num_elems, size_t block_size) const {
+  auto grid_size = static_cast<int>(ceil(static_cast<float>(num_elems)/static_cast<float>(block_size)));
   dim3 grid(grid_size, 1, 1);
   dim3 block(block_size, 1, 1);
   return std::make_pair(grid, block);
 }
 
 
-void ParticleContainer::evolve (const float dt, const thrust::device_vector<Triangle> &tris
-                                , const thrust::device_vector<Material> &mats, const thrust::device_vector<size_t> &ids
-                                , thrust::device_vector<int> &collected) {
+void ParticleContainer::evolve (const device_vector<Triangle> &tris
+                                , const device_vector<Material> &mats, const device_vector<size_t> &ids
+                                , device_vector<int> &collected
+                                , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
+                                , const float input_weight, const float dt) {
 
 
   // TODO: could move all of the device geometric info into a struct
@@ -250,9 +276,19 @@ void ParticleContainer::evolve (const float dt, const thrust::device_vector<Tria
   auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
 
   auto d_col_ptr = thrust::raw_pointer_cast(collected.data());
+  auto d_hit_ptr = thrust::raw_pointer_cast(hits.data());
+  auto d_emit_ptr = thrust::raw_pointer_cast(num_emit.data());
 
-  auto [grid, block] = get_kernel_launch_params();
-  k_evolve<<<grid, block>>>(this->data(), d_tri_ptr, tris.size(), d_mat_ptr, d_id_ptr, d_col_ptr, dt);
+  auto [grid, block] = get_kernel_launch_params(std::max<size_t>(num_particles, hits.size()));
+
+  k_evolve<<<grid, block>>>(
+    this->data()
+    , d_tri_ptr, tris.size()
+    , d_mat_ptr, d_id_ptr, d_col_ptr
+    , d_hit_ptr, d_emit_ptr, hits.size()
+    , input_weight, dt);
+
+  this->num_particles += hits.size();
 
   cudaDeviceSynchronize();
 }
@@ -316,7 +352,7 @@ __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float hal
 }
 
 void ParticleContainer::flag_out_of_bounds (float radius, float length) {
-  auto [grid, block] = get_kernel_launch_params();
+  auto [grid, block] = get_kernel_launch_params(num_particles);
 
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
   auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
