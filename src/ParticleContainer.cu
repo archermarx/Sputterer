@@ -131,9 +131,21 @@ __host__ __device__ float3 sample_diffuse (const Triangle &tri, const float3 nor
   return vel_refl;
 }
 
+DeviceParticleContainer ParticleContainer::data () {
+  DeviceParticleContainer pc;
+  pc.position = thrust::raw_pointer_cast(this->d_position.data());
+  pc.velocity = thrust::raw_pointer_cast(this->d_velocity.data());
+  pc.weight = thrust::raw_pointer_cast(this->d_weight.data());
+  pc.rng = thrust::raw_pointer_cast(this->d_rng.data());
+  pc.num_particles = this->num_particles;
+  return pc;
+}
+
 __global__ void
-k_push (float3 *position, float3 *velocity, float *weight, const int n, const Triangle *tris, const size_t num_triangles
-        , const size_t *ids, const Material *materials, int *collected, const curandState *rng, const float dt) {
+k_evolve (DeviceParticleContainer pc
+          , const Triangle *tris, const size_t num_triangles
+          , const Material *materials, const size_t *material_ids
+          , int *collected, const float dt) {
 
   // Thread ID, i.e. what particle we're currently moving
   unsigned int tid = threadIdx.x + blockIdx.x*blockDim.x;
@@ -150,10 +162,10 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
   // k_B / m_u (for thermal speed calculations)
   const auto thermal_speed_factor = static_cast<float>(sqrt(k_b/mass));
 
-  if (tid < n) {
+  if (tid < pc.num_particles) {
 
-    auto pos = position[tid];
-    auto vel = velocity[tid];
+    auto pos = pc.position[tid];
+    auto vel = pc.velocity[tid];
 
     // Check for intersections with boundaries
     Ray ray{.origin = pos, .direction = dt*vel};
@@ -163,10 +175,10 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
       auto &[_, t, hit_pos, norm, hit_triangle_id] = closest_hit;
 
       // Get material info where we hit
-      auto &mat = materials[ids[hit_triangle_id]];
+      auto &mat = materials[material_ids[hit_triangle_id]];
 
       // Generate a random number
-      auto local_state = rng[tid];
+      auto local_state = pc.rng[tid];
       auto uniform = curand_uniform(&local_state);
 
       // get incident angle and energy
@@ -180,15 +192,15 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
 
       if (uniform < sticking_coeff) {
         // Particle sticks to surface
-        position[tid] = hit_pos;
-        velocity[tid] = float3(0.0f, 0.0f, 0.0f);
+        pc.position[tid] = hit_pos;
+        pc.velocity[tid] = float3(0.0f, 0.0f, 0.0f);
 
         // Record that we hit this triangle
         atomicAdd(&collected[hit_triangle_id], 1);
 
         // set weight negative to flag for removal
         // magnitude indicates which triangle we hit
-        weight[tid] = static_cast<float>(-hit_triangle_id);
+        pc.weight[tid] = static_cast<float>(-hit_triangle_id);
 
       } else if (uniform < diffuse_coeff + sticking_coeff) {
         // Particle reflects diffusely based on surface temperature
@@ -202,19 +214,19 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
         // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
         // TODO: most of this code is shared with below--worth unifying?
         auto final_pos = hit_pos + (1 - t)*dt*vel_refl;
-        position[tid] = final_pos;
-        velocity[tid] = vel_refl;
+        pc.position[tid] = final_pos;
+        pc.velocity[tid] = vel_refl;
       } else {
         // Particle reflects specularly
         float3 vel_norm = dot(vel, norm)*norm;
         float3 vel_refl = vel - 2*vel_norm;
 
         auto final_pos = hit_pos + (1 - t)*dt*vel_refl;
-        position[tid] = final_pos;
-        velocity[tid] = vel_refl;
+        pc.position[tid] = final_pos;
+        pc.velocity[tid] = vel_refl;
       }
     } else {
-      position[tid] = pos + dt*vel;
+      pc.position[tid] = pos + dt*vel;
     }
   }
 }
@@ -226,23 +238,21 @@ std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t block_
   return std::make_pair(grid, block);
 }
 
-void ParticleContainer::push (const float dt, const thrust::device_vector<Triangle> &tris
-                              , const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats
-                              , thrust::device_vector<int> &collected) {
-  auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
-  auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
-  auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
+
+void ParticleContainer::evolve (const float dt, const thrust::device_vector<Triangle> &tris
+                                , const thrust::device_vector<Material> &mats, const thrust::device_vector<size_t> &ids
+                                , thrust::device_vector<int> &collected) {
+
 
   // TODO: could move all of the device geometric info into a struct
   auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
   auto d_id_ptr = thrust::raw_pointer_cast(ids.data());
   auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
-  auto d_rng_ptr = thrust::raw_pointer_cast(d_rng.data());
+
   auto d_col_ptr = thrust::raw_pointer_cast(collected.data());
 
   auto [grid, block] = get_kernel_launch_params();
-  k_push<<<grid, block>>>(d_pos_ptr, d_vel_ptr, d_wgt_ptr, num_particles, d_tri_ptr, tris.size(), d_id_ptr, d_mat_ptr
-                          , d_col_ptr, d_rng_ptr, dt);
+  k_evolve<<<grid, block>>>(this->data(), d_tri_ptr, tris.size(), d_mat_ptr, d_id_ptr, d_col_ptr, dt);
 
   cudaDeviceSynchronize();
 }
@@ -338,6 +348,7 @@ void ParticleContainer::remove_flagged_particles () {
   // Reset number of particles to the middle of the partition
   num_particles = static_cast<int>(thrust::distance(d_weight.begin(), ret));
 }
+
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
   os << "==========================================================\n";

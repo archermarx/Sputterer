@@ -27,6 +27,14 @@ using std::vector, std::string;
 
 constexpr size_t max_particles = 35'000'000;
 
+struct DeviceParticleContainer {
+  float3 *position;
+  float3 *velocity;
+  float *weight;
+  int num_particles;
+  curandState *rng;
+};
+
 class ParticleContainer {
   // Holds information for many particles of a specific species.
   // Species are differentiated by charge state and mass.
@@ -65,8 +73,9 @@ public:
   ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
   // push particles to next positions (for now just use forward Euler)
-  void push (float dt, const device_vector<Triangle> &tris, const device_vector<size_t> &ids
-             , const device_vector<Material> &mats, device_vector<int> &collected);
+  void evolve (float dt, const device_vector<Triangle> &tris
+               , const device_vector<Material> &mats, const device_vector<size_t> &ids
+               , device_vector<int> &collected);
 
   // add particles to the container
   void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
@@ -88,6 +97,9 @@ public:
 
 private:
   unsigned int buffer{};
+
+  [[nodiscard]] DeviceParticleContainer data ();
+
 };
 
 float rand_uniform (float min = 0.0f, float max = 1.0f);

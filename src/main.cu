@@ -370,7 +370,7 @@ int main (int argc, char *argv[]) {
       pc.add_particles(new_pos, new_vel, new_w);
 
       // Push particles
-      pc.push(this_timestep, d_triangles, d_surface_ids, d_materials, d_collected);
+      pc.evolve(this_timestep, d_triangles, d_materials, d_surface_ids, d_collected);
 
       // Remove particles that are out of bounds
       pc.flag_out_of_bounds(input.chamber_radius, input.chamber_length);
