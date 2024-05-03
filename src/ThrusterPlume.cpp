@@ -56,44 +56,22 @@ double ThrusterPlume::main_divergence_angle () const {
   return this->model_params[2]*this->background_pressure + this->model_params[3];
 }
 
-double ThrusterPlume::current_density (const vec3 position) const {
+CurrentFraction ThrusterPlume::current_fractions () const {
 
   using namespace constants;
 
-  const auto coords = convert_to_thruster_coords(position);
-  auto radius = coords.x;
-  auto angle = coords.y;
-
-  if (angle < 0) {
-    // point behind thruster - no ion current
-    return 0.0;
-  }
-
-  auto radius_squared = radius*radius;
-
   // divergence angles
   const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = this->model_params;
-  auto div_angle_scattered = this->scattered_divergence_angle();
-  auto div_angle_main = this->main_divergence_angle();
 
   // neutral density
   auto neutral_density = t4*this->background_pressure + t5;
 
-  // get local currents
-  auto exp_factor = exp(-radius*neutral_density*sigma_cex*1e-20);
-  auto local_cex_current = this->beam_current*(1.0 - exp_factor);
-  auto local_beam_current = this->beam_current*exp_factor;
+  // get fraction of current in beam vs in main
+  auto exp_factor = exp(-1.0*neutral_density*sigma_cex*1e-20);
+  auto cex_current_factor = (1.0 - exp_factor);
+  auto beam_current_factor = exp_factor;
 
-  // compute cex current density
-  auto cex_current_density = local_cex_current/(2*pi*radius_squared);
-
-  // man and scattered beam current densities
-  auto beam_current_factor = local_beam_current/radius_squared;
-  auto main_current_density = beam_current_factor*current_density_scale(angle, div_angle_main, 1.0 - t0);
-  auto scattered_current_density = beam_current_factor*current_density_scale(angle, div_angle_scattered, t0);
-
-  // total beam current density is sum of main, scattered, and cex beams
-  return main_current_density + scattered_current_density + cex_current_density;
+  return {.main = (1 - t0)*beam_current_factor, .scattered = t0*beam_current_factor, .cex = cex_current_factor,};
 }
 
 double sputtering_yield (double energy, double angle, Species incident, Species target) {

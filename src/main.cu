@@ -200,7 +200,7 @@ int main (int argc, char *argv[]) {
   output_file.close();
 
   // Cast initial rays from plume
-  int num_rays = 50'000;
+  int num_rays = 25'000;
   host_vector<HitInfo> hits;
   host_vector<float3> hit_positions;
   vector<float> num_emit;
@@ -217,10 +217,24 @@ int main (int argc, char *argv[]) {
   auto incident = constants::xenon;
   auto target = constants::carbon;
 
+  auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
+  auto beam_fraction = main_fraction + scattered_fraction;
+  main_fraction = main_fraction/beam_fraction;
+
   for (int i = 0; i < num_rays; i++) {
 
+    // select whether ray comes from main beam or scattered beam based on
+    // fraction of beam that is scattered vs main
+    auto u = rand_uniform();
+    double div_angle{};
+    if (u < main_fraction) {
+      div_angle = plume.main_divergence_angle();
+    } else {
+      div_angle = plume.scattered_divergence_angle();
+    }
+
     auto azimuth = rand_uniform(0, 2*constants::pi);
-    auto elevation = abs(rand_normal(0, plume.main_divergence_angle()/sqrt(2.0)));
+    auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
 
     auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
     Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction=normalize(make_float3(direction))};
@@ -236,7 +250,7 @@ int main (int argc, char *argv[]) {
       auto hit_angle = acos(cos_hit_angle);
 
       auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
-      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight;
+      auto n_emit = yield*plume.beam_current*beam_fraction/constants::q_e/num_rays/input.particle_weight;
       if (n_emit > max_emit) max_emit = n_emit*input.timestep_s;
       num_emit.push_back(n_emit);
     }

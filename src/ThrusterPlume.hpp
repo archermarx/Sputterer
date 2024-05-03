@@ -6,6 +6,12 @@
 
 #include "vec3.hpp"
 
+struct CurrentFraction {
+  double main;
+  double scattered;
+  double cex;
+};
+
 class ThrusterPlume {
 public:
   // location of thruster in space
@@ -40,7 +46,7 @@ public:
   // convert 3D Cartesian coordinates (x, y, z) to thruster-relative polar coordinates (r, alpha)
   [[nodiscard]] vec2 convert_to_thruster_coords (vec3 position) const;
 
-  [[nodiscard]] double current_density (vec3 position) const;
+  [[nodiscard]] CurrentFraction current_fractions () const;
 
   void set_buffers ();
 
