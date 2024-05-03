@@ -16,12 +16,6 @@ BreakConstructorInitializers: BeforeComma
 IndentPPDirectives: None
 PointerAlignment: Right
 
-AlignConsecutiveAssignments:
-  Enabled: true
-
-AlignConsecutiveDeclarations:
-  Enabled: true
-
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
   AfterControlStatements: true
