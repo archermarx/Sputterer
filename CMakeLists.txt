@@ -44,6 +44,8 @@ add_executable(sputterer ${sources}
 target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus glfw)
 target_compile_features(sputterer PUBLIC cxx_std_20)
 
+set_property(TARGET sputterer PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2 -g")
 set(CMAKE_CUDA_FLAGS "-arch=sm_61 -std=c++20 -expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")

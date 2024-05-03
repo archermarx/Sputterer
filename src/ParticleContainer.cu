@@ -101,55 +101,6 @@ void ParticleContainer::draw () {
   GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
-#define MIN_T 100'000
-#define TOL 1e-6
-
-__host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri) {
-  HitInfo info;
-
-  // Find vectors for two edges sharing v1
-  auto edge1 = tri.v1 - tri.v0;
-  auto edge2 = tri.v2 - tri.v0;
-
-  // Begin calculating determinant
-  auto pvec = cross(ray.direction, edge2);
-  auto det = dot(edge1, pvec);
-
-  // If determinant is near zero, ray lies in plane of triangle
-  if (abs(det) < TOL) {
-    return info;
-  }
-
-  // Calculate distance from v0 to ray origin
-  auto tvec = ray.origin - tri.v0;
-
-  // Calculate u parameter and test bounds
-  auto u = dot(tvec, pvec)/det;
-  if (u < 0.0 || u > 1.0) {
-    return info;
-  }
-
-  auto qvec = cross(tvec, edge1);
-
-  // Calculate v parameter and test bounds
-  auto v = dot(ray.direction, qvec)/det;
-  if (v < 0.0 || u + v > 1.0) {
-    return info;
-  }
-  // Calculate t, ray intersects triangle
-  auto t = dot(edge2, qvec)/det;
-
-  info.hits = true;
-  info.t = t;
-
-  if (dot(ray.direction, tri.norm) > 0) {
-    info.norm = -tri.norm;
-  } else {
-    info.norm = tri.norm;
-  }
-
-  return info;
-}
 
 __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev) {
   // fit parameters
@@ -188,28 +139,13 @@ k_push (float3 *position, float3 *velocity, float *weight, const int n, const Tr
 
     // Check for intersections with boundaries
     Ray ray{.origin = pos, .direction = dt*vel};
+    auto closest_hit = ray.cast(tris, num_triangles);
 
-    int hit_triangle_id = -1;
-    int hit_material_id = -1;
-    HitInfo closest_hit{.hits = false, .t = static_cast<float>(MIN_T), .norm = {0.0, 0.0, 0.0}};
-    HitInfo current_hit;
-
-    for (int i = 0; i < num_triangles; i++) {
-      current_hit = hits_triangle(ray, tris[i]);
-      if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {
-        closest_hit = current_hit;
-        hit_triangle_id = i;
-        hit_material_id = static_cast<int>(ids[i]);
-      }
-    }
-
-    if (closest_hit.t <= 1) {
-      auto &[_, t, norm] = closest_hit;
+    if (closest_hit.hits && closest_hit.t <= 1) {
+      auto &[_, t, norm, hit_triangle_id] = closest_hit;
 
       // Get material info where we hit
-      auto &mat = materials[hit_material_id];
-      // auto  sticking_coeff = mat.sticking_coeff;
-      // auto  diffuse_coeff  = mat.diffuse_coeff;
+      auto &mat = materials[ids[hit_triangle_id]];
       auto hit_pos = pos + t*dt*vel;
 
       // Generate a random number
@@ -286,8 +222,8 @@ std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t block_
   return std::make_pair(grid, block);
 }
 
-void ParticleContainer::push (const float dt, const thrust::device_vector<Triangle> &tris
-                              , const thrust::device_vector<size_t> &ids, const thrust::device_vector<Material> &mats
+void ParticleContainer::push (const float dt, const thrust::device_vector <Triangle> &tris
+                              , const thrust::device_vector <size_t> &ids, const thrust::device_vector <Material> &mats
                               , thrust::device_vector<int> &collected) {
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
   auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());

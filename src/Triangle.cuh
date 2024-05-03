@@ -52,11 +52,6 @@ inline __host__ __device__ float3 make_float3 (const glm::vec4 &v) {
   return {v.x, v.y, v.z};
 }
 
-struct Ray {
-  float3 origin;
-  float3 direction;
-};
-
 struct Triangle {
   float3 v0;
   float3 v1;
@@ -95,8 +90,17 @@ struct HitInfo {
   bool hits{false};
   float t{0.0};
   float3 norm{0.0};
+  int id;
 };
 
-__host__ __device__ HitInfo hits_triangle (Ray ray, Triangle tri);
+struct Ray {
+  float3 origin;
+  float3 direction;
+
+  [[nodiscard]] __host__ __device__ HitInfo hits (const Triangle &tri, int id = -1) const;
+
+  [[nodiscard]] __host__ __device__ HitInfo cast (const Triangle *tris, size_t num_triangles) const;
+};
+
 
 #endif
