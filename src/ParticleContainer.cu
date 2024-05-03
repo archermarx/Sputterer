@@ -109,17 +109,20 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
   return diffuse_coeff;
 }
 
-__device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed, curandState *rng) {
+__device__ float3
+sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed, curandState *rng) {
   // sample from a cosine distribution
-//#if defined(CUDA_ARCH)
-  auto c_tan1 = curand_normal(rng);
-  auto c_tan2 = curand_normal(rng);
-  auto c_norm = abs(curand_normal(rng));
-//#else
-//  auto c_tan1 = rand_normal();
-//  auto c_tan2 = rand_normal();
-//  auto c_norm = abs(rand_normal());
-//#endif
+//  auto c_tan1 = curand_normal(rng);
+//  auto c_tan2 = curand_normal(rng);
+//  auto c_norm = abs(curand_normal(rng));
+  using namespace constants;
+
+  auto samples = curand_normal2(rng);
+  auto unif = curand_uniform(rng);
+
+  auto c_norm = sqrt(-0.5*log(unif));
+  auto c_tan1 = samples.x;
+  auto c_tan2 = samples.y;
 
   // get tangent vectors
   // TODO: may be worth pre-computing these?
@@ -181,8 +184,8 @@ k_evolve (DeviceParticleContainer pc
       auto &mat = materials[material_ids[hit_triangle_id]];
 
       // Generate a random number
-      auto local_rng = pc.rng[tid];
-      auto uniform = curand_uniform(&local_rng);
+      auto local_rng = &pc.rng[tid];
+      auto uniform = curand_uniform(local_rng);
 
       // get incident angle and energy
       auto velnorm_2 = dot(vel, vel);
@@ -205,13 +208,13 @@ k_evolve (DeviceParticleContainer pc
         // magnitude indicates which triangle we hit
         pc.weight[tid] = static_cast<float>(-hit_triangle_id);
 
-      } else if (uniform < diffuse_coeff + sticking_coeff) {
+      } else if (false && uniform < diffuse_coeff + sticking_coeff) {
         // Particle reflects diffusely based on surface temperature
         // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
         //
         auto sqrt_temp = sqrtf(mat.temperature_k);
         auto thermal_speed = thermal_speed_factor*sqrt_temp;
-        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed, &local_rng);
+        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed, local_rng);
 
         // Get particle position
         // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
@@ -231,27 +234,31 @@ k_evolve (DeviceParticleContainer pc
     } else {
       pc.position[tid] = pos + dt*vel;
     }
-  }
-
-  // Emit new particles
-  if (tid < num_hits) {
-    auto &hit = hits[tid];
-    auto p_emit = emit_prob[tid];
-    auto local_rng = pc.rng[tid];
+  } else if (tid < num_hits + pc.num_particles) {
+    // Emit new particles
+    auto &hit = hits[tid - pc.num_particles];
+    auto p_emit = emit_prob[tid - pc.num_particles];
+    auto local_rng = &pc.rng[tid];
 
     // compute diffuse velocity
     auto &tri = tris[hit.id];
     auto &mat = materials[material_ids[hit.id]];
     auto thermal_speed = sqrtf(mat.temperature_k)*thermal_speed_factor;
-    auto vel = sample_diffuse(tri, hit.norm, thermal_speed, &local_rng);
+    auto vel = sample_diffuse(tri, hit.norm, thermal_speed, local_rng);
 
     // generate rng
-    auto u = curand_uniform(&local_rng);
+    auto u = curand_uniform(local_rng);
 
     // add new particles (negative weight if not real)
-    pc.position[tid + pc.num_particles] = hit.pos + 1e-2*dt*vel;
-    pc.velocity[tid + pc.num_particles] = vel;
-    pc.weight[tid + pc.num_particles] = (u < p_emit) ? input_weight : -input_weight;
+    if (u < p_emit) {
+      pc.position[tid] = hit.pos + dt*vel;
+      pc.velocity[tid] = vel;
+      pc.weight[tid] = input_weight;
+    } else {
+      pc.position[tid] = -1000.000*hit.pos;
+      pc.velocity[tid] = {0.0, 0.0, 0.0};
+      pc.weight[tid] = -1.0;
+    }
   }
 }
 
@@ -261,7 +268,6 @@ std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t num_el
   dim3 block(block_size, 1, 1);
   return std::make_pair(grid, block);
 }
-
 
 void ParticleContainer::evolve (const device_vector<Triangle> &tris
                                 , const device_vector<Material> &mats, const device_vector<size_t> &ids
@@ -279,7 +285,7 @@ void ParticleContainer::evolve (const device_vector<Triangle> &tris
   auto d_hit_ptr = thrust::raw_pointer_cast(hits.data());
   auto d_emit_ptr = thrust::raw_pointer_cast(num_emit.data());
 
-  auto [grid, block] = get_kernel_launch_params(std::max<size_t>(num_particles, hits.size()));
+  auto [grid, block] = get_kernel_launch_params(num_particles + hits.size());
 
   k_evolve<<<grid, block>>>(
     this->data()

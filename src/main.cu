@@ -61,6 +61,8 @@ int main (int argc, char *argv[]) {
     display = static_cast<bool>(std::stoi(argv[2]));
   }
 
+  using namespace constants;
+
   Input input(filename);
   input.read();
 
@@ -179,7 +181,7 @@ int main (int argc, char *argv[]) {
   float avg_time_compute = 0.0f, avg_time_total = 0.0f;
   float iter_reset = 25;
   float time_const = 1/iter_reset;
-  double physical_time = 0, physical_timestep = 0;
+  double physical_time = 0;
   float delta_time_smoothed = 0;
 
   auto next_output_time = 0.0f;
@@ -193,7 +195,8 @@ int main (int argc, char *argv[]) {
   string output_filename{"deposition.csv"};
   std::ofstream output_file;
   output_file.open(output_filename);
-  output_file << "Time(s),Surface name,Local triangle ID,Global triangle ID,Particles collected" << std::endl;
+  output_file << "Time(s),Surface name,Local triangle ID,Global triangle ID,Macroparticles collected,Mass collected"
+              << std::endl;
   output_file.close();
 
   // Cast initial rays from plume
@@ -203,6 +206,8 @@ int main (int argc, char *argv[]) {
   vector<float> num_emit;
   host_vector<float3> vel;
   host_vector<float> ws;
+
+  float max_emit = 0.0;
 
   // plume coordinate system
   auto up = vec3{0.0, 1.0, 0.0};
@@ -231,10 +236,13 @@ int main (int argc, char *argv[]) {
       auto hit_angle = acos(cos_hit_angle);
 
       auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
-      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight;
+      auto n_emit = yield*plume.beam_current/constants::q_e/num_rays/input.particle_weight*input.timestep_s;
+      if (n_emit > max_emit) max_emit = n_emit;
       num_emit.push_back(n_emit);
     }
   }
+
+  std::cout << "Max emission probability: " << max_emit << std::endl;
 
   ParticleContainer pc_plume{"plume", hit_positions.size()};
   pc_plume.add_particles(hit_positions, vel, ws);
@@ -263,7 +271,7 @@ int main (int argc, char *argv[]) {
       ImGui::Begin("Frame time", nullptr, flags);
       ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
                   "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame
-                  , print_time(physical_timestep).c_str(), print_time(physical_time).c_str(), avg_time_compute,
+                  , print_time(input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
         (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
         (avg_time_total/delta_time_smoothed)*100, pc.num_particles);
       ImGui::End();
@@ -282,7 +290,7 @@ int main (int argc, char *argv[]) {
         ImGui::TableNextColumn();
         ImGui::Text("Particles collected");
         ImGui::TableNextColumn();
-        ImGui::Text("Collection rate (#/s)");
+        ImGui::Text("Mass collected [kg]");
         for (int row = 0; row < collect_inds_global.size(); row++) {
           auto triangle_id = collect_inds_global[row];
           ImGui::TableNextRow();
@@ -293,7 +301,7 @@ int main (int argc, char *argv[]) {
           ImGui::TableNextColumn();
           ImGui::Text("%d", collected[row]);
           ImGui::TableNextColumn();
-          ImGui::Text("%.3e", static_cast<double>(collected[row])/physical_time);
+          ImGui::Text("%.3e", static_cast<double>(collected[row]*carbon.mass*m_u*input.particle_weight));
         }
         ImGui::EndTable();
       }
@@ -310,14 +318,7 @@ int main (int argc, char *argv[]) {
 
     // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
     // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-    float this_timestep{};
-    if (display) {
-      this_timestep = static_cast<float>(input.timestep_s*app::delta_time/(15e-3));
-    } else {
-      this_timestep = input.timestep_s;
-    }
-    physical_time += this_timestep;
-    physical_timestep = (1 - time_const)*physical_timestep + time_const*this_timestep;
+    physical_time += input.timestep_s;
     delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
 
     // Main computations
@@ -333,21 +334,20 @@ int main (int argc, char *argv[]) {
         }
 
         for (size_t i = 0; i < surf.mesh.num_triangles; i++) {
-          pc.emit(h_triangles[i], emitter, this_timestep);
+          pc.emit(h_triangles[i], emitter, input.timestep_s);
         }
         tri_count += surf.mesh.num_triangles;
       }
 
       // Push particles and sputter from surfaces
       pc.evolve(d_triangles, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit
-                , input.particle_weight, this_timestep);
+                , input.particle_weight, input.timestep_s);
 
       // Remove particles that are out of bounds
       pc.flag_out_of_bounds(input.chamber_radius, input.chamber_length);
 
       // remove particles with negative weight (out of bounds and phantom emitted particles)
       pc.remove_flagged_particles();
-
 
       // record stop time
       stop_compute.record();
@@ -431,7 +431,7 @@ int main (int argc, char *argv[]) {
         (display && !window.open)) {
       // Write output to console at regular intervals, plus one additional when simulation terminates
       std::cout << "Step " << frame << ", Simulation time: " << print_time(physical_time)
-                << ", Timestep: " << print_time(physical_timestep) << ", Avg. step time: " << delta_time_smoothed
+                << ", Timestep: " << print_time(input.timestep_s) << ", Avg. step time: " << delta_time_smoothed
                 << " ms" << std::endl;
 
       // Log deposition rate info
@@ -442,7 +442,8 @@ int main (int argc, char *argv[]) {
         output_file << surface_names.at(h_material_ids[triangle_id_global]) << ",";
         output_file << collect_inds_local.at(i) << ",";
         output_file << triangle_id_global << ",";
-        output_file << collected[i] << "\n";
+        output_file << collected[i] << ",";
+        output_file << collected[i]*input.particle_weight*constants::carbon.mass*constants::m_u << "\n";
       }
       output_file.close();
 
