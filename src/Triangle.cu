@@ -22,11 +22,13 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
     return info;
   }
 
+
   // Calculate distance from v0 to ray origin
   auto tvec = this->origin - tri.v0;
 
   // Calculate u parameter and test bounds
-  auto u = dot(tvec, pvec)/det;
+  auto inv_det = 1.0f/det;
+  auto u = dot(tvec, pvec)*inv_det;
   if (u < 0.0 || u > 1.0) {
     return info;
   }
@@ -34,12 +36,12 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
   auto qvec = cross(tvec, edge1);
 
   // Calculate v parameter and test bounds
-  auto v = dot(this->direction, qvec)/det;
+  auto v = dot(this->direction, qvec)*inv_det;
   if (v < 0.0 || u + v > 1.0) {
     return info;
   }
   // Calculate t, ray intersects triangle
-  auto t = dot(edge2, qvec)/det;
+  auto t = dot(edge2, qvec)*inv_det;
 
   info.hits = true;
   info.t = t;
