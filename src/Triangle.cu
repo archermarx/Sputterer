@@ -87,8 +87,7 @@ void Scene::build_bvh () {
   size_t root_node_idx = 0;
   nodes_used = 1;
   auto &root = nodes[0];
-  root.left_node = 0;
-  root.first_tri_idx = 0;
+  root.left_first = 0;
   root.tri_count = num_tris;
 
   // get scene bounding box
@@ -123,9 +122,9 @@ void Scene::update_node_bounds (size_t node_idx) {
   node.lb = float3(1e30f);
   node.ub = float3(-1e30f);
 
-  if (!check_index(num_tris, node.first_tri_idx + node.tri_count - 1, "triangle")) return;
+  if (!check_index(num_tris, node.left_first + node.tri_count - 1, "triangle")) return;
 
-  for (size_t first = node.first_tri_idx, i = 0; i < node.tri_count; i++) {
+  for (size_t first = node.left_first, i = 0; i < node.tri_count; i++) {
     auto &leaf_tri_idx = triangle_indices[first + i];
     auto &leaf_tri = triangles[leaf_tri_idx];
     node.lb = fminf(node.lb, leaf_tri.v0);
@@ -175,7 +174,7 @@ void Scene::subdivide_bvh (size_t node_idx) {
   float split_pos = at(node.lb, axis) + at(extent, axis)*0.5f;
 
   // split group in two halves in place
-  int i = node.first_tri_idx;
+  int i = node.left_first;
   int j = i + node.tri_count - 1;
   while (i <= j) {
     if (at(triangles[triangle_indices[i]].centroid, axis) < split_pos) {
@@ -189,7 +188,7 @@ void Scene::subdivide_bvh (size_t node_idx) {
   }
 
   // create child nodes for each halves
-  int left_count = i - node.first_tri_idx;
+  int left_count = i - node.left_first;
 
   // check that our partition is real (i.e. that we have at least one triangle on each side)
   if (left_count == 0 || left_count == node.tri_count) return;
@@ -199,11 +198,12 @@ void Scene::subdivide_bvh (size_t node_idx) {
   size_t right_child_idx = left_child_idx + 1;
   nodes_used += 2;
 
-  nodes[left_child_idx].first_tri_idx = node.first_tri_idx;
+  nodes[left_child_idx].left_first = node.left_first;
   nodes[left_child_idx].tri_count = left_count;
-  nodes[right_child_idx].first_tri_idx = i;
+  nodes[right_child_idx].left_first = i;
   nodes[right_child_idx].tri_count = node.tri_count - left_count;
-  node.left_node = left_child_idx;
+  // since tri_count is now zero, left_first is now the left child index
+  node.left_first = left_child_idx;
   node.tri_count = 0;
 
   // update child node bounds
@@ -219,7 +219,7 @@ void Scene::subdivide_bvh (size_t node_idx) {
 __host__ __device__ HitInfo Ray::cast (Scene &scene) {
   HitInfo closest_hit{};
 
-#if 1
+#if 0
   for (int i = 0; i < scene.num_tris; i++) {
     intersect_tri(scene.triangles[i], i, closest_hit);
   }
@@ -238,18 +238,21 @@ __host__ __device__ void Ray::intersect_tri (const Triangle &triangle, size_t id
 }
 
 __host__ __device__ bool Ray::intersect_bbox (const float3 lb, const float3 ub, HitInfo &closest_hit) {
-  float tx1 = (lb.x - origin.x)/direction.x;
-  float tx2 = (ub.x - origin.x)/direction.x;
+  float dx = 1.0/direction.x;
+  float tx1 = (lb.x - origin.x)*dx;
+  float tx2 = (ub.x - origin.x)*dx;
   float tmin = fminf(tx1, tx2);
   float tmax = fmaxf(tx1, tx2);
 
-  float ty1 = (lb.y - origin.y)/direction.y;
-  float ty2 = (ub.y - origin.y)/direction.y;
+  float dy = 1.0/direction.y;
+  float ty1 = (lb.y - origin.y)*dy;
+  float ty2 = (ub.y - origin.y)*dy;
   tmin = fmaxf(tmin, fminf(ty1, ty2));
   tmax = fminf(tmax, fmaxf(ty1, ty2));
 
-  float tz1 = (lb.z - origin.z)/direction.z;
-  float tz2 = (ub.z - origin.z)/direction.z;
+  float dz = 1.0/direction.z;
+  float tz1 = (lb.z - origin.z)*dz;
+  float tz2 = (ub.z - origin.z)*dz;
   tmin = fmaxf(tmin, fminf(tz1, tz2));
   tmax = fminf(tmax, fmaxf(tz1, tz2));
 
@@ -263,12 +266,12 @@ __host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit,
 
   if (node.is_leaf()) {
     for (size_t i = 0; i < node.tri_count; i++) {
-      size_t tri_idx = scene.triangle_indices[node.first_tri_idx + i];
+      size_t tri_idx = scene.triangle_indices[node.left_first + i];
       intersect_tri(scene.triangles[tri_idx], tri_idx, closest_hit);
     }
   } else {
-    intersect_bvh(scene, closest_hit, node.left_node);
-    intersect_bvh(scene, closest_hit, node.left_node + 1);
+    intersect_bvh(scene, closest_hit, node.left_first);
+    intersect_bvh(scene, closest_hit, node.left_first + 1);
   }
 }
 

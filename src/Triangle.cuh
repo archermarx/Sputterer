@@ -101,8 +101,7 @@ struct HitInfo {
 
 struct BVHNode {
   float3 lb, ub;    // 24 bytes, min and maximum extents of axis-aligned bounding box (aabb)
-  size_t left_node; // 4 bytes, right node is always left_node + 1
-  size_t first_tri_idx, tri_count;  // 8 bytes; total: 44 bytes
+  size_t left_first, tri_count;  // 8 bytes; total: 32 bytes
   __host__ __device__ bool is_leaf () { return tri_count > 0; }
 };
 
