@@ -54,6 +54,11 @@ namespace app {
 
   void mouse_cursor_callback (GLFWwindow *window, double xpos_in, double ypos_in) {
 
+    auto io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+      return;
+    }
+
     auto x_pos = static_cast<float>(xpos_in);
     auto y_pos = static_cast<float>(ypos_in);
 
@@ -107,12 +112,6 @@ namespace app {
   void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset) {
     camera.process_mouse_scroll(static_cast<float>(yoffset));
   }
-
-  void framebuffer_size_callback ([[maybe_unused]] GLFWwindow *window, int width, int height) {
-    aspect_ratio = static_cast<float>(width)/static_cast<float>(height);
-    glViewport(0, 0, width, height);
-  }
-
 } // namespace app
 
 #endif

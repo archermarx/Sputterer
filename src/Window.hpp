@@ -16,8 +16,8 @@ using std::string;
 class Window {
 public:
   string name;
-  unsigned int width;
-  unsigned int height;
+  int width;
+  int height;
   bool open;
   GLFWwindow *window;
   bool enabled{false};
@@ -27,6 +27,8 @@ public:
   void enable ();
 
   static void begin_render_loop ();
+
+  void initialize_imgui ();
 
   void end_render_loop ();
 };

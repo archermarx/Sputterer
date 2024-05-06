@@ -28,12 +28,13 @@ void Window::enable () {
 
   // Make the context of our window the main context on the current thread
   glfwMakeContextCurrent(this->window);
+  glfwSwapInterval(1); // enable vsync
 
   // Check that GLAD is loaded properly
   if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
     std::cerr << "Failed to initialize GLAD" << std::endl;
     glfwTerminate();
-    open = false;
+    this->open = false;
     return;
   }
 
@@ -41,10 +42,15 @@ void Window::enable () {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  open = true;
+  this->open = true;
 
   std::cout << "GLFW window initialized." << std::endl;
 
+  this->enabled = true;
+}
+
+
+void Window::initialize_imgui () {
   // ImGUI initialization
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -52,13 +58,11 @@ void Window::enable () {
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // enable keyboard controls
 
   // Setup platform/renderer backends
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplGlfw_InitForOpenGL(this->window, true);
   ImGui_ImplOpenGL3_Init();
-
-  this->enabled = true;
-
   std::cout << "ImGUI initialized." << std::endl;
 }
+
 
 void Window::begin_render_loop () {
   // process user input
@@ -78,26 +82,31 @@ void Window::end_render_loop () {
 
   // ImGui::Rendering
   ImGui::Render();
-  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // Swap buffers and determine if we should close
+  glfwGetFramebufferSize(this->window, &width, &height);
+  glViewport(0, 0, this->width, this->height);
+
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
   glfwSwapBuffers(this->window);
 
   if (glfwWindowShouldClose(this->window)) {
-    open = false;
+    this->open = false;
   } else {
-    open = true;
+    this->open = true;
   }
 }
 
 Window::~Window () {
-  if (enabled) {
+  if (this->enabled) {
     // Shut down ImGui
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
     // Shut down GLFW
+    glfwDestroyWindow(this->window);
     glfwTerminate();
   }
 }

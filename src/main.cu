@@ -77,10 +77,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector<Triangle> h_triangles;
+  host_vector <Triangle> h_triangles;
 
-  host_vector<size_t> h_material_ids;
-  host_vector<Material> h_materials;
+  host_vector <size_t> h_material_ids;
+  host_vector <Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -117,9 +117,9 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector<Triangle> d_triangles = h_triangles;
-  device_vector<size_t> d_surface_ids{h_material_ids};
-  device_vector<Material> d_materials{h_materials};
+  device_vector <Triangle> d_triangles = h_triangles;
+  device_vector <size_t> d_surface_ids{h_material_ids};
+  device_vector <Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
@@ -143,9 +143,10 @@ int main (int argc, char *argv[]) {
     window.enable();
 
     // Register window callbacks
-    glfwSetFramebufferSizeCallback(window.window, app::framebuffer_size_callback);
     glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
     glfwSetScrollCallback(window.window, app::scroll_callback);
+
+    window.initialize_imgui();
 
     // Load mesh shader
     mesh_shader.load("../shaders/shader.vert", "../shaders/shader.frag");
@@ -200,10 +201,10 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 50'000;
-  host_vector<HitInfo> hits;
-  host_vector<float3> hit_positions;
+  host_vector <HitInfo> hits;
+  host_vector <float3> hit_positions;
   vector<float> num_emit;
-  host_vector<float3> vel;
+  host_vector <float3> vel;
   host_vector<float> ws;
 
   float max_emit = 0.0;
@@ -220,7 +221,6 @@ int main (int argc, char *argv[]) {
   auto beam_fraction = main_fraction + scattered_fraction;
   main_fraction = main_fraction/beam_fraction;
 
-  bool plume_on = false;
 
   for (int i = 0; i < num_rays; i++) {
 
@@ -271,10 +271,14 @@ int main (int argc, char *argv[]) {
     pc_plume.set_buffers();
   }
 
-  device_vector<HitInfo> d_hits{hits};
+  device_vector <HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   std::cout << "Beginning main loop." << std::endl;
+
+  bool render_plume_cone = true;
+  bool render_plume_particles = true;
+  bool plume_on = false;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
@@ -324,6 +328,21 @@ int main (int argc, char *argv[]) {
         }
         ImGui::EndTable();
       }
+      ImGui::End();
+
+      flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize
+              | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
+
+      ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, 0);
+      ImGui::SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
+      ImGui::Begin("Options", nullptr, flags);
+      if (ImGui::BeginTable("split", 2)) {
+        ImGui::TableNextColumn();
+        ImGui::Checkbox("Show plume particles", &render_plume_particles);
+        ImGui::TableNextColumn();
+        ImGui::Checkbox("Show plume cone", &render_plume_cone);
+      }
+      ImGui::EndTable();
       ImGui::End();
     }
 
@@ -426,27 +445,29 @@ int main (int argc, char *argv[]) {
       }
 
       // Draw plume particles
-      if (plume_on) {
+      if (render_plume_particles) {
         particle_shader.use();
         particle_shader.set_vec3("objectColor", {0.2, 0.75, 0.94});
         particle_shader.set_mat4("camera", cam);
         pc_plume.draw();
       }
 
-      // 3. draw plume cones
-      plume_shader.use();
-      plume_shader.set_mat4("camera", cam);
+      if (render_plume_cone) {
+        // 3. draw plume cones
+        plume_shader.use();
+        plume_shader.set_mat4("camera", cam);
 
-      // draw main beam
-      auto div_angle = plume.main_divergence_angle();
-      plume_shader.set_bool("main_beam", true);
-      plume_shader.set_float("angle", div_angle);
-      plume.draw();
+        // draw main beam
+        auto div_angle = plume.main_divergence_angle();
+        plume_shader.set_bool("main_beam", true);
+        plume_shader.set_float("angle", div_angle);
+        plume.draw();
 
-      div_angle = plume.scattered_divergence_angle();
-      plume_shader.set_bool("main_beam", false);
-      plume_shader.set_float("angle", div_angle);
-      plume.draw();
+        div_angle = plume.scattered_divergence_angle();
+        plume_shader.set_bool("main_beam", false);
+        plume_shader.set_float("angle", div_angle);
+        plume.draw();
+      }
     }
 
     if (plume_on && physical_time > next_output_time || (!display && physical_time >= input.max_time_s) ||
