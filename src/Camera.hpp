@@ -33,7 +33,7 @@ constexpr auto default_yaw_speed = 100.0f;
 constexpr auto default_pitch_speed = 100.0f;
 constexpr auto default_zoom_speed = 0.5f;
 
-constexpr auto min_zoom_distance = 0.1f;
+constexpr auto min_zoom_distance = 0.01f;
 constexpr auto max_zoom_distance = 20.0f;
 
 class Camera {

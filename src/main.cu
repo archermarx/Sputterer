@@ -25,7 +25,6 @@
 #include "ParticleContainer.cuh"
 #include "Triangle.cuh"
 
-
 using std::vector, std::string;
 
 string print_time (double time_s) {
@@ -200,7 +199,7 @@ int main (int argc, char *argv[]) {
   output_file.close();
 
   // Cast initial rays from plume
-  int num_rays = 25'000;
+  int num_rays = 50'000;
   host_vector<HitInfo> hits;
   host_vector<float3> hit_positions;
   vector<float> num_emit;
@@ -221,6 +220,8 @@ int main (int argc, char *argv[]) {
   auto beam_fraction = main_fraction + scattered_fraction;
   main_fraction = main_fraction/beam_fraction;
 
+  bool plume_on = false;
+
   for (int i = 0; i < num_rays; i++) {
 
     // select whether ray comes from main beam or scattered beam based on
@@ -237,7 +238,7 @@ int main (int argc, char *argv[]) {
     auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
 
     auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-    Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction=normalize(make_float3(direction))};
+    Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction = normalize(make_float3(direction))};
     auto hit = r.cast(h_triangles.data(), h_triangles.size());
     if (hit.hits) {
       auto hit_pos = r.at(hit.t);
@@ -251,7 +252,8 @@ int main (int argc, char *argv[]) {
 
       auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
       auto n_emit = yield*plume.beam_current*beam_fraction/constants::q_e/num_rays/input.particle_weight;
-      if (n_emit > max_emit) max_emit = n_emit*input.timestep_s;
+      if (n_emit > max_emit)
+        max_emit = n_emit*input.timestep_s;
       num_emit.push_back(n_emit);
     }
   }
@@ -283,13 +285,12 @@ int main (int argc, char *argv[]) {
       auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
       float padding = 0.0f;
-      ImVec2 bottom_right =
-        ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
+      ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
       ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
       ImGui::Begin("Frame time", nullptr, flags);
       ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
-                  "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame
-                  , print_time(input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
+                  "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame, print_time(
+          input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
         (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
         (avg_time_total/delta_time_smoothed)*100, pc.num_particles);
       ImGui::End();
@@ -328,19 +329,20 @@ int main (int argc, char *argv[]) {
 
     // Record iteration timing information
     current_time = std::chrono::system_clock::now();
-    app::delta_time = static_cast<float>(
-                        std::chrono::duration_cast<std::chrono::microseconds>(
-                          current_time - last_time).count())/
-                      1e6;
+    app::delta_time =
+      static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count())/
+      1e6;
     last_time = current_time;
 
     // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
     // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-    physical_time += input.timestep_s;
+    if (plume_on) {
+      physical_time += input.timestep_s;
+    }
     delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
 
     // Main computations
-    if (frame > 0) {
+    if (frame > 0 && plume_on) {
       start.record();
 
       // Emit particles
@@ -358,8 +360,8 @@ int main (int argc, char *argv[]) {
       }
 
       // Push particles and sputter from surfaces
-      pc.evolve(d_triangles, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit
-                , input.particle_weight, input.timestep_s);
+      pc.evolve(d_triangles, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input.particle_weight
+                , input.timestep_s);
 
       // Remove particles that are out of bounds
       pc.flag_out_of_bounds(input.chamber_radius, input.chamber_length);
@@ -410,7 +412,7 @@ int main (int argc, char *argv[]) {
       }
 
       // 2. draw particles (instanced!)
-      if (pc.num_particles > 0) {
+      if (plume_on && pc.num_particles > 0) {
         // activate particle shader
         particle_shader.use();
 
@@ -424,10 +426,12 @@ int main (int argc, char *argv[]) {
       }
 
       // Draw plume particles
-      particle_shader.use();
-      particle_shader.set_vec3("objectColor", {0.2, 0.75, 0.94});
-      particle_shader.set_mat4("camera", cam);
-      pc_plume.draw();
+      if (plume_on) {
+        particle_shader.use();
+        particle_shader.set_vec3("objectColor", {0.2, 0.75, 0.94});
+        particle_shader.set_mat4("camera", cam);
+        pc_plume.draw();
+      }
 
       // 3. draw plume cones
       plume_shader.use();
@@ -445,7 +449,7 @@ int main (int argc, char *argv[]) {
       plume.draw();
     }
 
-    if (physical_time > next_output_time || (!display && physical_time >= input.max_time_s) ||
+    if (plume_on && physical_time > next_output_time || (!display && physical_time >= input.max_time_s) ||
         (display && !window.open)) {
       // Write output to console at regular intervals, plus one additional when simulation terminates
       std::cout << "Step " << frame << ", Simulation time: " << print_time(physical_time)

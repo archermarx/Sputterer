@@ -1,11 +1,11 @@
 [simulation]
-timestep_s = 200e-6
-max_time_s = 100e-3
-output_interval_s = 0.1
-particle_weight = 5e11
+timestep_s = 300e-6
+max_time_s = 3.0
+output_interval_s = 0.05
+particle_weight = 1e12
 
 [plume_model]
-plume_origin = { x = 0.0, y = 0.0, z = -2.0 }
+plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }
 plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
 background_pressure_Torr = 5e-6
 ion_current_A = 4.0
@@ -25,90 +25,310 @@ sticking_coeff = 0.2
 diffuse_coeff = 0.8
 temperature_K = 300
 
-#[[geometry]]
-#name = "Emitter"
-#file = "o_rect.obj"
-#material = "carbon"
-#emit = true
-#scale = { x = 0.25, y = 0.25, z = 0.25 }
-#translate = { x = 0.0, y = 0.0, z = -2.0 }
-#color = { x = 0.2, y = 0.2, z = 0.8 }
-#
-#[geometry.emitter]
-#flux = 5_000_000
-#velocity = 300
-#spread = 0.1
-#reverse_direction = false
-
-[[geometry]]
-name = "Reflector l2"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = 1.25, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
-
-[[geometry]]
-name = "Reflector l1"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = 0.75, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
-
-[[geometry]]
-name = "Reflector l0"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = 0.25, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -15 }
-
-[[geometry]]
-name = "Reflector r0"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = -0.25, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
-
-[[geometry]]
-name = "Reflector r1"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = -0.75, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
-
-[[geometry]]
-name = "Reflector r2"
-file = "o_rect.obj"
-material = "carbon"
-scale = { x = 0.25, y = 1.0, z = 1.0 }
-translate = { x = -1.25, y = 0.0, z = 2.0 }
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 15 }
-#
-#[[geometry]]
-#name = "Reflector"
-#file = "o_rect.obj"
-#material = "carbon"
-#scale = { x = 3.0, y = 3.0, z = 3.0 }
-#translate = { x = 0.0, y = 0.0, z = 2.0 }
-
-[[geometry]]
-name = "Collector"
-file = "o_rect.obj"
-material = "carbon"
-collect = true
-scale = { x = 0.15, y = 0.15, z = 0.15 }
-color = { x = 0.9, y = 0.1, z = 0.1 }
-translate = { x = 1.5, y = 0.0, z = -1.0 }
-rotate = { angle = -45 }
-
 [[geometry]]
 name = "Thruster"
 file = "o_thruster.obj"
 material = "carbon"
 collect = false
-translate = { x = 0.0, y = 0.0, z = -2.05 }
+translate = { x = 0.0, y = 0.2285, z = -2.16 }
 rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
+
+[[geometry]]
+name = "QCM"
+file = "o_rect.obj"
+material = "carbon"
+collect = true
+scale = { x = 0.01241, y = 0.01241, z = 1.0 }
+color = { x = 0.9, y = 0.1, z = 0.1 }
+translate = { x = 1.0, y = 0.2285, z = -2.16 }
+rotate = { angle = 0.0 }
+
+[[geometry]]
+name = "beamdump_back_l"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.610, y = 0.610, z = 1.0 }
+translate = { x = -0.334, y = 0.330, z = 2.074 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 0 }
+
+[[geometry]]
+name = "beamdump_back_r"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.610, y = 0.610, z = 1.0 }
+translate = { x = 0.334, y = 0.330, z = 2.074 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 0 }
+
+[[geometry]]
+name = "beamdump_rt-1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = -0.138, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt0"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = -0.315, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = -0.492, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+
+[[geometry]]
+name = "beamdump_rt2"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.626, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt3"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.845, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt4"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.124, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt5"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.383, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt6"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.632, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rt7"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.881, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_lt-1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = 0.138, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt0"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = 0.315, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.219, z = 1.0 }
+translate = { x = 0.492, y = 1.2575, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+
+[[geometry]]
+name = "beamdump_lt2"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.626, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt3"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.845, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt4"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.124, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt5"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.383, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt6"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.632, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lt7"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.881, y = 0.9525, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_rb0"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.138, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.377, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb2"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.626, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb3"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -0.845, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb4"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.124, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb5"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.383, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb6"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.632, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_rb7"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = -1.881, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
+
+[[geometry]]
+name = "beamdump_lb0"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.138, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb1"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.387, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb2"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.636, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb3"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 0.885, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb4"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.134, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb5"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.383, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb6"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.632, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
+
+[[geometry]]
+name = "beamdump_lb7"
+file = "o_rect.obj"
+material = "carbon"
+scale = { x = 0.305, y = 1.829, z = 1.0 }
+translate = { x = 1.881, y = -0.9145, z = 2.0 }
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
