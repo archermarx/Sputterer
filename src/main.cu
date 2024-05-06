@@ -77,10 +77,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector <Triangle> h_triangles;
+  host_vector<Triangle> h_triangles;
 
-  host_vector <size_t> h_material_ids;
-  host_vector <Material> h_materials;
+  host_vector<size_t> h_material_ids;
+  host_vector<Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -117,9 +117,9 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector <Triangle> d_triangles = h_triangles;
-  device_vector <size_t> d_surface_ids{h_material_ids};
-  device_vector <Material> d_materials{h_materials};
+  device_vector<Triangle> d_triangles = h_triangles;
+  device_vector<size_t> d_surface_ids{h_material_ids};
+  device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
@@ -143,6 +143,7 @@ int main (int argc, char *argv[]) {
     window.enable();
 
     // Register window callbacks
+    glfwSetKeyCallback(window.window, app::pause_callback);
     glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
     glfwSetScrollCallback(window.window, app::scroll_callback);
 
@@ -161,9 +162,11 @@ int main (int argc, char *argv[]) {
     particle_shader.use();
     constexpr vec3 particle_scale{0.01f};
     particle_shader.set_vec3("scale", particle_scale);
+    particle_shader.set_vec3("cameraRight", app::camera.right);
+    particle_shader.set_vec3("cameraUp", app::camera.up);
 
     // Set up particle mesh
-    pc.mesh.read_from_obj("../o_sphere.obj");
+    pc.mesh.read_from_obj("../o_rect.obj");
     pc.set_buffers();
 
     // Load plume shader
@@ -201,10 +204,10 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 50'000;
-  host_vector <HitInfo> hits;
-  host_vector <float3> hit_positions;
+  host_vector<HitInfo> hits;
+  host_vector<float3> hit_positions;
   vector<float> num_emit;
-  host_vector <float3> vel;
+  host_vector<float3> vel;
   host_vector<float> ws;
 
   float max_emit = 0.0;
@@ -267,18 +270,18 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc_plume{"plume", hit_positions.size()};
   pc_plume.add_particles(hit_positions, vel, ws);
   if (display) {
-    pc_plume.mesh.read_from_obj("../o_sphere.obj");
+    pc_plume.mesh.read_from_obj("../o_rect.obj");
     pc_plume.set_buffers();
   }
 
-  device_vector <HitInfo> d_hits{hits};
+  device_vector<HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   std::cout << "Beginning main loop." << std::endl;
 
   bool render_plume_cone = true;
   bool render_plume_particles = true;
-  bool plume_on = false;
+  bool render_sputtered_particles = true;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
@@ -336,11 +339,13 @@ int main (int argc, char *argv[]) {
       ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, 0);
       ImGui::SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
       ImGui::Begin("Options", nullptr, flags);
-      if (ImGui::BeginTable("split", 2)) {
+      if (ImGui::BeginTable("split", 1)) {
+        ImGui::TableNextColumn();
+        ImGui::Checkbox("Show plume cone", &render_plume_cone);
         ImGui::TableNextColumn();
         ImGui::Checkbox("Show plume particles", &render_plume_particles);
         ImGui::TableNextColumn();
-        ImGui::Checkbox("Show plume cone", &render_plume_cone);
+        ImGui::Checkbox("Show sputtered particles", &render_sputtered_particles);
       }
       ImGui::EndTable();
       ImGui::End();
@@ -355,13 +360,13 @@ int main (int argc, char *argv[]) {
 
     // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
     // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-    if (plume_on) {
+    if (!app::simulation_paused) {
       physical_time += input.timestep_s;
     }
     delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
 
     // Main computations
-    if (frame > 0 && plume_on) {
+    if (frame > 0 && !app::simulation_paused) {
       start.record();
 
       // Emit particles
@@ -431,13 +436,12 @@ int main (int argc, char *argv[]) {
       }
 
       // 2. draw particles (instanced!)
-      if (plume_on && pc.num_particles > 0) {
+      if (render_sputtered_particles && pc.num_particles > 0) {
         // activate particle shader
         particle_shader.use();
-
-        constexpr vec3 particle_color{0.05f};
-        // send camera information to shader
-        particle_shader.set_vec3("objectColor", particle_color);
+        particle_shader.set_vec3("cameraRight", app::camera.right);
+        particle_shader.set_vec3("cameraUp", app::camera.up);
+        particle_shader.set_vec3("objectColor", {0.05f, 0.05f, 0.05f});
         particle_shader.set_mat4("camera", cam);
 
         // draw particles
@@ -447,7 +451,8 @@ int main (int argc, char *argv[]) {
       // Draw plume particles
       if (render_plume_particles) {
         particle_shader.use();
-        particle_shader.set_vec3("objectColor", {0.2, 0.75, 0.94});
+        particle_shader.set_vec3("cameraUp", app::camera.up);
+        particle_shader.set_vec3("objectColor", {0.2f, 0.75f, 0.94f});
         particle_shader.set_mat4("camera", cam);
         pc_plume.draw();
       }
@@ -470,7 +475,8 @@ int main (int argc, char *argv[]) {
       }
     }
 
-    if (plume_on && physical_time > next_output_time || (!display && physical_time >= input.max_time_s) ||
+    if (!app::simulation_paused && physical_time > next_output_time ||
+        (!display && physical_time >= input.max_time_s) ||
         (display && !window.open)) {
       // Write output to console at regular intervals, plus one additional when simulation terminates
       std::cout << "Step " << frame << ", Simulation time: " << print_time(physical_time)

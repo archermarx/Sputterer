@@ -15,6 +15,8 @@ namespace app {
   float last_x = 0.0;
   float last_y = 0.0;
 
+  bool simulation_paused = true;
+
   void process_input (GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, true);
@@ -44,8 +46,16 @@ namespace app {
       camera.process_keyboard(Direction::Down, delta_time);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
       camera.center = glm::vec3{0.0};
+    }
+  }
+
+  void pause_callback (GLFWwindow *window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+      if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        simulation_paused = !simulation_paused;
+      }
     }
   }
 

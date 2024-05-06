@@ -2,7 +2,7 @@
 timestep_s = 300e-6
 max_time_s = 3.0
 output_interval_s = 0.05
-particle_weight = 1e12
+particle_weight = 5e10
 
 [plume_model]
 plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }
