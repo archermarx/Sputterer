@@ -77,10 +77,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector<Triangle> h_triangles;
+  host_vector <Triangle> h_triangles;
 
-  host_vector<size_t> h_material_ids;
-  host_vector<Material> h_materials;
+  host_vector <size_t> h_material_ids;
+  host_vector <Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -117,12 +117,30 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector<Triangle> d_triangles = h_triangles;
-  device_vector<size_t> d_surface_ids{h_material_ids};
-  device_vector<Material> d_materials{h_materials};
+  device_vector <Triangle> d_triangles = h_triangles;
+  device_vector <size_t> d_surface_ids{h_material_ids};
+  device_vector <Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
+
+  // Construct scene on CPU
+  host_vector <BVHNode> h_nodes;
+  host_vector <size_t> h_triangle_indices;
+  Scene h_scene;
+  h_scene.build(h_triangles, h_triangle_indices, h_nodes);
+
+  // Construct scene on GPU
+  device_vector <BVHNode> d_nodes = h_nodes;
+  device_vector <size_t> d_triangle_indices = h_triangle_indices;
+
+  Scene d_scene;
+  d_scene.num_nodes = h_scene.num_nodes;
+  d_scene.num_tris = h_scene.num_tris;
+  d_scene.nodes_used = h_scene.nodes_used;
+  d_scene.triangles = thrust::raw_pointer_cast(d_triangles.data());
+  d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
+  d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
   // Create plume model
   ThrusterPlume plume{};
@@ -204,10 +222,10 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 50'000;
-  host_vector<HitInfo> hits;
-  host_vector<float3> hit_positions;
+  host_vector <HitInfo> hits;
+  host_vector <float3> hit_positions;
   vector<float> num_emit;
-  host_vector<float3> vel;
+  host_vector <float3> vel;
   host_vector<float> ws;
 
   float max_emit = 0.0;
@@ -242,7 +260,9 @@ int main (int argc, char *argv[]) {
 
     auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
     Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction = normalize(make_float3(direction))};
-    auto hit = r.cast(h_triangles.data(), h_triangles.size());
+
+    auto hit = r.cast(h_scene);
+
     if (hit.hits) {
       auto hit_pos = r.at(hit.t);
       hits.push_back(hit);
@@ -274,7 +294,7 @@ int main (int argc, char *argv[]) {
     pc_plume.set_buffers();
   }
 
-  device_vector<HitInfo> d_hits{hits};
+  device_vector <HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   std::cout << "Beginning main loop." << std::endl;
@@ -384,7 +404,7 @@ int main (int argc, char *argv[]) {
       }
 
       // Push particles and sputter from surfaces
-      pc.evolve(d_triangles, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input.particle_weight
+      pc.evolve(d_scene, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input.particle_weight
                 , input.timestep_s);
 
       // Remove particles that are out of bounds

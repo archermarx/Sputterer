@@ -6,7 +6,7 @@ std::ostream &operator<< (std::ostream &os, const float3 &v) {
   return os;
 }
 
-__host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
+__host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) {
   HitInfo info;
 
   // Find vectors for two edges sharing v1
@@ -18,10 +18,9 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
   auto det = dot(edge1, pvec);
 
   // If determinant is near zero, ray lies in plane of triangle
-  if (abs(det) < TOL) {
+  if (abs(det) < 1e-6) {
     return info;
   }
-
 
   // Calculate distance from v0 to ray origin
   auto tvec = this->origin - tri.v0;
@@ -58,17 +57,218 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) const {
   return info;
 }
 
-__host__ __device__ HitInfo Ray::cast (const Triangle *tris, size_t num_triangles) const {
-  HitInfo closest_hit{};
-  for (int i = 0; i < num_triangles; i++) {
-    auto current_hit = this->hits(tris[i], i);
-    if (current_hit.hits && current_hit.t < closest_hit.t && current_hit.t >= 0) {
-      closest_hit = current_hit;
-    }
-  }
-  return closest_hit;
-}
-
 __host__ __device__ float3 Ray::at (float t) const {
   return this->origin + t*this->direction;
 }
+
+void Scene::build (host_vector<Triangle> &h_tris, host_vector<size_t> &h_tri_inds, host_vector<BVHNode> &h_nodes) {
+  this->triangles = h_tris.data();
+  this->num_tris = h_tris.size();
+
+  h_tri_inds.resize(this->num_tris);
+  this->triangle_indices = h_tri_inds.data();
+
+  this->num_nodes = 2*this->num_tris + 1;
+  h_nodes.resize(this->num_nodes);
+  this->nodes = h_nodes.data();
+  this->nodes_used = 0;
+
+  this->build_bvh();
+}
+
+void Scene::build_bvh () {
+
+  // populate triangle indices
+  for (int i = 0; i < num_tris; i++) {
+    triangle_indices[i] = i;
+  }
+
+  // assign all triangles to root node
+  size_t root_node_idx = 0;
+  nodes_used = 1;
+  auto &root = nodes[0];
+  root.left_node = 0;
+  root.first_tri_idx = 0;
+  root.tri_count = num_tris;
+
+  // get scene bounding box
+  update_node_bounds(root_node_idx);
+
+  // recursively subdivide
+  subdivide_bvh(root_node_idx);
+}
+
+float3 fminf (float3 a, float3 b) {
+  return {fminf(a.x, b.x), fminf(a.y, b.y), fminf(a.z, b.z)};
+}
+
+float3 fmaxf (float3 a, float3 b) {
+  return {fmaxf(a.x, b.x), fmaxf(a.y, b.y), fmaxf(a.z, b.z)};
+}
+
+bool check_index (size_t num_nodes, size_t node_idx, std::string type) {
+  if (node_idx >= num_nodes) {
+    std::cerr << "OUT OF BOUNDS:: " << type << " index " << node_idx << " exceeds maximum number index (" << node_idx
+              << ")!\n";
+    return false;
+  }
+  return true;
+}
+
+void Scene::update_node_bounds (size_t node_idx) {
+
+  if (!check_index(num_nodes, node_idx, "BVH node")) return;
+
+  auto &node = nodes[node_idx];
+  node.lb = float3(1e30f);
+  node.ub = float3(-1e30f);
+
+  if (!check_index(num_tris, node.first_tri_idx + node.tri_count - 1, "triangle")) return;
+
+  for (size_t first = node.first_tri_idx, i = 0; i < node.tri_count; i++) {
+    auto &leaf_tri_idx = triangle_indices[first + i];
+    auto &leaf_tri = triangles[leaf_tri_idx];
+    node.lb = fminf(node.lb, leaf_tri.v0);
+    node.lb = fminf(node.lb, leaf_tri.v1);
+    node.lb = fminf(node.lb, leaf_tri.v2);
+    node.ub = fmaxf(node.ub, leaf_tri.v0);
+    node.ub = fmaxf(node.ub, leaf_tri.v1);
+    node.ub = fmaxf(node.ub, leaf_tri.v2);
+  }
+}
+
+float at (float3 v, size_t i) {
+  switch (i) {
+    case (0): {
+      return v.x;
+    }
+    case (1) : {
+      return v.y;
+    }
+    case (2): {
+      return v.z;
+    }
+    default: {
+      return NAN;
+    }
+  }
+}
+
+void Scene::subdivide_bvh (size_t node_idx) {
+
+  if (!check_index(num_nodes, node_idx, "BVH node")) return;
+
+  // don't split nodes with two or fewer triangles
+  auto &node = nodes[node_idx];
+
+  // split bounding box along longest axis
+  if (node.tri_count <= 2) return;
+  auto extent = node.ub - node.lb;
+  int axis = 0;
+  if (extent.y > at(extent, axis)) {
+    axis = 1;
+  }
+  if (extent.z > at(extent, axis)) {
+    axis = 2;
+  }
+
+  float split_pos = at(node.lb, axis) + at(extent, axis)*0.5f;
+
+  // split group in two halves in place
+  int i = node.first_tri_idx;
+  int j = i + node.tri_count - 1;
+  while (i <= j) {
+    if (at(triangles[triangle_indices[i]].centroid, axis) < split_pos) {
+      i++;
+    } else {
+      auto tmp = triangle_indices[i];
+      triangle_indices[i] = triangle_indices[j];
+      triangle_indices[j] = tmp;
+      j--;
+    }
+  }
+
+  // create child nodes for each halves
+  int left_count = i - node.first_tri_idx;
+
+  // check that our partition is real (i.e. that we have at least one triangle on each side)
+  if (left_count == 0 || left_count == node.tri_count) return;
+
+  // create child nodes and assign triangles/primitives to each
+  size_t left_child_idx = nodes_used;
+  size_t right_child_idx = left_child_idx + 1;
+  nodes_used += 2;
+
+  nodes[left_child_idx].first_tri_idx = node.first_tri_idx;
+  nodes[left_child_idx].tri_count = left_count;
+  nodes[right_child_idx].first_tri_idx = i;
+  nodes[right_child_idx].tri_count = node.tri_count - left_count;
+  node.left_node = left_child_idx;
+  node.tri_count = 0;
+
+  // update child node bounds
+  update_node_bounds(left_child_idx);
+  update_node_bounds(right_child_idx);
+
+  // recurse
+  subdivide_bvh(left_child_idx);
+  subdivide_bvh(right_child_idx);
+}
+
+
+__host__ __device__ HitInfo Ray::cast (Scene &scene) {
+  HitInfo closest_hit{};
+
+#if 1
+  for (int i = 0; i < scene.num_tris; i++) {
+    intersect_tri(scene.triangles[i], i, closest_hit);
+  }
+#else
+  // bounding volume heirarchy intersection, starting at root node
+  intersect_bvh(scene, closest_hit, 0);
+#endif
+  return closest_hit;
+}
+
+__host__ __device__ void Ray::intersect_tri (const Triangle &triangle, size_t id, HitInfo &closest_hit) {
+  auto hit = this->hits(triangle, id);
+  if (hit.hits && hit.t < closest_hit.t && hit.t >= 0) {
+    closest_hit = hit;
+  }
+}
+
+__host__ __device__ bool Ray::intersect_bbox (const float3 lb, const float3 ub, HitInfo &closest_hit) {
+  float tx1 = (lb.x - origin.x)/direction.x;
+  float tx2 = (ub.x - origin.x)/direction.x;
+  float tmin = fminf(tx1, tx2);
+  float tmax = fmaxf(tx1, tx2);
+
+  float ty1 = (lb.y - origin.y)/direction.y;
+  float ty2 = (ub.y - origin.y)/direction.y;
+  tmin = fmaxf(tmin, fminf(ty1, ty2));
+  tmax = fminf(tmax, fmaxf(ty1, ty2));
+
+  float tz1 = (lb.z - origin.z)/direction.z;
+  float tz2 = (ub.z - origin.z)/direction.z;
+  tmin = fmaxf(tmin, fminf(tz1, tz2));
+  tmax = fminf(tmax, fmaxf(tz1, tz2));
+
+  return tmax >= tmin && tmin < closest_hit.t && tmax > 0;
+}
+
+__host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit, size_t node_idx) {
+
+  auto &node = scene.nodes[node_idx];
+  if (!intersect_bbox(node.lb, node.ub, closest_hit)) return;
+
+  if (node.is_leaf()) {
+    for (size_t i = 0; i < node.tri_count; i++) {
+      size_t tri_idx = scene.triangle_indices[node.first_tri_idx + i];
+      intersect_tri(scene.triangles[tri_idx], tri_idx, closest_hit);
+    }
+  } else {
+    intersect_bvh(scene, closest_hit, node.left_node);
+    intersect_bvh(scene, closest_hit, node.left_node + 1);
+  }
+}
+

@@ -16,7 +16,7 @@ cex_energy_eV = 50.0
 
 [chamber]
 radius_m = 3
-length_m = 6
+length_m = 9
 
 [[material]]
 name = "carbon"

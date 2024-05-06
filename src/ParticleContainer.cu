@@ -146,7 +146,7 @@ DeviceParticleContainer ParticleContainer::data () {
 
 __global__ void
 k_evolve (DeviceParticleContainer pc
-          , const Triangle *tris, const size_t num_triangles
+          , Scene scene
           , const Material *materials, const size_t *material_ids
           , int *collected
           , const HitInfo *hits, const float *emit_prob, size_t num_hits
@@ -175,7 +175,7 @@ k_evolve (DeviceParticleContainer pc
 
     // Check for intersections with boundaries
     Ray ray{.origin = pos, .direction = dt*vel};
-    auto closest_hit = ray.cast(tris, num_triangles);
+    auto closest_hit = ray.cast(scene);
 
     if (closest_hit.t <= 1) {
       auto &[_, t, hit_pos, norm, hit_triangle_id] = closest_hit;
@@ -214,7 +214,7 @@ k_evolve (DeviceParticleContainer pc
         //
         auto sqrt_temp = sqrtf(mat.temperature_k);
         auto thermal_speed = thermal_speed_factor*sqrt_temp;
-        auto vel_refl = sample_diffuse(tris[hit_triangle_id], norm, thermal_speed, local_rng);
+        auto vel_refl = sample_diffuse(scene.triangles[hit_triangle_id], norm, thermal_speed, local_rng);
 
         // Get particle position
         // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
@@ -241,7 +241,7 @@ k_evolve (DeviceParticleContainer pc
     auto local_rng = &pc.rng[tid];
 
     // compute diffuse velocity
-    auto &tri = tris[hit.id];
+    auto &tri = scene.triangles[hit.id];
     auto &mat = materials[material_ids[hit.id]];
     auto thermal_speed = sqrtf(mat.temperature_k)*thermal_speed_factor;
     auto vel = sample_diffuse(tri, hit.norm, thermal_speed, local_rng);
@@ -269,7 +269,7 @@ std::pair<dim3, dim3> ParticleContainer::get_kernel_launch_params (size_t num_el
   return std::make_pair(grid, block);
 }
 
-void ParticleContainer::evolve (const device_vector<Triangle> &tris
+void ParticleContainer::evolve (Scene scene
                                 , const device_vector<Material> &mats, const device_vector<size_t> &ids
                                 , device_vector<int> &collected
                                 , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
@@ -277,7 +277,6 @@ void ParticleContainer::evolve (const device_vector<Triangle> &tris
 
 
   // TODO: could move all of the device geometric info into a struct
-  auto d_tri_ptr = thrust::raw_pointer_cast(tris.data());
   auto d_id_ptr = thrust::raw_pointer_cast(ids.data());
   auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
 
@@ -289,7 +288,7 @@ void ParticleContainer::evolve (const device_vector<Triangle> &tris
 
   k_evolve<<<grid, block>>>(
     this->data()
-    , d_tri_ptr, tris.size()
+    , scene
     , d_mat_ptr, d_id_ptr, d_col_ptr
     , d_hit_ptr, d_emit_ptr, hits.size()
     , input_weight, dt);
@@ -350,7 +349,11 @@ __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float hal
   if (id < n && weight[id] > 0) {
     auto r = pos[id];
     auto dist2 = r.x*r.x + r.y*r.y;
-    if (dist2 > radius2 || r.z < -halflength || r.z > halflength) {
+    auto dist_backcap = dist2 + (r.z + halflength)*(r.z + halflength);
+    auto dist_frontcap = dist2 + (r.z - halflength)*(r.z - halflength);
+    if (dist2 > radius2
+        || (r.z < -halflength && dist_backcap > radius2)
+        || (r.z > halflength && dist_frontcap > radius2)) {
       // Particles that are oob get negative weight
       weight[id] = -1;
     }
@@ -362,7 +365,9 @@ void ParticleContainer::flag_out_of_bounds (float radius, float length) {
 
   auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
   auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
-  k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr, radius*radius, length/2, num_particles);
+  k_flag_oob<<<grid, block>>>(
+    d_pos_ptr, d_wgt_ptr
+    , radius*radius, length/2 - radius, num_particles);
   cudaDeviceSynchronize();
 }
 

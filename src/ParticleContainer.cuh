@@ -73,7 +73,7 @@ public:
   ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
   // push particles to next positions (for now just use forward Euler)
-  void evolve (const device_vector<Triangle> &tris
+  void evolve (Scene scene
                , const device_vector<Material> &mats, const device_vector<size_t> &ids
                , device_vector<int> &collected
                , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
@@ -87,7 +87,7 @@ public:
 
   // Returns kernel launch params
   [[nodiscard]] std::pair<dim3, dim3>
-  get_kernel_launch_params (size_t num_elems, size_t block_size = 32) const;
+  get_kernel_launch_params (size_t num_elems, size_t block_size = 64) const;
 
   // Set particles that leave bounds to have negative weights
   void flag_out_of_bounds (float radius, float length);
