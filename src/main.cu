@@ -259,7 +259,7 @@ int main (int argc, char *argv[]) {
     auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
 
     auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-    Ray r{.origin = make_float3(plume.location + direction*1e-3f), .direction = normalize(make_float3(direction))};
+    Ray r{make_float3(plume.location + direction*1e-3f), normalize(make_float3(direction))};
 
     auto hit = r.cast(h_scene);
 

@@ -174,7 +174,7 @@ k_evolve (DeviceParticleContainer pc
     auto vel = pc.velocity[tid];
 
     // Check for intersections with boundaries
-    Ray ray{.origin = pos, .direction = dt*vel};
+    Ray ray(pos, dt*vel);
     auto closest_hit = ray.cast(scene);
 
     if (closest_hit.t <= 1) {
@@ -274,7 +274,6 @@ void ParticleContainer::evolve (Scene scene
                                 , device_vector<int> &collected
                                 , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
                                 , const float input_weight, const float dt) {
-
 
   // TODO: could move all of the device geometric info into a struct
   auto d_id_ptr = thrust::raw_pointer_cast(ids.data());

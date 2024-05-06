@@ -238,21 +238,18 @@ __host__ __device__ void Ray::intersect_tri (const Triangle &triangle, size_t id
 }
 
 __host__ __device__ bool Ray::intersect_bbox (const float3 lb, const float3 ub, HitInfo &closest_hit) {
-  float dx = 1.0/direction.x;
-  float tx1 = (lb.x - origin.x)*dx;
-  float tx2 = (ub.x - origin.x)*dx;
+  float tx1 = (lb.x - origin.x)*rd.x;
+  float tx2 = (ub.x - origin.x)*rd.x;
   float tmin = fminf(tx1, tx2);
   float tmax = fmaxf(tx1, tx2);
 
-  float dy = 1.0/direction.y;
-  float ty1 = (lb.y - origin.y)*dy;
-  float ty2 = (ub.y - origin.y)*dy;
+  float ty1 = (lb.y - origin.y)*rd.y;
+  float ty2 = (ub.y - origin.y)*rd.y;
   tmin = fmaxf(tmin, fminf(ty1, ty2));
   tmax = fminf(tmax, fmaxf(ty1, ty2));
 
-  float dz = 1.0/direction.z;
-  float tz1 = (lb.z - origin.z)*dz;
-  float tz2 = (ub.z - origin.z)*dz;
+  float tz1 = (lb.z - origin.z)*rd.z;
+  float tz2 = (ub.z - origin.z)*rd.z;
   tmin = fmaxf(tmin, fminf(tz1, tz2));
   tmax = fminf(tmax, fmaxf(tz1, tz2));
 

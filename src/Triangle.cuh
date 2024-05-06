@@ -124,6 +124,9 @@ struct Scene {
 struct Ray {
   float3 origin;
   float3 direction;
+  float3 rd;
+
+  __host__ __device__ Ray (float3 orig, float3 dir) : origin(orig), direction(dir), rd({1/dir.x, 1/dir.y, 1/dir.z}) {}
 
   [[nodiscard]] __host__ __device__ float3 at (float t) const;
 
