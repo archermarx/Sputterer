@@ -110,8 +110,10 @@ struct BBox {
 
   void grow (float3 p) { lb = fminf(lb, p), ub = fmaxf(ub, p); }
 
+  float3 extent () { return ub - lb; }
+
   float area () {
-    float3 e = ub - lb;  // box extent
+    float3 e = extent();  // box extent
     return e.x*e.y + e.y*e.z + e.z*e.x;
   }
 
@@ -130,6 +132,7 @@ struct Scene {
   Triangle *triangles;
   size_t *triangle_indices;
   size_t num_tris;
+  size_t bvh_depth;
 
   void build (host_vector<Triangle> &tris, host_vector<size_t> &tri_inds, host_vector<BVHNode> &nodes);
 
@@ -137,7 +140,7 @@ struct Scene {
 
   void update_node_bounds (size_t node_idx);
 
-  void subdivide_bvh (size_t node_idx);
+  void subdivide_bvh (size_t node_idx, size_t depth);
 
   float evaluate_sah (size_t node_idx, int axis, float pos);
 };
@@ -148,7 +151,7 @@ public:
 
   static void draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo);
 
-  void draw (Shader &shader, size_t node_idx = 0);
+  void draw (Shader &shader, int draw_depth, size_t node_idx = 0);
 
   void set_buffers ();
 

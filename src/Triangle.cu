@@ -96,7 +96,8 @@ void Scene::build_bvh () {
   update_node_bounds(root_node_idx);
 
   // recursively subdivide
-  subdivide_bvh(root_node_idx);
+  this->bvh_depth = 0;
+  subdivide_bvh(root_node_idx, 0);
 }
 
 float3 fminf (float3 a, float3 b) {
@@ -177,7 +178,7 @@ float Scene::evaluate_sah (size_t node_idx, int axis, float pos) {
   return cost > 0 ? cost : 1e30f;
 }
 
-void Scene::subdivide_bvh (size_t node_idx) {
+void Scene::subdivide_bvh (size_t node_idx, size_t depth) {
 
   if (!check_index(num_nodes, node_idx, "BVH node")) return;
 
@@ -185,10 +186,7 @@ void Scene::subdivide_bvh (size_t node_idx) {
   auto &node = nodes[node_idx];
 
   // calculate parent cost
-  auto e = node.box.ub - node.box.lb;
-  float parent_area = e.x*e.y + e.y*e.z + e.z*e.x;
-  float parent_cost = node.tri_count*parent_area;
-
+  float parent_cost = node.tri_count*node.box.area();
 
   // determine bounding box split using surface area heuristic
   int best_axis = -1;
@@ -246,8 +244,9 @@ void Scene::subdivide_bvh (size_t node_idx) {
   update_node_bounds(right_child_idx);
 
   // recurse
-  subdivide_bvh(left_child_idx);
-  subdivide_bvh(right_child_idx);
+  this->bvh_depth = std::max(this->bvh_depth, depth);
+  subdivide_bvh(left_child_idx, depth + 1);
+  subdivide_bvh(right_child_idx, depth + 1);
 }
 
 
@@ -293,7 +292,6 @@ __host__ __device__ bool Ray::intersect_bbox (const BBox &box, HitInfo &closest_
 }
 
 __host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit, size_t node_idx) {
-
   auto &node = scene.nodes[node_idx];
   if (!intersect_bbox(node.box, closest_hit)) return;
 
@@ -333,7 +331,11 @@ void BVHRenderer::draw_box (Shader &shader, BBox &box, unsigned int &vao, unsign
   glDrawArrays(GL_POINTS, 0, 1);
 }
 
-void BVHRenderer::draw (Shader &shader, size_t node_idx) {
+void BVHRenderer::draw (Shader &shader, int draw_depth, size_t node_idx) {
+
+  if (draw_depth == 0) {
+    return;
+  }
 
   auto &node = this->scene->nodes[node_idx];
   // draw current box
@@ -343,7 +345,7 @@ void BVHRenderer::draw (Shader &shader, size_t node_idx) {
     return;
   } else {
     // recursively draw children
-    draw(shader, node.left_first);
-    draw(shader, node.left_first + 1);
+    draw(shader, draw_depth - 1, node.left_first);
+    draw(shader, draw_depth - 1, node.left_first + 1);
   }
 }

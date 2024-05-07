@@ -312,6 +312,7 @@ int main (int argc, char *argv[]) {
   bool render_plume_particles = true;
   bool render_sputtered_particles = true;
   bool render_bvh = true;
+  int bvh_draw_depth = h_scene.bvh_depth;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
@@ -378,9 +379,12 @@ int main (int argc, char *argv[]) {
         ImGui::Checkbox("Show sputtered particles", &render_sputtered_particles);
         ImGui::TableNextColumn();
         ImGui::Checkbox("Show bounding boxes", &render_bvh);
+        ImGui::TableNextColumn();
+        ImGui::SliderInt("BVH draw depth", &bvh_draw_depth, 0, h_scene.bvh_depth);
       }
       ImGui::EndTable();
       ImGui::End();
+
     }
 
     // Record iteration timing information
@@ -484,7 +488,7 @@ int main (int argc, char *argv[]) {
       if (render_bvh) {
         bvh_shader.use();
         bvh_shader.set_mat4("camera", cam);
-        bvh.draw(bvh_shader);
+        bvh.draw(bvh_shader, bvh_draw_depth);
       }
 
       // Draw plume particles
@@ -512,8 +516,6 @@ int main (int argc, char *argv[]) {
         plume_shader.set_float("angle", div_angle);
         plume.draw();
       }
-
-
     }
 
     if (!app::simulation_paused && physical_time > next_output_time ||
