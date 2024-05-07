@@ -105,8 +105,8 @@ float3 fminf (float3 a, float3 b);
 float3 fmaxf (float3 a, float3 b);
 
 struct BBox {
-  float3 lb{1e30f};
-  float3 ub{-1e30f};
+  float3 lb{1e30f, 1e30f, 1e30f};
+  float3 ub{-1e30f, -1e30f, -1e30f};
 
   void grow (float3 p) { lb = fminf(lb, p), ub = fmaxf(ub, p); }
 

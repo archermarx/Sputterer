@@ -142,7 +142,7 @@ int main (int argc, char *argv[]) {
   d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
   d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
-  // declare rendering info for BVH
+  std::cout << "Bounding volume heirarchy constructed." << std::endl;
 
   // Create plume model
   ThrusterPlume plume{};
@@ -380,7 +380,7 @@ int main (int argc, char *argv[]) {
         ImGui::TableNextColumn();
         ImGui::Checkbox("Show bounding boxes", &render_bvh);
         ImGui::TableNextColumn();
-        ImGui::SliderInt("BVH draw depth", &bvh_draw_depth, 0, h_scene.bvh_depth);
+        ImGui::SliderInt("BVH depth  ", &bvh_draw_depth, 0, h_scene.bvh_depth);
       }
       ImGui::EndTable();
       ImGui::End();

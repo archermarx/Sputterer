@@ -122,7 +122,8 @@ void Scene::update_node_bounds (size_t node_idx) {
   if (!check_index(num_nodes, node_idx, "BVH node")) return;
 
   auto &node = nodes[node_idx];
-  auto &[lb, ub] = node.box;
+  float3 lb = {1e30f, 1e30f, 1e30f};
+  float3 ub = {-1e30f, -1e30f, -1e30f};
 
   if (!check_index(num_tris, node.left_first + node.tri_count - 1, "triangle")) return;
 
@@ -136,6 +137,9 @@ void Scene::update_node_bounds (size_t node_idx) {
     ub = fmaxf(ub, leaf_tri.v1);
     ub = fmaxf(ub, leaf_tri.v2);
   }
+
+  node.box.lb = lb;
+  node.box.ub = ub;
 }
 
 float at (float3 v, size_t i) {
@@ -187,43 +191,44 @@ void Scene::subdivide_bvh (size_t node_idx, size_t depth) {
 
   // calculate parent cost
   float parent_cost = node.tri_count*node.box.area();
+  auto extent = node.box.extent();
 
   // determine bounding box split using surface area heuristic
+
+  int num_positions = 12;
+  float delta = 1.0/num_positions;
+
   int best_axis = -1;
   float best_pos = 0, best_cost = 1e30f;
-  for (int axis = 0; axis < 3; axis++) {
-    for (size_t i = 0; i < node.tri_count; i++) {
-      auto &triangle = triangles[triangle_indices[node.left_first + i]];
-      float candidate_pos = at(triangle.centroid, axis);
-      float cost = evaluate_sah(node_idx, axis, candidate_pos);
+  for (int ax = 0; ax < 3; ax++) {
+    for (size_t i = 1; i < num_positions - 1; i++) {
+
+      auto candidate_pos = at(node.box.lb, ax) + i*delta*at(extent, ax);
+
+      float cost = evaluate_sah(node_idx, ax, candidate_pos);
       if (cost < best_cost) {
-        best_pos = candidate_pos, best_axis = axis, best_cost = cost;
+        best_pos = candidate_pos, best_axis = ax, best_cost = cost;
       }
     }
   }
   if (best_cost >= parent_cost) return;
 
-  size_t axis = best_axis;
-  float split_pos = best_pos;
-
   // split group in two halves in place
   int i = node.left_first;
   int j = i + node.tri_count - 1;
   while (i <= j) {
-    if (at(triangles[triangle_indices[i]].centroid, axis) < split_pos) {
+    auto idx = triangle_indices[i];
+    if (at(triangles[idx].centroid, best_axis) < best_pos) {
       i++;
     } else {
-      auto tmp = triangle_indices[i];
       triangle_indices[i] = triangle_indices[j];
-      triangle_indices[j] = tmp;
+      triangle_indices[j] = idx;
       j--;
     }
   }
 
-  // create child nodes for each halves
+  // abort split if one side is empty
   int left_count = i - node.left_first;
-
-  // check that our partition is real (i.e. that we have at least one triangle on each side)
   if (left_count == 0 || left_count == node.tri_count) return;
 
   // create child nodes and assign triangles/primitives to each
