@@ -1,6 +1,8 @@
 #include <iostream>
 #include "Triangle.cuh"
 
+#include "gl_helpers.hpp"
+
 std::ostream &operator<< (std::ostream &os, const float3 &v) {
   os << "[" << v.x << ", " << v.y << ", " << v.z << "]";
   return os;
@@ -119,20 +121,19 @@ void Scene::update_node_bounds (size_t node_idx) {
   if (!check_index(num_nodes, node_idx, "BVH node")) return;
 
   auto &node = nodes[node_idx];
-  node.lb = float3(1e30f);
-  node.ub = float3(-1e30f);
+  auto &[lb, ub] = node.box;
 
   if (!check_index(num_tris, node.left_first + node.tri_count - 1, "triangle")) return;
 
   for (size_t first = node.left_first, i = 0; i < node.tri_count; i++) {
     auto &leaf_tri_idx = triangle_indices[first + i];
     auto &leaf_tri = triangles[leaf_tri_idx];
-    node.lb = fminf(node.lb, leaf_tri.v0);
-    node.lb = fminf(node.lb, leaf_tri.v1);
-    node.lb = fminf(node.lb, leaf_tri.v2);
-    node.ub = fmaxf(node.ub, leaf_tri.v0);
-    node.ub = fmaxf(node.ub, leaf_tri.v1);
-    node.ub = fmaxf(node.ub, leaf_tri.v2);
+    lb = fminf(lb, leaf_tri.v0);
+    lb = fminf(lb, leaf_tri.v1);
+    lb = fminf(lb, leaf_tri.v2);
+    ub = fmaxf(ub, leaf_tri.v0);
+    ub = fmaxf(ub, leaf_tri.v1);
+    ub = fmaxf(ub, leaf_tri.v2);
   }
 }
 
@@ -153,6 +154,29 @@ float at (float3 v, size_t i) {
   }
 }
 
+float Scene::evaluate_sah (size_t node_idx, int axis, float pos) {
+  auto &node = this->nodes[node_idx];
+  BBox left_box, right_box;
+  int left_count = 0, right_count = 0;
+  for (size_t i = 0; i < node.tri_count; i++) {
+    Triangle &triangle = this->triangles[this->triangle_indices[node.left_first + i]];
+    if (at(triangle.centroid, axis) < pos) {
+      left_count++;
+      left_box.grow(triangle.v0);
+      left_box.grow(triangle.v1);
+      left_box.grow(triangle.v2);
+    } else {
+      right_count++;
+      right_box.grow(triangle.v0);
+      right_box.grow(triangle.v1);
+      right_box.grow(triangle.v2);
+    }
+  }
+  float cost = left_count*left_box.area() + right_count*right_box.area();
+
+  return cost > 0 ? cost : 1e30f;
+}
+
 void Scene::subdivide_bvh (size_t node_idx) {
 
   if (!check_index(num_nodes, node_idx, "BVH node")) return;
@@ -160,18 +184,29 @@ void Scene::subdivide_bvh (size_t node_idx) {
   // don't split nodes with two or fewer triangles
   auto &node = nodes[node_idx];
 
-  // split bounding box along longest axis
-  if (node.tri_count <= 2) return;
-  auto extent = node.ub - node.lb;
-  int axis = 0;
-  if (extent.y > at(extent, axis)) {
-    axis = 1;
-  }
-  if (extent.z > at(extent, axis)) {
-    axis = 2;
-  }
+  // calculate parent cost
+  auto e = node.box.ub - node.box.lb;
+  float parent_area = e.x*e.y + e.y*e.z + e.z*e.x;
+  float parent_cost = node.tri_count*parent_area;
 
-  float split_pos = at(node.lb, axis) + at(extent, axis)*0.5f;
+
+  // determine bounding box split using surface area heuristic
+  int best_axis = -1;
+  float best_pos = 0, best_cost = 1e30f;
+  for (int axis = 0; axis < 3; axis++) {
+    for (size_t i = 0; i < node.tri_count; i++) {
+      auto &triangle = triangles[triangle_indices[node.left_first + i]];
+      float candidate_pos = at(triangle.centroid, axis);
+      float cost = evaluate_sah(node_idx, axis, candidate_pos);
+      if (cost < best_cost) {
+        best_pos = candidate_pos, best_axis = axis, best_cost = cost;
+      }
+    }
+  }
+  if (best_cost >= parent_cost) return;
+
+  size_t axis = best_axis;
+  float split_pos = best_pos;
 
   // split group in two halves in place
   int i = node.left_first;
@@ -237,7 +272,8 @@ __host__ __device__ void Ray::intersect_tri (const Triangle &triangle, size_t id
   }
 }
 
-__host__ __device__ bool Ray::intersect_bbox (const float3 lb, const float3 ub, HitInfo &closest_hit) {
+__host__ __device__ bool Ray::intersect_bbox (const BBox &box, HitInfo &closest_hit) {
+  const auto &[lb, ub] = box;
   float tx1 = (lb.x - origin.x)*rd.x;
   float tx2 = (ub.x - origin.x)*rd.x;
   float tmin = fminf(tx1, tx2);
@@ -259,7 +295,7 @@ __host__ __device__ bool Ray::intersect_bbox (const float3 lb, const float3 ub, 
 __host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit, size_t node_idx) {
 
   auto &node = scene.nodes[node_idx];
-  if (!intersect_bbox(node.lb, node.ub, closest_hit)) return;
+  if (!intersect_bbox(node.box, closest_hit)) return;
 
   if (node.is_leaf()) {
     for (size_t i = 0; i < node.tri_count; i++) {
@@ -272,3 +308,42 @@ __host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit,
   }
 }
 
+void BVHRenderer::set_buffers () {
+  glGenBuffers(1, &vbo);
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+  float points[] = {0.0, 0.0, 0.0};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_DYNAMIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);
+  glBindVertexArray(0);
+}
+
+void BVHRenderer::draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo) {
+  glBindVertexArray(vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  auto center = box.center();
+  auto extent = box.ub - box.lb;
+  float points[] = {center.x, center.y, center.z};
+  shader.set_vec3("extent", {extent.x, extent.y, extent.z});
+  glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_DYNAMIC_DRAW);
+  glDrawArrays(GL_POINTS, 0, 1);
+}
+
+void BVHRenderer::draw (Shader &shader, size_t node_idx) {
+
+  auto &node = this->scene->nodes[node_idx];
+  // draw current box
+  draw_box(shader, node.box, this->vao, this->vbo);
+
+  if (node.is_leaf()) {
+    return;
+  } else {
+    // recursively draw children
+    draw(shader, node.left_first);
+    draw(shader, node.left_first + 1);
+  }
+}

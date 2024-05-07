@@ -12,8 +12,7 @@
 #include "Constants.hpp"
 #include "ThrusterPlume.hpp"
 
-
-vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
+[[maybe_unused]]  vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
 
   // vector from plume origin to position
   auto offset = position - this->location;
@@ -27,7 +26,7 @@ vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
   return {radius, angle};
 }
 
-double current_density_scale (const double angle, const double div_angle, const double frac) {
+[[maybe_unused]] double current_density_scale (const double angle, const double div_angle, const double frac) {
   using namespace std::complex_literals;
   using namespace Faddeeva;
   using namespace constants;

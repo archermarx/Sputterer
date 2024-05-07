@@ -44,7 +44,7 @@ public:
   [[nodiscard]] double scattered_divergence_angle () const;
 
   // convert 3D Cartesian coordinates (x, y, z) to thruster-relative polar coordinates (r, alpha)
-  [[nodiscard]] vec2 convert_to_thruster_coords (vec3 position) const;
+  [[nodiscard]] [[maybe_unused]]  vec2 convert_to_thruster_coords (vec3 position) const;
 
   [[nodiscard]] CurrentFraction current_fractions () const;
 

@@ -4,6 +4,7 @@
 
 #include <iosfwd>
 #include <thrust/host_vector.h>
+#include <Shader.hpp>
 
 using thrust::host_vector;
 
@@ -99,8 +100,26 @@ struct HitInfo {
   int id{-1};
 };
 
+float3 fminf (float3 a, float3 b);
+
+float3 fmaxf (float3 a, float3 b);
+
+struct BBox {
+  float3 lb{1e30f};
+  float3 ub{-1e30f};
+
+  void grow (float3 p) { lb = fminf(lb, p), ub = fmaxf(ub, p); }
+
+  float area () {
+    float3 e = ub - lb;  // box extent
+    return e.x*e.y + e.y*e.z + e.z*e.x;
+  }
+
+  float3 center () { return 0.5*(lb + ub); }
+};
+
 struct BVHNode {
-  float3 lb, ub;    // 24 bytes, min and maximum extents of axis-aligned bounding box (aabb)
+  BBox box;    // 24 bytes, min and maximum extents of axis-aligned bounding box (aabb)
   size_t left_first, tri_count;  // 8 bytes; total: 32 bytes
   __host__ __device__ bool is_leaf () { return tri_count > 0; }
 };
@@ -119,6 +138,23 @@ struct Scene {
   void update_node_bounds (size_t node_idx);
 
   void subdivide_bvh (size_t node_idx);
+
+  float evaluate_sah (size_t node_idx, int axis, float pos);
+};
+
+class BVHRenderer {
+public:
+  Scene *scene;
+
+  static void draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo);
+
+  void draw (Shader &shader, size_t node_idx = 0);
+
+  void set_buffers ();
+
+private:
+  unsigned int vao, vbo;
+
 };
 
 struct Ray {
@@ -138,7 +174,7 @@ struct Ray {
 
   __host__ __device__ void intersect_bvh (Scene &scene, HitInfo &closest_hit, size_t node_idx = 0);
 
-  [[nodiscard]] __host__ __device__ bool intersect_bbox (float3 lb, float3 ub, HitInfo &closest_hit);
+  [[nodiscard]] __host__ __device__ bool intersect_bbox (const BBox &box, HitInfo &closest_hit);
 
 };
 

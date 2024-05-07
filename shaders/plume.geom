@@ -34,6 +34,8 @@ void build_cone(vec4 position) {
         gl_Position = camera * (position + vec4(v, 0.0));
         EmitVertex();
     }
+
+    EndPrimitive();
 }
 
 

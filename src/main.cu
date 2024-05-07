@@ -77,10 +77,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector <Triangle> h_triangles;
+  host_vector<Triangle> h_triangles;
 
-  host_vector <size_t> h_material_ids;
-  host_vector <Material> h_materials;
+  host_vector<size_t> h_material_ids;
+  host_vector<Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -117,22 +117,22 @@ int main (int argc, char *argv[]) {
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector <Triangle> d_triangles = h_triangles;
-  device_vector <size_t> d_surface_ids{h_material_ids};
-  device_vector <Material> d_materials{h_materials};
+  device_vector<Triangle> d_triangles = h_triangles;
+  device_vector<size_t> d_surface_ids{h_material_ids};
+  device_vector<Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
 
   // Construct scene on CPU
-  host_vector <BVHNode> h_nodes;
-  host_vector <size_t> h_triangle_indices;
+  host_vector<BVHNode> h_nodes;
+  host_vector<size_t> h_triangle_indices;
   Scene h_scene;
   h_scene.build(h_triangles, h_triangle_indices, h_nodes);
 
   // Construct scene on GPU
-  device_vector <BVHNode> d_nodes = h_nodes;
-  device_vector <size_t> d_triangle_indices = h_triangle_indices;
+  device_vector<BVHNode> d_nodes = h_nodes;
+  device_vector<size_t> d_triangle_indices = h_triangle_indices;
 
   Scene d_scene;
   d_scene.num_nodes = h_scene.num_nodes;
@@ -141,6 +141,8 @@ int main (int argc, char *argv[]) {
   d_scene.triangles = thrust::raw_pointer_cast(d_triangles.data());
   d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
   d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
+
+  // declare rendering info for BVH
 
   // Create plume model
   ThrusterPlume plume{};
@@ -155,7 +157,11 @@ int main (int argc, char *argv[]) {
 
   // Display objects
   Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-  Shader mesh_shader{}, particle_shader{}, plume_shader{};
+  Shader mesh_shader{}, particle_shader{}, plume_shader{}, bvh_shader{};
+
+  BVHRenderer bvh{};
+  bvh.scene = &h_scene;
+
   if (display) {
     // enable window
     window.enable();
@@ -194,6 +200,11 @@ int main (int argc, char *argv[]) {
     plume_shader.set_float("length", plume_length);
     plume_shader.set_vec3("direction", plume.direction);
     plume.set_buffers();
+
+    // set up BVH rendering
+    bvh_shader.load("../shaders/bvh.vert", "../shaders/bvh.frag", "../shaders/bvh.geom");
+    bvh_shader.use();
+    bvh.set_buffers();
   }
 
   // Create timing objects
@@ -222,10 +233,10 @@ int main (int argc, char *argv[]) {
 
   // Cast initial rays from plume
   int num_rays = 50'000;
-  host_vector <HitInfo> hits;
-  host_vector <float3> hit_positions;
+  host_vector<HitInfo> hits;
+  host_vector<float3> hit_positions;
   vector<float> num_emit;
-  host_vector <float3> vel;
+  host_vector<float3> vel;
   host_vector<float> ws;
 
   float max_emit = 0.0;
@@ -242,13 +253,11 @@ int main (int argc, char *argv[]) {
   auto beam_fraction = main_fraction + scattered_fraction;
   main_fraction = main_fraction/beam_fraction;
 
-
   for (int i = 0; i < num_rays; i++) {
-
     // select whether ray comes from main beam or scattered beam based on
     // fraction of beam that is scattered vs main
     auto u = rand_uniform();
-    double div_angle{};
+    double div_angle;
     if (u < main_fraction) {
       div_angle = plume.main_divergence_angle();
     } else {
@@ -294,7 +303,7 @@ int main (int argc, char *argv[]) {
     pc_plume.set_buffers();
   }
 
-  device_vector <HitInfo> d_hits{hits};
+  device_vector<HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   std::cout << "Beginning main loop." << std::endl;
@@ -302,6 +311,7 @@ int main (int argc, char *argv[]) {
   bool render_plume_cone = true;
   bool render_plume_particles = true;
   bool render_sputtered_particles = true;
+  bool render_bvh = true;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
@@ -366,6 +376,8 @@ int main (int argc, char *argv[]) {
         ImGui::Checkbox("Show plume particles", &render_plume_particles);
         ImGui::TableNextColumn();
         ImGui::Checkbox("Show sputtered particles", &render_sputtered_particles);
+        ImGui::TableNextColumn();
+        ImGui::Checkbox("Show bounding boxes", &render_bvh);
       }
       ImGui::EndTable();
       ImGui::End();
@@ -468,6 +480,13 @@ int main (int argc, char *argv[]) {
         pc.draw();
       }
 
+      // Draw bounding volume heirarchy
+      if (render_bvh) {
+        bvh_shader.use();
+        bvh_shader.set_mat4("camera", cam);
+        bvh.draw(bvh_shader);
+      }
+
       // Draw plume particles
       if (render_plume_particles) {
         particle_shader.use();
@@ -477,8 +496,8 @@ int main (int argc, char *argv[]) {
         pc_plume.draw();
       }
 
+      // Draw translucent plume cone
       if (render_plume_cone) {
-        // 3. draw plume cones
         plume_shader.use();
         plume_shader.set_mat4("camera", cam);
 
@@ -493,6 +512,8 @@ int main (int argc, char *argv[]) {
         plume_shader.set_float("angle", div_angle);
         plume.draw();
       }
+
+
     }
 
     if (!app::simulation_paused && physical_time > next_output_time ||
