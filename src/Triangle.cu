@@ -122,8 +122,7 @@ void Scene::update_node_bounds (size_t node_idx) {
   if (!check_index(num_nodes, node_idx, "BVH node")) return;
 
   auto &node = nodes[node_idx];
-  float3 lb = {1e30f, 1e30f, 1e30f};
-  float3 ub = {-1e30f, -1e30f, -1e30f};
+  auto &[lb, ub] = node.box;
 
   if (!check_index(num_tris, node.left_first + node.tri_count - 1, "triangle")) return;
 
@@ -137,9 +136,6 @@ void Scene::update_node_bounds (size_t node_idx) {
     ub = fmaxf(ub, leaf_tri.v1);
     ub = fmaxf(ub, leaf_tri.v2);
   }
-
-  node.box.lb = lb;
-  node.box.ub = ub;
 }
 
 float at (float3 v, size_t i) {

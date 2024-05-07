@@ -155,6 +155,91 @@ int main (int argc, char *argv[]) {
   plume.scattered_energy_ev = input.scattered_energy_ev;
   plume.cex_energy_ev = input.cex_energy_ev;
 
+  // Cast initial rays from plume
+  host_vector<HitInfo> hits;
+  host_vector<float3> hit_positions;
+  vector<float> num_emit;
+  host_vector<float3> vel;
+  host_vector<float> ws;
+
+  // plume coordinate system
+  auto up = vec3{0.0, 1.0, 0.0};
+  auto right = cross(plume.direction, up);
+  up = cross(right, plume.direction);
+
+  auto incident = constants::xenon;
+  auto target = constants::carbon;
+
+  auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
+  auto beam_fraction = main_fraction + scattered_fraction;
+  main_fraction = main_fraction/beam_fraction;
+
+  // tune the number of rays to get a max emission probability close to 1
+  float target_prob = 0.95;
+  float tol = 0.1;
+  float max_iters = 5;
+  float max_emit_prob = 0.0;
+  int num_rays = 10'000;
+
+  for (int iter = 0; iter < max_iters; iter++) {
+    // TODO: do this on GPU
+    // TODO: use low-discrepancy sampler for this
+    // TODO: refactor this into a function
+    // TODO: redo this periodically throughout the simulation
+    float max_emit = 0.0;
+    for (int i = 0; i < num_rays; i++) {
+      // select whether ray comes from main beam or scattered beam based on
+      // fraction of beam that is scattered vs main
+      auto u = rand_uniform();
+      double div_angle;
+      if (u < main_fraction) {
+        div_angle = plume.main_divergence_angle();
+      } else {
+        div_angle = plume.scattered_divergence_angle();
+      }
+
+      auto azimuth = rand_uniform(0, 2*constants::pi);
+      auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
+
+      auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
+      Ray r{make_float3(plume.location + direction*1e-3f), normalize(make_float3(direction))};
+
+      auto hit = r.cast(h_scene);
+
+      if (hit.hits) {
+        auto hit_pos = r.at(hit.t);
+        hits.push_back(hit);
+        hit_positions.push_back(hit_pos);
+        vel.push_back({0.0f, 0.0f, 0.0f});
+        ws.push_back(0.0f);
+
+        auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
+        auto hit_angle = acos(cos_hit_angle);
+
+        auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
+        auto n_emit = yield*plume.beam_current*beam_fraction/constants::q_e/num_rays/input.particle_weight;
+        if (n_emit > max_emit)
+          max_emit = n_emit;
+        num_emit.push_back(n_emit);
+      }
+    }
+    // basic proportional controller
+    max_emit_prob = max_emit*input.timestep_s;
+    num_rays = static_cast<int>(num_rays*max_emit_prob/target_prob);
+    if (abs(max_emit_prob - target_prob) < tol) {
+      break;
+    }
+  }
+  std::cout << "Max emission probability: " << max_emit_prob << std::endl;
+  std::cout << "Number of plume rays: " << num_rays << std::endl;
+
+  // Create plume particle container
+  ParticleContainer pc_plume{"plume", hit_positions.size()};
+  pc_plume.add_particles(hit_positions, vel, ws);
+
+  device_vector<HitInfo> d_hits{hits};
+  device_vector<float> d_num_emit{num_emit};
+
   // Display objects
   Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
   Shader mesh_shader{}, particle_shader{}, plume_shader{}, bvh_shader{};
@@ -189,9 +274,12 @@ int main (int argc, char *argv[]) {
     particle_shader.set_vec3("cameraRight", app::camera.right);
     particle_shader.set_vec3("cameraUp", app::camera.up);
 
-    // Set up particle mesh
+    // Set up particle meshes
     pc.mesh.read_from_obj("../o_rect.obj");
     pc.set_buffers();
+
+    pc_plume.mesh.read_from_obj("../o_rect.obj");
+    pc_plume.set_buffers();
 
     // Load plume shader
     plume_shader.load("../shaders/plume.vert", "../shaders/plume.frag", "../shaders/plume.geom");
@@ -231,87 +319,12 @@ int main (int argc, char *argv[]) {
               << std::endl;
   output_file.close();
 
-  // Cast initial rays from plume
-  int num_rays = 50'000;
-  host_vector<HitInfo> hits;
-  host_vector<float3> hit_positions;
-  vector<float> num_emit;
-  host_vector<float3> vel;
-  host_vector<float> ws;
-
-  float max_emit = 0.0;
-
-  // plume coordinate system
-  auto up = vec3{0.0, 1.0, 0.0};
-  auto right = cross(plume.direction, up);
-  up = cross(right, plume.direction);
-
-  auto incident = constants::xenon;
-  auto target = constants::carbon;
-
-  auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
-  auto beam_fraction = main_fraction + scattered_fraction;
-  main_fraction = main_fraction/beam_fraction;
-
-  for (int i = 0; i < num_rays; i++) {
-    // select whether ray comes from main beam or scattered beam based on
-    // fraction of beam that is scattered vs main
-    auto u = rand_uniform();
-    double div_angle;
-    if (u < main_fraction) {
-      div_angle = plume.main_divergence_angle();
-    } else {
-      div_angle = plume.scattered_divergence_angle();
-    }
-
-    auto azimuth = rand_uniform(0, 2*constants::pi);
-    auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
-
-    auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-    Ray r{make_float3(plume.location + direction*1e-3f), normalize(make_float3(direction))};
-
-    auto hit = r.cast(h_scene);
-
-    if (hit.hits) {
-      auto hit_pos = r.at(hit.t);
-      hits.push_back(hit);
-      hit_positions.push_back(hit_pos);
-      vel.push_back({0.0f, 0.0f, 0.0f});
-      ws.push_back(0.0f);
-
-      auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
-      auto hit_angle = acos(cos_hit_angle);
-
-      auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
-      auto n_emit = yield*plume.beam_current*beam_fraction/constants::q_e/num_rays/input.particle_weight;
-      if (n_emit > max_emit)
-        max_emit = n_emit*input.timestep_s;
-      num_emit.push_back(n_emit);
-    }
-  }
-
-  if (max_emit > 1.0) {
-    std::cout << "WARNING: decreasing timestep so that max 1 particle emitted per location per timestep" << std::endl;
-    input.timestep_s /= max_emit;
-  }
-  std::cout << "Max emission probability: " << max_emit << std::endl;
-
-  ParticleContainer pc_plume{"plume", hit_positions.size()};
-  pc_plume.add_particles(hit_positions, vel, ws);
-  if (display) {
-    pc_plume.mesh.read_from_obj("../o_rect.obj");
-    pc_plume.set_buffers();
-  }
-
-  device_vector<HitInfo> d_hits{hits};
-  device_vector<float> d_num_emit{num_emit};
-
   std::cout << "Beginning main loop." << std::endl;
 
   bool render_plume_cone = true;
   bool render_plume_particles = true;
   bool render_sputtered_particles = true;
-  bool render_bvh = true;
+  bool render_bvh = false;
   int bvh_draw_depth = h_scene.bvh_depth;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
