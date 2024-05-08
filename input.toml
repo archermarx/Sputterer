@@ -1,22 +1,22 @@
 [simulation]
-timestep_s = 300e-6
+timestep_s = 100e-6
 max_time_s = 3.0
 output_interval_s = 0.05
-particle_weight = 5e10
+particle_weight = 1e12
 
 [plume_model]
 plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }
 plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
 background_pressure_Torr = 5e-6
-ion_current_A = 4.0
-model_parameters = [0.7, 0.5, 14.0, 0.2, 6.31e18, 1.259e15, 55.0]
+ion_current_A = 15.0
+model_parameters = [0.8, 0.8, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]
 beam_energy_eV = 300.0
-scattered_energy_eV = 200.0
+scattered_energy_eV = 300.0
 cex_energy_eV = 50.0
 
 [chamber]
-radius_m = 3
-length_m = 9
+radius_m = 6
+length_m = 10
 
 [[material]]
 name = "carbon"
@@ -38,15 +38,24 @@ name = "QCM"
 file = "o_rect.obj"
 material = "carbon"
 collect = true
-scale = { x = 0.01241, y = 0.01241, z = 1.0 }
+scale = { x = 0.1241, y = 0.1241, z = 1.0 }
 color = { x = 0.9, y = 0.1, z = 0.1 }
 translate = { x = 1.0, y = 0.2285, z = -2.16 }
-rotate = { angle = 0.0 }
+
+[[geometry]]
+name = "chamber"
+file = "o_chamber.obj"
+material = "carbon"
+collect = false
+scale = { x = 1.0, y = 1.0, z = 1.0 }
+color = { x = 0.1, y = 0.2, z = 0.5 }
+translate = { x = 0.0, y = 0.0, z = 0.0 }
 
 [[geometry]]
 name = "beamdump_back_l"
 file = "o_rect.obj"
 material = "carbon"
+smooth = true
 scale = { x = 0.610, y = 0.610, z = 1.0 }
 translate = { x = -0.334, y = 0.330, z = 2.074 }
 rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 0 }

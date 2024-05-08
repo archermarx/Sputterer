@@ -310,38 +310,6 @@ float rand_normal (float mean, float std) {
   return dist(rng);
 }
 
-void ParticleContainer::emit (Triangle &triangle, Emitter emitter, float dt) {
-  auto num_emit = emitter.flux*triangle.area*dt;
-  int num_emit_int = static_cast<int>(num_emit);
-  auto remainder = num_emit - static_cast<float>(num_emit_int);
-
-  auto u = rand_uniform();
-  if (u < remainder) {
-    num_emit_int += 1;
-  }
-
-  if (num_emit_int < 1) {
-    return;
-  }
-
-  host_vector<float3> pos(num_emit_int);
-  host_vector<float3> vel(num_emit_int);
-  host_vector<float> w(num_emit_int, 1.0f);
-
-  for (int i = 0; i < num_emit_int; i++) {
-    auto pt = triangle.sample(rand_uniform(), rand_uniform());
-    auto norm = emitter.reverse ? -triangle.norm : triangle.norm;
-    // offset particle very slightly by norm
-    auto tol = 0.0001f;
-    pos[i] = pt + tol*norm;
-    auto jitter = float3(
-      rand_normal(0, emitter.spread), rand_normal(0, emitter.spread), rand_normal(0, emitter.spread));
-    vel[i] = emitter.velocity*(norm + jitter);
-  }
-
-  add_particles(pos, vel, w);
-}
-
 __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float halflength, size_t n) {
   unsigned int id = threadIdx.x + blockIdx.x*blockDim.x;
   if (id < n && weight[id] > 0) {

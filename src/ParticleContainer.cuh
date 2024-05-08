@@ -82,9 +82,6 @@ public:
   // add particles to the container
   void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
 
-  // Emit particles from a given triangle
-  void emit (Triangle &triangle, Emitter emitter, float dt);
-
   // Returns kernel launch params
   [[nodiscard]] std::pair<dim3, dim3>
   get_kernel_launch_params (size_t num_elems, size_t block_size = 64) const;

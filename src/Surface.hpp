@@ -17,20 +17,9 @@ struct Material {
   float temperature_k{300.0f};
 };
 
-struct Emitter {
-  bool emit{false};
-  float flux{0.0};
-  float velocity{1.0};
-  float spread{0.1};
-  bool reverse{false};
-};
-
 struct Surface {
   // Name of surface
   string name{"noname"};
-
-  // Emitter options
-  Emitter emitter{};
 
   // Material options
   Material material{};

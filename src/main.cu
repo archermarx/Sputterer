@@ -77,10 +77,10 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc{"noname", max_particles, 1.0f, 1};
 
   // construct triangles
-  host_vector<Triangle> h_triangles;
+  host_vector <Triangle> h_triangles;
 
-  host_vector<size_t> h_material_ids;
-  host_vector<Material> h_materials;
+  host_vector <size_t> h_material_ids;
+  host_vector <Material> h_materials;
 
   host_vector<char> h_to_collect;
   std::vector<int> collect_inds_global;
@@ -113,26 +113,28 @@ int main (int argc, char *argv[]) {
     }
   }
 
+  std::vector<double> deposition_rates(collect_inds_global.size(), 0);
+
   host_vector<int> collected(collect_inds_global.size(), 0);
   std::cout << "Meshes read." << std::endl;
 
   // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-  device_vector<Triangle> d_triangles = h_triangles;
-  device_vector<size_t> d_surface_ids{h_material_ids};
-  device_vector<Material> d_materials{h_materials};
+  device_vector <Triangle> d_triangles = h_triangles;
+  device_vector <size_t> d_surface_ids{h_material_ids};
+  device_vector <Material> d_materials{h_materials};
   device_vector<int> d_collected(h_triangles.size(), 0);
 
   std::cout << "Mesh data sent to GPU" << std::endl;
 
   // Construct scene on CPU
-  host_vector<BVHNode> h_nodes;
-  host_vector<size_t> h_triangle_indices;
+  host_vector <BVHNode> h_nodes;
+  host_vector <size_t> h_triangle_indices;
   Scene h_scene;
   h_scene.build(h_triangles, h_triangle_indices, h_nodes);
 
   // Construct scene on GPU
-  device_vector<BVHNode> d_nodes = h_nodes;
-  device_vector<size_t> d_triangle_indices = h_triangle_indices;
+  device_vector <BVHNode> d_nodes = h_nodes;
+  device_vector <size_t> d_triangle_indices = h_triangle_indices;
 
   Scene d_scene;
   d_scene.num_nodes = h_scene.num_nodes;
@@ -156,10 +158,10 @@ int main (int argc, char *argv[]) {
   plume.cex_energy_ev = input.cex_energy_ev;
 
   // Cast initial rays from plume
-  host_vector<HitInfo> hits;
-  host_vector<float3> hit_positions;
+  host_vector <HitInfo> hits;
+  host_vector <float3> hit_positions;
   vector<float> num_emit;
-  host_vector<float3> vel;
+  host_vector <float3> vel;
   host_vector<float> ws;
 
   // plume coordinate system
@@ -191,11 +193,13 @@ int main (int argc, char *argv[]) {
       // select whether ray comes from main beam or scattered beam based on
       // fraction of beam that is scattered vs main
       auto u = rand_uniform();
-      double div_angle;
+      double div_angle, beam_energy;
       if (u < main_fraction) {
         div_angle = plume.main_divergence_angle();
+        beam_energy = plume.beam_energy_ev;
       } else {
         div_angle = plume.scattered_divergence_angle();
+        beam_energy = plume.scattered_energy_ev;
       }
 
       auto azimuth = rand_uniform(0, 2*constants::pi);
@@ -216,8 +220,8 @@ int main (int argc, char *argv[]) {
         auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
         auto hit_angle = acos(cos_hit_angle);
 
-        auto yield = sputtering_yield(plume.beam_energy_ev, hit_angle, incident, target);
-        auto n_emit = yield*plume.beam_current*beam_fraction/constants::q_e/num_rays/input.particle_weight;
+        auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
+        auto n_emit = yield*plume.beam_current*beam_fraction/q_e/num_rays/input.particle_weight;
         if (n_emit > max_emit)
           max_emit = n_emit;
         num_emit.push_back(n_emit);
@@ -237,7 +241,7 @@ int main (int argc, char *argv[]) {
   ParticleContainer pc_plume{"plume", hit_positions.size()};
   pc_plume.add_particles(hit_positions, vel, ws);
 
-  device_vector<HitInfo> d_hits{hits};
+  device_vector <HitInfo> d_hits{hits};
   device_vector<float> d_num_emit{num_emit};
 
   // Display objects
@@ -315,8 +319,9 @@ int main (int argc, char *argv[]) {
   string output_filename{"deposition.csv"};
   std::ofstream output_file;
   output_file.open(output_filename);
-  output_file << "Time(s),Surface name,Local triangle ID,Global triangle ID,Macroparticles collected,Mass collected"
-              << std::endl;
+  output_file
+    << "Time(s),Surface name,Local triangle ID,Global triangle ID,Macroparticles collected,Mass collected,Deposition rate(um/kh)"
+    << std::endl;
   output_file.close();
 
   std::cout << "Beginning main loop." << std::endl;
@@ -326,6 +331,8 @@ int main (int argc, char *argv[]) {
   bool render_sputtered_particles = true;
   bool render_bvh = false;
   int bvh_draw_depth = h_scene.bvh_depth;
+
+  double graphite_density = 2.25e3;
 
   while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
 
@@ -360,8 +367,18 @@ int main (int argc, char *argv[]) {
         ImGui::TableNextColumn();
         ImGui::Text("Particles collected");
         ImGui::TableNextColumn();
-        ImGui::Text("Mass collected [kg]");
+        ImGui::Text("Deposition rate [um/kh]");
         for (int row = 0; row < collect_inds_global.size(); row++) {
+
+          auto triangle_id_global = collect_inds_global[row];
+          double mass_carbon = collected[row]*input.particle_weight*carbon.mass*m_u;
+          double volume_carbon = mass_carbon/graphite_density;
+          double triangle_area = h_triangles[triangle_id_global].area;
+          double layer_thickness_um = volume_carbon/triangle_area*1e6;
+          double physical_time_kh = physical_time/3600/1000;
+          double deposition_rate = layer_thickness_um/physical_time_kh;
+          deposition_rates[row] = deposition_rate;
+
           auto triangle_id = collect_inds_global[row];
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
@@ -371,7 +388,7 @@ int main (int argc, char *argv[]) {
           ImGui::TableNextColumn();
           ImGui::Text("%d", collected[row]);
           ImGui::TableNextColumn();
-          ImGui::Text("%.3e", static_cast<double>(collected[row]*carbon.mass*m_u*input.particle_weight));
+          ImGui::Text("%.3f", deposition_rates[row]);
         }
         ImGui::EndTable();
       }
@@ -417,20 +434,6 @@ int main (int argc, char *argv[]) {
     // Main computations
     if (frame > 0 && !app::simulation_paused) {
       start.record();
-
-      // Emit particles
-      size_t tri_count{0};
-      for (const auto &surf: input.surfaces) {
-        auto &emitter = surf.emitter;
-        if (!emitter.emit) {
-          continue;
-        }
-
-        for (size_t i = 0; i < surf.mesh.num_triangles; i++) {
-          pc.emit(h_triangles[i], emitter, input.timestep_s);
-        }
-        tri_count += surf.mesh.num_triangles;
-      }
 
       // Push particles and sputter from surfaces
       pc.evolve(d_scene, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input.particle_weight
@@ -543,12 +546,23 @@ int main (int argc, char *argv[]) {
       output_file.open(output_filename, std::ios_base::app);
       for (int i = 0; i < collect_inds_global.size(); i++) {
         auto triangle_id_global = collect_inds_global[i];
+
+        double mass_carbon = collected[i]*input.particle_weight*carbon.mass*m_u;
+        double volume_carbon = mass_carbon/graphite_density;
+        double triangle_area = h_triangles[triangle_id_global].area;
+        double layer_thickness_um = volume_carbon/triangle_area*1e6;
+        double physical_time_kh = physical_time/3600/1000;
+        double deposition_rate = layer_thickness_um/physical_time_kh;
+        deposition_rates[i] = deposition_rate;
+
         output_file << physical_time << ",";
         output_file << surface_names.at(h_material_ids[triangle_id_global]) << ",";
         output_file << collect_inds_local.at(i) << ",";
         output_file << triangle_id_global << ",";
         output_file << collected[i] << ",";
-        output_file << collected[i]*input.particle_weight*constants::carbon.mass*constants::m_u << "\n";
+        output_file << mass_carbon << ",";
+        output_file << deposition_rates[i] << "\n";
+
       }
       output_file.close();
 

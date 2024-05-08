@@ -11,16 +11,21 @@ std::ostream &operator<< (std::ostream &os, const float3 &v) {
 __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) {
   HitInfo info;
 
+  // expand triangle by a small amount
+  auto v0 = tri.v0;
+  auto v1 = tri.v1;
+  auto v2 = tri.v2;
+
   // Find vectors for two edges sharing v1
-  auto edge1 = tri.v1 - tri.v0;
-  auto edge2 = tri.v2 - tri.v0;
+  auto edge1 = v1 - v0;
+  auto edge2 = v2 - v0;
 
   // Begin calculating determinant
   auto pvec = cross(this->direction, edge2);
   auto det = dot(edge1, pvec);
 
   // If determinant is near zero, ray lies in plane of triangle
-  if (abs(det) < 1e-6) {
+  if (abs(det) < 1e-8f) {
     return info;
   }
 
@@ -30,7 +35,7 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) {
   // Calculate u parameter and test bounds
   auto inv_det = 1.0f/det;
   auto u = dot(tvec, pvec)*inv_det;
-  if (u < 0.0 || u > 1.0) {
+  if (u < 0.0f || u > 1.0f) {
     return info;
   }
 
@@ -38,7 +43,7 @@ __host__ __device__ HitInfo Ray::hits (const Triangle &tri, int id) {
 
   // Calculate v parameter and test bounds
   auto v = dot(this->direction, qvec)*inv_det;
-  if (v < 0.0 || u + v > 1.0) {
+  if (v < 0.0f || u + v > 1.0f) {
     return info;
   }
   // Calculate t, ray intersects triangle

@@ -51,8 +51,10 @@ double ThrusterPlume::scattered_divergence_angle () const {
   return (this->main_divergence_angle())/(this->model_params[1]);
 }
 
+constexpr double torr_to_pa = 133.322;
+
 double ThrusterPlume::main_divergence_angle () const {
-  return this->model_params[2]*this->background_pressure + this->model_params[3];
+  return this->model_params[2]*torr_to_pa*this->background_pressure + this->model_params[3];
 }
 
 CurrentFraction ThrusterPlume::current_fractions () const {

@@ -149,14 +149,10 @@ void Input::read () {
       std::cerr << "Material \"" << mat_name << "\" not found in input file!" << std::endl;
     }
 
-    auto &emitter = surf.emitter;
     auto &material = surf.material;
 
     if (tab->contains("name"))
       surf.name = read_table_entry_as<string>(*tab, "name");
-
-    if (tab->contains("emit"))
-      emitter.emit = read_table_entry_as<bool>(*tab, "emit");
 
     if (tab->contains("collect"))
       material.collect = read_table_entry_as<bool>(*tab, "collect");
@@ -165,19 +161,6 @@ void Input::read () {
     // the input file was run
     auto mesh_file = read_table_entry_as<string>(*tab, "file");
     auto mesh_path = fs::absolute({this->filename}).parent_path()/mesh_file;
-
-    // Read emitter options
-    if (emitter.emit && tab->contains("emitter")) {
-      auto emit_tab = tab->get_as<toml::table>("emitter");
-      emitter.flux = read_table_entry_as<float>(*emit_tab, "flux");
-      emitter.velocity = read_table_entry_as<float>(*emit_tab, "velocity");
-      if (emit_tab->contains("reverse_direction")) {
-        emitter.reverse = read_table_entry_as<bool>(*emit_tab, "reverse_direction");
-      }
-      if (emit_tab->contains("spread")) {
-        emitter.spread = read_table_entry_as<float>(*emit_tab, "spread");
-      }
-    }
 
     // object positions (optional)
     auto &transform = surf.transform;
