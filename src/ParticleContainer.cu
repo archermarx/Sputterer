@@ -33,7 +33,12 @@ ParticleContainer::ParticleContainer (string name, size_t num, double mass, int 
 void
 ParticleContainer::add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel
                                   , const host_vector<float> &w) {
-  auto n = static_cast<int>(std::min({pos.size(), vel.size(), w.size()}));
+  auto n = static_cast<int>(
+    std::min(
+      std::min(pos.size(), vel.size()), 
+      w.size()
+    )
+  );
   if (n == 0) return;
 
   position.resize(num_particles + n);
@@ -199,7 +204,7 @@ k_evolve (DeviceParticleContainer pc
       if (uniform < sticking_coeff) {
         // Particle sticks to surface
         pc.position[tid] = hit_pos;
-        pc.velocity[tid] = float3(0.0f, 0.0f, 0.0f);
+        pc.velocity[tid] = float3{0.0f, 0.0f, 0.0f};
 
         // Record that we hit this triangle
         atomicAdd(&collected[hit_triangle_id], 1);
@@ -337,8 +342,8 @@ void ParticleContainer::emit (Triangle &triangle, Emitter emitter, float dt) {
     // offset particle very slightly by norm
     auto tol = 0.0001f;
     pos[i] = pt + tol*norm;
-    auto jitter = float3(
-      rand_normal(0, emitter.spread), rand_normal(0, emitter.spread), rand_normal(0, emitter.spread));
+    auto jitter = float3{
+      rand_normal(0, emitter.spread), rand_normal(0, emitter.spread), rand_normal(0, emitter.spread)};
     vel[i] = emitter.velocity*(norm + jitter);
   }
 
