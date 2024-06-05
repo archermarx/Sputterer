@@ -16,12 +16,30 @@ using std::string, std::vector;
 struct Vertex {
   vec3 pos;
   vec3 norm;
+
+  Vertex() = default;
+
+  Vertex(const glm::vec3& position, const glm::vec3& normal) {
+    pos = position;
+    norm = normal;
+  }
 };
 
 std::ostream &operator<< (std::ostream &os, const Vertex &v);
 
 struct TriElement {
   unsigned int i1, i2, i3;
+
+  TriElement() = default;
+
+  TriElement(int a, int b, int c) {
+    i1 = a, i2 = b, i3 = c;
+  }
+  
+  TriElement(unsigned long a, unsigned long b, unsigned long c) {
+    i1 = a, i2 = b, i3 = c;
+  }
+
 };
 
 std::ostream &operator<< (std::ostream &os, const TriElement &t);
