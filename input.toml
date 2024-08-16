@@ -1,37 +1,39 @@
 [simulation]
-timestep_s = 100e-6
-max_time_s = 3.0
-output_interval_s = 0.05
-particle_weight = 1e12
+timestep_s = 100e-6         # Simulation timestep
+max_time_s = 3.0            # Maximum time to run the simulation (in seconds)
+output_interval_s = 0.001    # How frequently to output the deposition rates to chosen geometry
+particle_weight = 1e11      # Carbon macroparticle weight
 
 [plume_model]
-plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }
-plume_direction = { x = 0.0, y = 0.0, z = 1.0 }
-background_pressure_Torr = 5e-6
-ion_current_A = 15.0
-model_parameters = [0.8, 0.8, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]
-beam_energy_eV = 300.0
-scattered_energy_eV = 300.0
-cex_energy_eV = 50.0
+plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }  # Location of the plume origin (in meters)
+plume_direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
+background_pressure_Torr = 5e-6                     # Facility background pressure (in Torr)
+ion_current_A = 15.0                                # Ion current in A
+model_parameters = [0.8, 0.8, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]  # Plume model parameters
+beam_energy_eV = 300.0                              # Ion energy in the main beam
+scattered_energy_eV = 300.0                         # Ion energy in the scattered beam
+cex_energy_eV = 50.0                                # CEX ion energy
 
 [chamber]
-radius_m = 6
+radius_m = 3
 length_m = 10
 
-[[material]]
+[[material]]                                        # Define a surface material
 name = "carbon"
 color = { x = 0.3, y = 0.3, z = 0.3 }
-sticking_coeff = 0.2
-diffuse_coeff = 0.8
-temperature_K = 300
+temperature_K = 300                                 # Temperature (for diffuse reflections)
+sticking_coeff = 0.3
+diffuse_coeff = 0.7
 
-[[geometry]]
-name = "Thruster"
-file = "o_thruster.obj"
-material = "carbon"
-collect = false
-translate = { x = 0.0, y = 0.2285, z = -2.16 }
+[[geometry]]                                        # Define geometry 
+name = "Thruster"                                   # Name
+file = "o_thruster.obj"                             # Mesh file
+material = "carbon"                                 # Which material to use
+collect = false                                     # Whether to log particles that stick to this geometry
+translate = { x = 0.0, y = 0.2285, z = -2.16 }      # Transformations (rotate, scale, translate) to apply to this mesh
 rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
+
+# Further geometry definitions (beam dump, QCM, etc) follow
 
 [[geometry]]
 name = "QCM"
@@ -42,14 +44,14 @@ scale = { x = 0.1241, y = 0.1241, z = 1.0 }
 color = { x = 0.9, y = 0.1, z = 0.1 }
 translate = { x = 1.0, y = 0.2285, z = -2.16 }
 
-[[geometry]]
-name = "chamber"
-file = "o_chamber.obj"
-material = "carbon"
-collect = false
-scale = { x = 1.0, y = 1.0, z = 1.0 }
-color = { x = 0.1, y = 0.2, z = 0.5 }
-translate = { x = 0.0, y = 0.0, z = 0.0 }
+#[[geometry]]
+#name = "chamber"
+#file = "o_chamber.obj"
+#material = "carbon"
+#collect = false
+#scale = { x = 1.0, y = 1.0, z = 1.0 }
+#color = { x = 0.1, y = 0.2, z = 0.5 }
+#translate = { x = 0.0, y = 0.0, z = 0.0 }
 
 [[geometry]]
 name = "beamdump_back_l"

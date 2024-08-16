@@ -334,8 +334,12 @@ int main (int argc, char *argv[]) {
 
   double graphite_density = 2.25e3;
 
-  while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
+  // unpause simulation if not displaying
+  if (!display) {
+    app::simulation_paused = false;
+  }
 
+  while ((display && window.open) || (!display && physical_time < input.max_time_s)) {
     if (display) {
       Window::begin_render_loop();
 
