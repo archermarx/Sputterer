@@ -4,9 +4,11 @@ in vec3 fragPos;
 
 uniform vec3 objectColor;
 
+float particleSize = 0.1;
+
 // particles are rendered as billboarded squares clipped to look like circles
 void main() {
-    if (length(fragPos) < 0.5) {
+    if (length(fragPos) < particleSize) {
         fragColor = vec4(objectColor, 1.0);
     } else {
         discard;

@@ -1,12 +1,13 @@
 [simulation]
 timestep_s = 100e-6         # Simulation timestep
-max_time_s = 3.0            # Maximum time to run the simulation (in seconds)
+max_time_s = 100e-6            # Maximum time to run the simulation (in seconds)
 output_interval_s = 0.001    # How frequently to output the deposition rates to chosen geometry
 particle_weight = 1e11      # Carbon macroparticle weight
+verbosity = 1
 
-[plume_model]
-plume_origin = { x = 0.0, y = 0.2285, z = -2.125 }  # Location of the plume origin (in meters)
-plume_direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
+[plume]
+origin = { x = 0.0, y = 0.2285, z = -2.125 }  # Location of the plume origin (in meters)
+direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
 background_pressure_Torr = 5e-6                     # Facility background pressure (in Torr)
 ion_current_A = 15.0                                # Ion current in A
 model_parameters = [0.8, 0.8, 14.0, 0.45, 6.31e18, 1.259e15, 55.0]  # Plume model parameters

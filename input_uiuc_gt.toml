@@ -1,0 +1,105 @@
+[simulation]
+timestep_s = 10e-6         # Simulation timestep
+max_time_s = 3.0            # Maximum time to run the simulation (in seconds)
+output_interval_s = 0.001    # How frequently to output the deposition rates to chosen geometry
+particle_weight = 5e7      # Carbon macroparticle weight
+
+[plume_model]
+plume_origin = { x = 0.0, y = 0.0, z = -1.31 }  # Location of the plume origin (in meters)
+plume_direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
+background_pressure_Torr = 5e-6                     # Facility background pressure (in Torr)
+ion_current_A = 15.0                                # Ion current in A
+model_parameters = [0.8, 0.8, 8.0, 0.45, 6.31e18, 1.259e15, 55.0]  # Plume model parameters
+beam_energy_eV = 600.0                              # Ion energy in the main beam
+scattered_energy_eV = 600.0                         # Ion energy in the scattered beam
+cex_energy_eV = 50.0                                # CEX ion energy
+
+[chamber]
+radius_m = 3
+length_m = 6
+
+[[material]]                                        # Define a surface material
+name = "carbon"
+color = { x = 0.3, y = 0.3, z = 0.3 }
+temperature_K = 300                                 # Temperature (for diffuse reflections)
+sticking_coeff = 0.3
+diffuse_coeff = 0.7
+
+[[material]]                                        # Define a surface material
+name = "nosputter"
+color = { x = 0.5, y = 0.5, z = 0.5 }
+temperature_K = 100.0                              # Temperature (for diffuse reflections)
+sticking_coeff = 1.0
+diffuse_coeff = 0.0
+
+[[geometry]]                                        # Define geometry 
+name = "Thruster"                                   # Name
+file = "o_thruster.obj"                             # Mesh file
+material = "nosputter"                                 # Which material to use
+collect = false                                     # Whether to log particles that stick to this geometry
+translate = { x = 0.0, y = 0, z = -1.37}      # Transformations (rotate, scale, translate) to apply to this mesh
+rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
+
+# C13 target
+[[geometry]]
+name = "target"
+file = "o_rect.obj"
+material = "carbon"
+translate = { x = 0.0, y = -0.095, z = 0.0}
+scale = {x = 0.01, y = 0.01, z = 0.01}
+
+## Target housing
+#[[geometry]]
+#name = "target-housing"
+#file = "o_cylinder.obj"
+#material = "nosputter"
+#translate = {x = 0.0, y = -0.095, z = 0.005}
+#scale = {x = 0.005, y = 0.01, z = 0.005}
+#rotate = { axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 90}
+
+# collector plates
+[[geometry]]
+name = "rpa1-face"
+file = "o_rect.obj"
+material = "carbon"
+collect = true
+color = { x = 0.9, y = 0.9, z = 0.9 }
+translate = { x = 0.0, y = -0.13702538661514227, z = -0.09948802380109789}
+scale = {x = 0.01, y = 0.01, z = 0.01}
+rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
+
+[[geometry]]
+name = "rpa1-body"
+file = "o_cube.obj"
+material = "carbon"
+color = { x = 0.1, y = 0.1, z = 0.1 }
+translate = { x = 0.0, y = -0.13900991876085733, z = -0.10418606936948308 }
+scale = {x = 0.005, y = 0.005, z = 0.005}
+rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
+
+[[geometry]]
+name = "rpa2-face"
+file = "o_rect.obj"
+material = "carbon"
+collect = true
+color = { x = 0.9, y = 0.9, z = 0.9 }
+translate = { x = 0.0, y = -0.15810618721429492, z = -0.055440140108718686}
+scale = {x = 0.01, y = 0.01, z = 0.01}
+rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
+
+[[geometry]]
+name = "rpa2-body"
+file = "o_cube.obj"
+material = "carbon"
+color = { x = 0.1, y = 0.1, z = 0.1 }
+translate = { x = 0.0, y = -0.16193763429516286, z = -0.05880614861531947 }
+scale = {x = 0.005, y = 0.005, z = 0.005}
+rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
+
+[[geometry]]
+name = "shield"
+file = "o_rect.obj"
+material = "nosputter"
+collect = false
+sputter = false
+translate = {x = 0.0, y = -0.605, z = -0.15}

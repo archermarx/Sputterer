@@ -12,9 +12,10 @@ using std::vector, std::string;
 
 struct Material {
   bool collect{false};
+  bool sputter{true};
   float sticking_coeff{0.0f};
   float diffuse_coeff{0.0f};
-  float temperature_k{300.0f};
+  float temperature_K{300.0f};
 };
 
 struct Surface {

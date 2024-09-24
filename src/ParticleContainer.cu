@@ -216,7 +216,7 @@ k_evolve (DeviceParticleContainer pc
         // Particle reflects diffusely based on surface temperature
         // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
         //
-        auto sqrt_temp = sqrtf(mat.temperature_k);
+        auto sqrt_temp = sqrtf(mat.temperature_K);
         auto thermal_speed = thermal_speed_factor*sqrt_temp;
         auto vel_refl = sample_diffuse(scene.triangles[hit_triangle_id], norm, thermal_speed, local_rng);
 
@@ -247,7 +247,7 @@ k_evolve (DeviceParticleContainer pc
     // compute diffuse velocity
     auto &tri = scene.triangles[hit.id];
     auto &mat = materials[material_ids[hit.id]];
-    auto thermal_speed = sqrtf(mat.temperature_k)*thermal_speed_factor;
+    auto thermal_speed = sqrtf(mat.temperature_K)*thermal_speed_factor;
     auto vel = sample_diffuse(tri, hit.norm, thermal_speed, local_rng);
 
     // generate rng

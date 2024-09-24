@@ -15,7 +15,7 @@
 [[maybe_unused]]  vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
 
   // vector from plume origin to position
-  auto offset = position - this->location;
+  auto offset = position - this->origin;
   auto radius = glm::length(offset);
 
   // angle between this vector and plume direction
@@ -54,7 +54,7 @@ double ThrusterPlume::scattered_divergence_angle () const {
 constexpr double torr_to_pa = 133.322;
 
 double ThrusterPlume::main_divergence_angle () const {
-  return this->model_params[2]*torr_to_pa*this->background_pressure + this->model_params[3];
+  return this->model_params[2]*torr_to_pa*this->background_pressure_Torr + this->model_params[3];
 }
 
 CurrentFraction ThrusterPlume::current_fractions () const {
@@ -65,7 +65,7 @@ CurrentFraction ThrusterPlume::current_fractions () const {
   const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = this->model_params;
 
   // neutral density
-  auto neutral_density = t4*this->background_pressure + t5;
+  auto neutral_density = t4*this->background_pressure_Torr + t5;
 
   // get fraction of current in beam vs in main
   auto exp_factor = exp(-1.0*neutral_density*sigma_cex*1e-20);
@@ -124,7 +124,7 @@ void ThrusterPlume::set_buffers () {
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-  float points[] = {this->location.x, this->location.y, this->location.z};
+  float points[] = {this->origin.x, this->origin.y, this->origin.z};
   glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);

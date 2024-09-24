@@ -12,215 +12,178 @@
 namespace fs = std::filesystem;
 
 template<typename T>
-T read_table_entry_as (toml::table &table, const std::string &input_name) {
-  auto node = table[input_name];
-  bool valid = true;
-  T value{};
+void set_value (toml::table &table, const std::string &input_name, T &value) {
+    auto node = table[input_name];
+    bool valid = true;
 
-  if constexpr (std::is_same_v<T, string>) {
-    if (node.is_string()) {
-      value = node.as_string()->get();
+    if constexpr (std::is_same_v<T, string>) {
+        if (node.is_string()) {
+            value = node.as_string()->get();
+        } else {
+            valid = false;
+        }
+    } else if constexpr (std::is_same_v<T, glm::vec3>) {
+        if (node.is_table()) {
+            auto tab = node.as_table();
+            auto x = get_value<float>(*tab, "x");
+            auto y = get_value<float>(*tab, "y");
+            auto z = get_value<float>(*tab, "z");
+            value = glm::vec3(x, y, z);
+        } else {
+            valid = false;
+        }
     } else {
-      valid = false;
+        if (node.is_integer()) {
+            value = static_cast<T>(node.as_integer()->get());
+        } else if (node.is_boolean()) {
+            value = static_cast<T>(node.as_boolean()->get());
+        } else if (node.is_floating_point()) {
+            value = static_cast<T>(node.as_floating_point()->get());
+        } else if (node.is_string()) {
+            string str = node.as_string()->get();
+            std::istringstream ss(str);
+            ss >> value;
+        } else {
+            valid = false;
+        }
     }
-  } else if constexpr (std::is_same_v<T, glm::vec3>) {
-    if (node.is_table()) {
-      auto tab = node.as_table();
-      auto x = read_table_entry_as<float>(*tab, "x");
-      auto y = read_table_entry_as<float>(*tab, "y");
-      auto z = read_table_entry_as<float>(*tab, "z");
-      value = glm::vec3(x, y, z);
-    } else {
-      valid = false;
+    if (!valid) {
+        std::cerr << "Invalid input for option " << input_name
+                  << ".\n Expected value of type " << typeid(T).name() << "\n.";
     }
-  } else {
-    if (node.is_integer()) {
-      value = static_cast<T>(node.as_integer()->get());
-    } else if (node.is_boolean()) {
-      value = static_cast<T>(node.as_boolean()->get());
-    } else if (node.is_floating_point()) {
-      value = static_cast<T>(node.as_floating_point()->get());
-    } else if (node.is_string()) {
-      string str = node.as_string()->get();
-      std::istringstream ss(str);
-      ss >> value;
-    } else {
-      valid = false;
-    }
-  }
-  if (!valid) {
-    std::cerr << "Invalid input for option " << input_name << ".\n Expected value of type " << typeid(T).name()
-              << "\n.";
-  }
-
-  return value;
 }
 
-toml::table get_table (toml::table input, const std::string &name) {
-  if (input.contains(name)) {
-    return *input.get_as<toml::table>(name);
-  } else {
-    std::ostringstream msg;
-    msg << "TOML parsing error:\n"
-        << "Key " << name << " not found in table" << std::endl;
-    throw std::runtime_error(msg.str());
-  }
+template<typename T>
+T get_value (toml::table &table, const std::string &key) {
+    T value;
+    set_value(table, key, value);
+    return value;
 }
 
-void Input::read () {
-  // TODO: need nice error checking
+template<typename T>
+void query_value (toml::table &table, const std::string &key, T &value) {
+    if (table.contains(key)) {
+        value = get_value<T>(table, key);
+    }
+}
 
-  toml::table input;
-  try {
-    input = toml::parse_file(filename);
-  } catch (const toml::parse_error &err) {
-    std::cerr << "Parsing failed:\n" << err << "\n";
-  }
-
-  // Read simulation parameters
-  auto sim = get_table(input, "simulation");
-  timestep_s = read_table_entry_as<float>(sim, "timestep_s");
-  max_time_s = read_table_entry_as<float>(sim, "max_time_s");
-  output_interval = read_table_entry_as<float>(sim, "output_interval_s");
-  particle_weight = read_table_entry_as<double>(sim, "particle_weight");
-
-  // Read chamber features
-  auto chamber = get_table(input, "chamber");
-  chamber_radius = read_table_entry_as<float>(chamber, "radius_m");
-  chamber_length = read_table_entry_as<float>(chamber, "length_m");
-
-  // Read plume parameters
-  // TODO: would be good to read these directly into ThrusterPlume structure
-  auto plume = get_table(input, "plume_model");
-  this->plume_origin = read_table_entry_as<vec3>(plume, "plume_origin");
-  this->plume_direction = read_table_entry_as<vec3>(plume, "plume_direction");
-  this->background_pressure_torr = read_table_entry_as<double>(plume, "background_pressure_Torr");
-  this->ion_current_a = read_table_entry_as<double>(plume, "ion_current_A");
-  auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
-  auto ind = 0;
-  for (auto &&plume_param: *plume_params_arr) {
-    this->plume_model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
-    ind++;
-  }
-  this->beam_energy_ev = read_table_entry_as<double>(plume, "beam_energy_eV");
-  this->scattered_energy_ev = read_table_entry_as<double>(plume, "scattered_energy_eV");
-  this->cex_energy_ev = read_table_entry_as<double>(plume, "cex_energy_eV");
-
-  // Read materials
-  std::unordered_map<string, Material> materials;
-  std::unordered_map<string, vec3> material_colors;
-
-  auto input_materials = *input.get_as<toml::array>("material");
-
-  for (auto &&material_node: input_materials) {
-    auto material_table = material_node.as_table();
-
-    // Populate material
-    Material material;
-
-    auto material_name = read_table_entry_as<string>(*material_table, "name");
-    auto material_color = read_table_entry_as<vec3>(*material_table, "color");
-
-    material.sticking_coeff = read_table_entry_as<float>(*material_table, "sticking_coeff");
-    material.diffuse_coeff = read_table_entry_as<float>(*material_table, "diffuse_coeff");
-    material.temperature_k = read_table_entry_as<float>(*material_table, "temperature_K");
-
-    // Add material to list
-    materials.insert(std::make_pair(material_name, material));
-    material_colors.insert(std::make_pair(material_name, material_color));
-  }
-
-  // Read surfaces
-  auto geometry = *input.get_as<toml::array>("geometry");
-  auto num_surfaces = geometry.size();
-  surfaces.resize(num_surfaces);
-
-  int id = 0;
-  for (auto &&elem: geometry) {
-    auto tab = elem.as_table();
-    auto &surf = surfaces.at(id);
-
-    // get material
-    auto mat_name = read_table_entry_as<string>(*tab, "material");
-    if (materials.find(mat_name) != materials.end()) {
-      surf.material = materials.at(mat_name);
-      surf.color = material_colors.at(mat_name);
+toml::table get_table(toml::table &parent, const std::string &key){
+    if (parent.contains(key)) {
+        return *parent.get_as<toml::table>(key);
     } else {
-      std::cerr << "Material \"" << mat_name << "\" not found in input file!" << std::endl;
+        std::ostringstream msg;
+        msg << "TOML parsing error:\n"
+            << "Key " << key << " not found in table" << std::endl;
+        throw std::runtime_error(msg.str());
+    }
+}
+
+Input read_input (std::string filename) {
+    // Open file
+    auto input_table = toml::parse_file(filename);
+
+    // Read simulation parameters
+    Input input{};
+    auto sim = get_table(input_table, "simulation");
+    query_value(sim, "verbosity", input.verbosity);
+    query_value(sim, "display", input.display);
+    set_value(sim, "timestep_s", input.timestep_s);
+    set_value(sim, "max_time_s", input.max_time_s);
+    set_value(sim, "output_interval_s", input.output_interval_s);
+    set_value(sim, "particle_weight", input.particle_weight);
+
+    // Read chamber features
+    auto chamber = get_table(input_table, "chamber");
+    set_value(chamber, "radius_m", input.chamber_radius_m);
+    set_value(chamber, "length_m", input.chamber_length_m);
+
+    // Read plume parameters
+    auto plume = get_table(input_table, "plume");
+    set_value(plume, "origin", input.plume.origin);
+    set_value(plume, "direction", input.plume.direction);
+    input.plume.direction = glm::normalize(input.plume.direction);
+    set_value(plume, "background_pressure_Torr", input.plume.background_pressure_Torr);
+    set_value(plume, "ion_current_A", input.plume.beam_current_A);
+    set_value(plume, "beam_energy_eV", input.plume.beam_energy_eV);
+    set_value(plume, "scattered_energy_eV", input.plume.scattered_energy_eV);
+    set_value(plume, "cex_energy_eV", input.plume.cex_energy_eV);
+    auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
+    auto ind = 0;
+    for (auto &&plume_param: *plume_params_arr) {
+        input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
+        ind++;
     }
 
-    auto &material = surf.material;
+    // Read materials
+    std::unordered_map<string, Material> materials;
+    std::unordered_map<string, vec3> material_colors;
+    auto input_materials = *input_table.get_as<toml::array>("material");
 
-    if (tab->contains("name"))
-      surf.name = read_table_entry_as<string>(*tab, "name");
+    for (auto &&material_node: input_materials) {
+        auto mat = *material_node.as_table();
 
-    if (tab->contains("collect"))
-      material.collect = read_table_entry_as<bool>(*tab, "collect");
+        // Populate material
+        Material material;
+        auto material_name = get_value<string>(mat, "name");
+        auto material_color = get_value<vec3>(mat, "color");
+        set_value(mat, "sticking_coeff", material.sticking_coeff);
+        set_value(mat, "diffuse_coeff", material.diffuse_coeff);
+        set_value(mat, "temperature_K", material.temperature_K);
 
-    // need to append the current working directory to make sure mesh files are relative to where
-    // the input file was run
-    auto mesh_file = read_table_entry_as<string>(*tab, "file");
-    auto mesh_path = fs::absolute({this->filename}).parent_path()/mesh_file;
-
-    // object positions (optional)
-    auto &transform = surf.transform;
-
-    if (tab->contains("translate")) {
-      transform.translate = read_table_entry_as<glm::vec3>(*tab, "translate");
+        // Add material to list
+        materials.insert(std::make_pair(material_name, material));
+        material_colors.insert(std::make_pair(material_name, material_color));
     }
 
-    if (tab->contains("scale")) {
-      transform.scale = read_table_entry_as<glm::vec3>(*tab, "scale");
+    // Read surfaces
+    auto geometry = *input_table.get_as<toml::array>("geometry");
+    auto num_surfaces = geometry.size();
+    input.surfaces.resize(num_surfaces);
+
+    int id = 0;
+    for (auto &&elem: geometry) {
+        auto tab = *elem.as_table();
+        auto &surf = input.surfaces.at(id);
+
+        // get material
+        auto mat_name = get_value<string>(tab, "material");
+        if (materials.find(mat_name) != materials.end()) {
+            surf.material = materials.at(mat_name);
+            surf.color = material_colors.at(mat_name);
+        } else {
+            std::cerr << "Material \"" << mat_name << "\" not found in input file!" << std::endl;
+        }
+
+        auto &material = surf.material;
+        query_value(tab, "name", surf.name);
+        query_value(tab, "collect", material.collect);
+        query_value(tab, "sputter", material.sputter);
+
+        // need to append the current working directory to make sure mesh files
+        // are relative to where the input file is located
+        auto mesh_file = get_value<string>(tab, "file");
+        auto mesh_path = fs::absolute({filename}).parent_path()/mesh_file;
+
+        // object positions (optional)
+        query_value(tab, "translate", surf.transform.translate);
+        query_value(tab, "scale", surf.transform.scale);
+
+        if (tab.contains("rotate")) {
+            auto rot_tab = get_table(tab, "rotate");
+            query_value(rot_tab, "angle", surf.transform.rotation_angle);
+            query_value(rot_tab, "axis", surf.transform.rotation_axis);
+        }
+
+        query_value(tab, "color", surf.color);
+        query_value(tab, "temperature_K", surf.material.temperature_K);
+
+        auto &mesh = surf.mesh;
+        mesh.read_from_obj({mesh_path});
+        id++;
     }
 
-    if (tab->contains("rotate")) {
-      auto rot_tab = tab->get_as<toml::table>("rotate");
-      if (rot_tab->contains("angle")) {
-        transform.rotation_angle = read_table_entry_as<float>(*rot_tab, "angle");
-      }
-
-      if (rot_tab->contains("axis")) {
-        transform.rotation_axis = read_table_entry_as<vec3>(*rot_tab, "axis");
-      }
+    if (input.verbosity > 0) {
+        std::cout << "Input read." << std::endl;
     }
-
-    // Color (overwrites color specified by material)
-    if (tab->contains("color")) {
-      surf.color = read_table_entry_as<vec3>(*tab, "color");
-    }
-
-    // Temperature (overwrites temperature specified my material)
-    if (tab->contains("temperature_K")) {
-      surf.material.temperature_k = read_table_entry_as<float>(*tab, "temperature_K");
-    }
-
-    // Read mesh data
-    auto &mesh = surf.mesh;
-    mesh.read_from_obj({mesh_path});
-
-    id++;
-  }
-
-  // Read particles (optional)
-
-  if (input.contains("particle")) {
-    auto particles = *input.get_as<toml::array>("particle");
-
-    for (auto &&particle: particles) {
-      auto particle_tab = particle.as_table();
-
-      auto pos = particle_tab->get_as<toml::table>("position");
-      particle_x.push_back(read_table_entry_as<float>(*pos, "x"));
-      particle_y.push_back(read_table_entry_as<float>(*pos, "y"));
-      particle_z.push_back(read_table_entry_as<float>(*pos, "z"));
-
-      auto vel = particle_tab->get_as<toml::table>("velocity");
-      particle_vx.push_back(read_table_entry_as<float>(*vel, "x"));
-      particle_vy.push_back(read_table_entry_as<float>(*vel, "y"));
-      particle_vz.push_back(read_table_entry_as<float>(*vel, "z"));
-
-      auto weight = read_table_entry_as<float>(*particle_tab, "weight");
-      particle_w.push_back(weight);
-    }
-  }
+    return input;
 }

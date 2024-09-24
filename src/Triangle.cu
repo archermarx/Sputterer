@@ -84,7 +84,6 @@ void Scene::build (host_vector<Triangle> &h_tris, host_vector<size_t> &h_tri_ind
 }
 
 void Scene::build_bvh () {
-
   // populate triangle indices
   for (int i = 0; i < num_tris; i++) {
     triangle_indices[i] = i;

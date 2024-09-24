@@ -14,8 +14,8 @@ struct CurrentFraction {
 
 class ThrusterPlume {
 public:
-  // location of thruster in space
-  vec3 location{0.0};
+  // origin of thruster in space
+  vec3 origin{0.0};
   // direction along which plume is pointing
   vec3 direction{0.0, 0.0, 1.0};
 
@@ -31,13 +31,13 @@ public:
   };
 
   // Design parameters
-  double background_pressure{0.0}; // normalized background pressure
-  double beam_current{5.0};
+  double background_pressure_Torr{0.0}; // normalized background pressure
+  double beam_current_A{5.0};
 
   // Beam energy
-  double beam_energy_ev{300.0};
-  double scattered_energy_ev{250.0};
-  double cex_energy_ev{50.0};
+  double beam_energy_eV{300.0};
+  double scattered_energy_eV{250.0};
+  double cex_energy_eV{50.0};
 
   [[nodiscard]] double main_divergence_angle () const;
 
