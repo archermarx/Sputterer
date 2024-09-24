@@ -49,32 +49,117 @@ string print_time (double time_s) {
     return {buf};
 }
 
+ParticleContainer find_plume_hits (Input &input,
+                                   Scene &h_scene,
+                                   host_vector<Material> h_materials,
+                                   host_vector<size_t> h_material_ids,
+                                   host_vector<HitInfo> hits,
+                                   host_vector<float3> hit_positions,
+                                   host_vector<float> num_emit) {
+    using namespace constants;
+    host_vector <float3> vel;
+    host_vector<float> ws;
+
+    // plume coordinate system
+    auto plume = input.plume;
+    auto plume_up = vec3{0.0, 1.0, 0.0};
+    auto plume_right = cross(plume.direction, plume_up);
+    plume_up = cross(plume_right, plume.direction);
+
+    auto incident = constants::xenon;
+    auto target = constants::carbon;
+
+    auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
+    auto beam_fraction = main_fraction + scattered_fraction;
+    main_fraction = main_fraction/beam_fraction;
+
+    // tune the number of rays to get a max emission probability close to 1
+    float target_prob = 0.95;
+    float tol = 0.1;
+    float max_iters = 5;
+    float max_emit_prob = 0.0;
+    int num_rays = 10'000;
+
+    for (int iter = 0; iter < max_iters; iter++) {
+        // TODO: do this on GPU
+        // TODO: use low-discrepancy sampler for this
+        float max_emit = 0.0;
+        for (int i = 0; i < num_rays; i++) {
+            // select whether ray comes from main beam or scattered beam based on
+            // fraction of beam that is scattered vs main
+            auto u = rand_uniform();
+            double div_angle, beam_energy;
+            if (u < main_fraction) {
+                div_angle = plume.main_divergence_angle();
+                beam_energy = plume.beam_energy_eV;
+            } else {
+                div_angle = plume.scattered_divergence_angle();
+                beam_energy = plume.scattered_energy_eV;
+            }
+
+            auto azimuth = rand_uniform(0, 2*constants::pi);
+            auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
+
+            auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*plume_right + sin(azimuth)*plume_up);
+            Ray r{make_float3(plume.origin + direction*1e-3f), normalize(make_float3(direction))};
+
+            auto hit = r.cast(h_scene);
+
+            if (hit.hits) {
+                // get material that we hit
+                auto &mat = h_materials[h_material_ids[hit.id]];
+
+                // Only record hit if material is allowed to sputter
+                if (mat.sputter) {
+                    hits.push_back(hit);
+                    auto hit_pos = r.at(hit.t);
+                    hit_positions.push_back(hit_pos);
+                    vel.push_back({0.0f, 0.0f, 0.0f});
+                    ws.push_back(0.0f);
+
+                    auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
+                    auto hit_angle = acos(cos_hit_angle);
+
+                    auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
+                    auto n_emit = yield*plume.beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
+                    if (n_emit > max_emit)
+                        max_emit = n_emit;
+                    num_emit.push_back(n_emit);
+                }
+            }
+        }
+        // basic proportional controller
+        max_emit_prob = max_emit*input.timestep_s;
+        num_rays = static_cast<int>(num_rays*max_emit_prob/target_prob);
+        if (abs(max_emit_prob - target_prob) < tol) {
+            break;
+        }
+    }
+
+    if (input.verbosity > 0) {
+        std::cout << "Max emission probability: " << max_emit_prob << std::endl;
+        std::cout << "Number of plume rays: " << num_rays << std::endl;
+    }
+
+    ParticleContainer pc_plume{"plume", hit_positions.size()};
+    pc_plume.add_particles(hit_positions, vel, ws);
+    return pc_plume;
+}
+
 int main (int argc, char *argv[]) {
     using namespace constants;
+    // Initialize GPU
+    device_vector<int> init{0};
 
-    std::string filename;
-    if (argc > 1) {
-        filename = argv[1];
-    } else {
-        filename = "input.toml";
-    }
+    std::string filename = "input.toml";
+    if (argc > 1) filename = argv[1];
 
     Input input = read_input(filename);
 
-    app::camera.orientation = glm::normalize(glm::vec3(input.chamber_radius_m));
-    app::camera.distance = 2.0f*input.chamber_radius_m;
-    app::camera.yaw = -135;
-    app::camera.pitch = 30;
-    app::camera.update_vectors();
-
-    // Create particle container
-    ParticleContainer pc{"noname", max_particles, 1.0f, 1};
-
     // construct triangles
-    host_vector <Triangle> h_triangles;
-
-    host_vector <size_t> h_material_ids;
-    host_vector <Material> h_materials;
+    host_vector<Triangle> h_triangles;
+    host_vector<size_t> h_material_ids;
+    host_vector<Material> h_materials;
 
     host_vector<char> h_to_collect;
     std::vector<int> collect_inds_global;
@@ -110,144 +195,52 @@ int main (int argc, char *argv[]) {
     std::vector<double> deposition_rates(collect_inds_global.size(), 0);
 
     host_vector<int> collected(collect_inds_global.size(), 0);
-    if (input.verbosity > 0) {
-        std::cout << "Meshes read." << std::endl;
-    }
+    if (input.verbosity > 0) std::cout << "Meshes read." << std::endl;
 
-    // Send mesh data to GPU. Really slow for some reason (multiple seconds)!
-    device_vector <Triangle> d_triangles = h_triangles;
-    device_vector <size_t> d_surface_ids{h_material_ids};
-    device_vector <Material> d_materials{h_materials};
-    device_vector<int> d_collected(h_triangles.size(), 0);
-
-    if (input.verbosity > 0) {
-        std::cout << "Mesh data sent to GPU" << std::endl;
-    }
-
-    //=============================================================================
-    // This should all go in the scene file or be factored out
-    // Construct scene and BVH on CPU
-    host_vector <BVHNode> h_nodes;
-    host_vector <size_t> h_triangle_indices;
+    // Construct BVH on CPU
+    host_vector<BVHNode> h_nodes;
+    host_vector<size_t> h_triangle_indices;
     Scene h_scene;
     h_scene.build(h_triangles, h_triangle_indices, h_nodes);
-
-    // Copy scene to GPU
-    Scene d_scene(h_scene);
-    device_vector <BVHNode> d_nodes = h_nodes;
-    device_vector <size_t> d_triangle_indices = h_triangle_indices;
-    d_scene.triangles = thrust::raw_pointer_cast(d_triangles.data());
-    d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
-    d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
     if (input.verbosity > 0) {
         std::cout << "Bounding volume heirarchy constructed." << std::endl;
     }
-    //=============================================================================
 
-    // Cast initial rays from plume
-    host_vector <HitInfo> hits;
-    host_vector <float3> hit_positions;
-    vector<float> num_emit;
-    host_vector <float3> vel;
-    host_vector<float> ws;
+    // Send mesh data and BVH to GPU.
+    device_vector<Triangle> d_triangles = h_triangles;
+    device_vector<size_t> d_surface_ids{h_material_ids};
+    device_vector<Material> d_materials{h_materials};
+    device_vector<int> d_collected(h_triangles.size(), 0);
 
-    // plume coordinate system
-    auto plume = input.plume;
-    auto up = vec3{0.0, 1.0, 0.0};
-    auto right = cross(plume.direction, up);
-    up = cross(right, plume.direction);
+    Scene d_scene(h_scene);
+    device_vector<BVHNode> d_nodes = h_nodes;
+    device_vector<size_t> d_triangle_indices = h_triangle_indices;
+    d_scene.triangles = thrust::raw_pointer_cast(d_triangles.data());
+    d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
+    d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
-    auto incident = constants::xenon;
-    auto target = constants::carbon;
+    if (input.verbosity > 0) std::cout << "Mesh data sent to GPU" << std::endl;
 
-    auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
-    auto beam_fraction = main_fraction + scattered_fraction;
-    main_fraction = main_fraction/beam_fraction;
+    // Cast initial rays from plume to find where they hit facility geometry
+    // Store result in ParticleContainer pc_plume
+    host_vector<HitInfo> hits;
+    host_vector<float3> hit_positions;
+    host_vector<float> num_emit;
+    auto pc_plume = find_plume_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
-    // tune the number of rays to get a max emission probability close to 1
-    float target_prob = 0.95;
-    float tol = 0.1;
-    float max_iters = 5;
-    float max_emit_prob = 0.0;
-    int num_rays = 10'000;
-
-    for (int iter = 0; iter < max_iters; iter++) {
-        // TODO: do this on GPU
-        // TODO: use low-discrepancy sampler for this
-        // TODO: refactor this into a function
-        // TODO: redo this periodically throughout the simulation
-        float max_emit = 0.0;
-        for (int i = 0; i < num_rays; i++) {
-            // select whether ray comes from main beam or scattered beam based on
-            // fraction of beam that is scattered vs main
-            auto u = rand_uniform();
-            double div_angle, beam_energy;
-            if (u < main_fraction) {
-                div_angle = plume.main_divergence_angle();
-                beam_energy = plume.beam_energy_eV;
-            } else {
-                div_angle = plume.scattered_divergence_angle();
-                beam_energy = plume.scattered_energy_eV;
-            }
-
-            auto azimuth = rand_uniform(0, 2*constants::pi);
-            auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
-
-            auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-            Ray r{make_float3(plume.origin + direction*1e-3f), normalize(make_float3(direction))};
-
-            auto hit = r.cast(h_scene);
-
-            if (hit.hits) {
-
-                // get material that we hit
-                auto &mat = h_materials[h_material_ids[hit.id]];
-
-                // Only record hit if material is allowed to sputter
-                if (mat.sputter) {
-                    hits.push_back(hit);
-                    auto hit_pos = r.at(hit.t);
-                    hit_positions.push_back(hit_pos);
-                    vel.push_back({0.0f, 0.0f, 0.0f});
-                    ws.push_back(0.0f);
-
-                    auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
-                    auto hit_angle = acos(cos_hit_angle);
-
-                    auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
-                    auto n_emit = yield*plume.beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
-                    if (n_emit > max_emit)
-                        max_emit = n_emit;
-                    num_emit.push_back(n_emit);
-                }
-            }
-        }
-        // basic proportional controller
-        max_emit_prob = max_emit*input.timestep_s;
-        num_rays = static_cast<int>(num_rays*max_emit_prob/target_prob);
-        if (abs(max_emit_prob - target_prob) < tol) {
-            break;
-        }
-    }
-    if (input.verbosity > 0) {
-        std::cout << "Max emission probability: " << max_emit_prob << std::endl;
-        std::cout << "Number of plume rays: " << num_rays << std::endl;
-    }
-
-    // Create plume particle container
-    ParticleContainer pc_plume{"plume", hit_positions.size()};
-    pc_plume.add_particles(hit_positions, vel, ws);
-
-    device_vector <HitInfo> d_hits{hits};
+    // Copy plume results to GPU
+    device_vector<HitInfo> d_hits{hits};
     device_vector<float> d_num_emit{num_emit};
+
+    // Create particle container for carbon atoms
+    ParticleContainer pc{"carbon", max_particles, 1.0f, 1};
 
     // Display objects
     Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
     Shader mesh_shader{}, particle_shader{}, plume_shader{}, bvh_shader{};
-
-    BVHRenderer bvh{};
-    bvh.scene = &h_scene;
+    BVHRenderer bvh(&h_scene);
+    app::camera.initialize(input.chamber_radius_m);
 
     if (input.display) {
         // enable window
@@ -286,10 +279,10 @@ int main (int argc, char *argv[]) {
         // Load plume shader
         plume_shader.load("../shaders/plume.vert", "../shaders/plume.frag", "../shaders/plume.geom");
         plume_shader.use();
-        float plume_length = input.chamber_length_m/2 - plume.origin.z;
+        float plume_length = input.chamber_length_m/2 - input.plume.origin.z;
         plume_shader.set_float("length", plume_length);
-        plume_shader.set_vec3("direction", plume.direction);
-        plume.set_buffers();
+        plume_shader.set_vec3("direction", input.plume.direction);
+        input.plume.set_buffers();
 
         // set up BVH rendering
         bvh_shader.load("../shaders/bvh.vert", "../shaders/bvh.frag", "../shaders/bvh.geom");
@@ -515,20 +508,21 @@ int main (int argc, char *argv[]) {
             }
 
             // Draw translucent plume cone
+            // TODO move all of this to draw()
             if (render_plume_cone) {
                 plume_shader.use();
                 plume_shader.set_mat4("camera", cam);
 
                 // draw main beam
-                auto div_angle = plume.main_divergence_angle();
+                auto div_angle = input.plume.main_divergence_angle();
                 plume_shader.set_bool("main_beam", true);
                 plume_shader.set_float("angle", div_angle);
-                plume.draw();
+                input.plume.draw();
 
-                div_angle = plume.scattered_divergence_angle();
+                div_angle = input.plume.scattered_divergence_angle();
                 plume_shader.set_bool("main_beam", false);
                 plume_shader.set_float("angle", div_angle);
-                plume.draw();
+                input.plume.draw();
             }
         }
 
