@@ -157,6 +157,7 @@ int main (int argc, char *argv[]) {
     Input input = read_input(filename);
 
     // construct triangles
+    // TODO: move to a function, maybe within input
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
@@ -193,8 +194,8 @@ int main (int argc, char *argv[]) {
     }
 
     std::vector<double> deposition_rates(collect_inds_global.size(), 0);
-
     host_vector<int> collected(collect_inds_global.size(), 0);
+
     if (input.verbosity > 0) std::cout << "Meshes read." << std::endl;
 
     // Construct BVH on CPU
@@ -203,9 +204,7 @@ int main (int argc, char *argv[]) {
     Scene h_scene;
     h_scene.build(h_triangles, h_triangle_indices, h_nodes);
 
-    if (input.verbosity > 0) {
-        std::cout << "Bounding volume heirarchy constructed." << std::endl;
-    }
+    if (input.verbosity > 0) std::cout << "Bounding volume heirarchy constructed." << std::endl;
 
     // Send mesh data and BVH to GPU.
     device_vector<Triangle> d_triangles = h_triangles;
@@ -238,7 +237,7 @@ int main (int argc, char *argv[]) {
 
     // Display objects
     Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-    Shader mesh_shader{}, particle_shader{}, plume_shader{}, bvh_shader{};
+    Shader mesh_shader{}, particle_shader{}, bvh_shader{};
     BVHRenderer bvh(&h_scene);
     app::camera.initialize(input.chamber_radius_m);
 
@@ -277,12 +276,7 @@ int main (int argc, char *argv[]) {
         pc_plume.set_buffers();
 
         // Load plume shader
-        plume_shader.load("../shaders/plume.vert", "../shaders/plume.frag", "../shaders/plume.geom");
-        plume_shader.use();
-        float plume_length = input.chamber_length_m/2 - input.plume.origin.z;
-        plume_shader.set_float("length", plume_length);
-        plume_shader.set_vec3("direction", input.plume.direction);
-        input.plume.set_buffers();
+        input.plume.setup_shaders(input.chamber_length_m / 2);
 
         // set up BVH rendering
         bvh_shader.load("../shaders/bvh.vert", "../shaders/bvh.frag", "../shaders/bvh.geom");
@@ -313,20 +307,16 @@ int main (int argc, char *argv[]) {
         std::cout << "Beginning main loop." << std::endl;
     }
 
-    bool render_plume_cone = true;
     bool render_plume_particles = true;
     bool render_sputtered_particles = true;
     bool render_bvh = false;
     int bvh_draw_depth = h_scene.bvh_depth;
 
-    double graphite_density = 2.25e3;
-
-    // unpause simulation if not displaying
-    if (!input.display) {
-        app::simulation_paused = false;
-    }
+    // Pause simulation if displaying
+    app::simulation_paused = !input.display;
 
     while ((input.display && window.open) || (!input.display && physical_time < input.max_time_s)) {
+        // TODO: can we move this out of main into a different function
         if (input.display) {
             Window::begin_render_loop();
 
@@ -393,7 +383,7 @@ int main (int argc, char *argv[]) {
             ImGui::Begin("Options", nullptr, flags);
             if (ImGui::BeginTable("split", 1)) {
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume cone", &render_plume_cone);
+                ImGui::Checkbox("Show plume cone", &input.plume.render_cone);
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show plume particles", &render_plume_particles);
                 ImGui::TableNextColumn();
@@ -508,22 +498,7 @@ int main (int argc, char *argv[]) {
             }
 
             // Draw translucent plume cone
-            // TODO move all of this to draw()
-            if (render_plume_cone) {
-                plume_shader.use();
-                plume_shader.set_mat4("camera", cam);
-
-                // draw main beam
-                auto div_angle = input.plume.main_divergence_angle();
-                plume_shader.set_bool("main_beam", true);
-                plume_shader.set_float("angle", div_angle);
-                input.plume.draw();
-
-                div_angle = input.plume.scattered_divergence_angle();
-                plume_shader.set_bool("main_beam", false);
-                plume_shader.set_float("angle", div_angle);
-                input.plume.draw();
-            }
+            input.plume.draw(cam);
         }
 
         if (!app::simulation_paused && physical_time > next_output_time ||

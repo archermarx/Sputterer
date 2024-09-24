@@ -180,7 +180,6 @@ struct Ray {
     __host__ __device__ void intersect_bvh (Scene &scene, HitInfo &closest_hit, size_t node_idx = 0);
 
     [[nodiscard]] __host__ __device__ bool intersect_bbox (const BBox &box, HitInfo &closest_hit);
-
 };
 
 #endif

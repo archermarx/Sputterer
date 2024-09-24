@@ -5,55 +5,65 @@
 #include <array>
 
 #include "vec3.hpp"
+#include "Shader.hpp"
 
 struct CurrentFraction {
-  double main;
-  double scattered;
-  double cex;
+    double main;
+    double scattered;
+    double cex;
 };
 
 class ThrusterPlume {
-public:
-  // origin of thruster in space
-  vec3 origin{0.0};
-  // direction along which plume is pointing
-  vec3 direction{0.0, 0.0, 1.0};
+    public:
+        // origin of thruster in space
+        vec3 origin{0.0};
+        // direction along which plume is pointing
+        vec3 direction{0.0, 0.0, 1.0};
 
-  // Model parameters
-  std::array<double, 7> model_params{
-    1.0f,   // ratio of the main beam to the total beam
-    0.25f,  // ratio for divergence angle of the main to scattered beam
-    0.0f,   // "slope" for linear divergence angle function
-    0.0f,   // "intercept" for linear divergence angle function
-    0.0f,   // "slope" for linear neutral density function
-    0.0f,   // "intercept" for linear neutral density function
-    1.0f,   // charge exchange collision cross section (square Angstroms)
-  };
+        // Model parameters
+        std::array<double, 7> model_params{
+            1.0f,   // ratio of the main beam to the total beam
+                0.25f,  // ratio for divergence angle of the main to scattered beam
+                0.0f,   // "slope" for linear divergence angle function
+                0.0f,   // "intercept" for linear divergence angle function
+                0.0f,   // "slope" for linear neutral density function
+                0.0f,   // "intercept" for linear neutral density function
+                1.0f,   // charge exchange collision cross section (square Angstroms)
+        };
 
-  // Design parameters
-  double background_pressure_Torr{0.0}; // normalized background pressure
-  double beam_current_A{5.0};
+        // Design parameters
+        double background_pressure_Torr{0.0}; // normalized background pressure
+        double beam_current_A{5.0};
 
-  // Beam energy
-  double beam_energy_eV{300.0};
-  double scattered_energy_eV{250.0};
-  double cex_energy_eV{50.0};
+        // Beam energy
+        double beam_energy_eV{300.0};
+        double scattered_energy_eV{250.0};
+        double cex_energy_eV{50.0};
 
-  [[nodiscard]] double main_divergence_angle () const;
+        // Shaders
+        Shader cone_shader{};
+        Shader particle_shader{};
 
-  [[nodiscard]] double scattered_divergence_angle () const;
+        // display options
+        bool render_cone = true;
+        bool render_particles = true;
 
-  // convert 3D Cartesian coordinates (x, y, z) to thruster-relative polar coordinates (r, alpha)
-  [[nodiscard]] [[maybe_unused]]  vec2 convert_to_thruster_coords (vec3 position) const;
+        [[nodiscard]] double main_divergence_angle () const;
 
-  [[nodiscard]] CurrentFraction current_fractions () const;
+        [[nodiscard]] double scattered_divergence_angle () const;
 
-  void set_buffers ();
+        // convert 3D Cartesian coordinates (x, y, z) to thruster-relative polar coordinates (r, alpha)
+        [[nodiscard]] [[maybe_unused]]  vec2 convert_to_thruster_coords (vec3 position) const;
 
-  void draw ();
+        [[nodiscard]] CurrentFraction current_fractions () const;
 
-private:
-  unsigned int vbo{}, vao{};
+        void set_buffers ();
+        void setup_shaders (float len);
+
+        void draw (glm::mat4);
+
+    private:
+        unsigned int vbo{}, vao{};
 
 };
 
