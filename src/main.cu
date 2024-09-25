@@ -28,15 +28,6 @@
 
 using std::vector, std::string;
 
-# if 0
-    // surface name
-    // local triangle index (relative to surface)
-    // triangle area
-    // number of particles collected
-    // deposition rate of collected carbon
-# endif
-
-// 
 struct DepositionInfo {
     size_t num_tris = 0;
     vector<string> surf_names;
