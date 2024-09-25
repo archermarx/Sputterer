@@ -28,6 +28,26 @@
 
 using std::vector, std::string;
 
+# if 0
+    // surface name
+    // local triangle index (relative to surface)
+    // triangle area
+    // number of particles collected
+    // deposition rate of collected carbon
+# endif
+
+// 
+struct DepositionInfo {
+    size_t num_tris = 0;
+    vector<string> surf_names;
+    vector<size_t> local_indices;
+    vector<size_t> global_indices;
+    vector<double> areas;
+    vector<int> particles_collected;
+    vector<double> deposition_rates;
+    vector<double> mass_fluxes;
+};
+
 int main (int argc, char *argv[]) {
     using namespace constants;
     // Initialize GPU
@@ -38,15 +58,11 @@ int main (int argc, char *argv[]) {
     Input input = read_input(filename);
     auto window = app::initialize(input);
 
-    // construct triangles
-    // TODO: move to a function, maybe within input or scene geometry
+    // construct triangles and set up diagnostics
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
-    host_vector<char> h_to_collect;
-    std::vector<int> collect_inds_global;
-    std::vector<int> collect_inds_local;
-    std::vector<string> surface_names;
+    DepositionInfo deposition_info{};
     auto &geometry = input.geometry;
 
     for (size_t id = 0; id < geometry.surfaces.size(); id++) {
@@ -54,7 +70,6 @@ int main (int argc, char *argv[]) {
         const auto &mesh = surf.mesh;
         const auto &material = surf.material;
 
-        surface_names.push_back(surf.name);
         h_materials.push_back(surf.material);
 
         auto ind = 0;
@@ -64,17 +79,24 @@ int main (int argc, char *argv[]) {
             auto v2 = make_float3(model*glm::vec4(mesh.vertices[i2].pos, 1.0));
             auto v3 = make_float3(model*glm::vec4(mesh.vertices[i3].pos, 1.0));
 
-            h_triangles.push_back({v1, v2, v3});
+            Triangle tri{v1, v2, v3};
+            h_triangles.push_back(tri);
             h_material_ids.push_back(id);
             if (material.collect) {
-                collect_inds_global.push_back(static_cast<int>(h_triangles.size()) - 1);
-                collect_inds_local.push_back(ind);
+                auto global_index = static_cast<int>(h_triangles.size()) - 1;
+                Triangle tri{v1, v2, v3};
+                deposition_info.surf_names.push_back(surf.name);
+                deposition_info.areas.push_back(tri.area);
+                deposition_info.global_indices.push_back(global_index);
+                deposition_info.local_indices.push_back(ind);
+                deposition_info.particles_collected.push_back(0);
+                deposition_info.deposition_rates.push_back(0);
+                deposition_info.mass_fluxes.push_back(0);
+                deposition_info.num_tris++;
             }
             ind++;
         }
     }
-    std::vector<double> deposition_rates(collect_inds_global.size(), 0);
-    host_vector<int> collected(collect_inds_global.size(), 0);
 
     if (input.verbosity > 0) std::cout << "Meshes read." << std::endl;
 
@@ -148,27 +170,16 @@ int main (int argc, char *argv[]) {
                 ImGui::Text("Particles collected");
                 ImGui::TableNextColumn();
                 ImGui::Text("Deposition rate [um/kh]");
-                for (int row = 0; row < collect_inds_global.size(); row++) {
-
-                    auto triangle_id_global = collect_inds_global[row];
-                    double mass_carbon = collected[row]*input.particle_weight*carbon.mass*m_u;
-                    double volume_carbon = mass_carbon/graphite_density;
-                    double triangle_area = h_triangles[triangle_id_global].area;
-                    double layer_thickness_um = volume_carbon/triangle_area*1e6;
-                    double physical_time_kh = timer.physical_time/3600/1000;
-                    double deposition_rate = layer_thickness_um/physical_time_kh;
-                    deposition_rates[row] = deposition_rate;
-
-                    auto triangle_id = collect_inds_global[row];
+                for (int tri = 0; tri < deposition_info.num_tris; tri++) {
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text("%s", surface_names.at(h_material_ids[triangle_id]).c_str());
+                    ImGui::Text("%s", deposition_info.surf_names[tri].c_str());
                     ImGui::TableNextColumn();
-                    ImGui::Text("%i", static_cast<int>(collect_inds_local[row]));
+                    ImGui::Text("%i", deposition_info.local_indices[tri]);
                     ImGui::TableNextColumn();
-                    ImGui::Text("%d", collected[row]);
+                    ImGui::Text("%d", deposition_info.particles_collected[tri]);
                     ImGui::TableNextColumn();
-                    ImGui::Text("%.3f", deposition_rates[row]);
+                    ImGui::Text("%.3f", deposition_info.deposition_rates[tri]);
                 }
                 ImGui::EndTable();
             }
@@ -193,10 +204,20 @@ int main (int argc, char *argv[]) {
             // record stop time
             stop_compute.record();
 
-            // Track particles collected by each triangle flagged 'collect'
-            for (int id = 0; id < collect_inds_global.size(); id++) {
-                auto d_begin = d_collected.begin() + collect_inds_global[id];
-                thrust::copy(d_begin, d_begin + 1, collected.begin() + id);
+            // Track particles collected by each triangle flagged 'collect' and compute diagnostics
+            for (int id = 0; id < deposition_info.num_tris; id++) {
+                // Copy number of particles collected to CPU
+                auto d_begin = d_collected.begin() + deposition_info.global_indices[id];
+                thrust::copy(d_begin, d_begin + 1, deposition_info.particles_collected.begin() + id);
+
+                // Compute deposition rate and carbon flux
+                double mass_carbon = deposition_info.particles_collected[id]*input.particle_weight*carbon.mass*m_u;
+                double volume_carbon = mass_carbon/graphite_density;
+                double triangle_area = deposition_info.areas[id];
+                double layer_thickness_um = volume_carbon/triangle_area*1e6;
+                double physical_time_kh = timer.physical_time/3600/1000;
+                deposition_info.deposition_rates[id] = layer_thickness_um/physical_time_kh;
+                deposition_info.mass_fluxes[id] = mass_carbon / triangle_area / timer.physical_time;
             }
 
             // Copy particle data back to CPU
