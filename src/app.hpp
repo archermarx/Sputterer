@@ -94,6 +94,48 @@ namespace app {
         double dt_smoothed = 0.0;
     };
 
+    void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
+
+    }
+
+    void draw_settings_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
+        using namespace ImGui;
+        auto flags = ImGuiWindowFlags_NoMove |
+                        ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoTitleBar |
+                        ImGuiWindowFlags_NoSavedSettings;
+
+        auto &[bvh, plume, particles, _] = renderer;
+        ImVec2 top_right = ImVec2(GetIO().DisplaySize.x, 0);
+        SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
+        Begin("Settings", nullptr, flags);
+        if (BeginTable("split", 1)) {
+            TableNextColumn();
+            Checkbox("Show plume cone", &plume.render);
+            TableNextColumn();
+            Checkbox("Show plume particles", &plume.particles.render);
+            TableNextColumn();
+            Text("Plume particle scale");
+            TableNextColumn();
+            SliderFloat("##plume_particle_scale", &plume.particles.scale, 0, 0.3);
+            TableNextColumn();
+            Checkbox("Show sputtered particles", &particles.render);
+            TableNextColumn();
+            Text("Sputtered particle scale");
+            TableNextColumn();
+            SliderFloat("##sputtered_particle_scale", &particles.scale, 0, 0.3);
+            TableNextColumn();
+            Checkbox("Show bounding boxes", &bvh.render);
+            TableNextColumn();
+            Text("Bounding box depth");
+            TableNextColumn();
+            SliderInt("##bvh_depth", &bvh.draw_depth, 0, bvh.scene->bvh_depth);
+        }
+        EndTable();
+        End();
+    }
+
     void draw_timing_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
         using namespace ImGui;
 
@@ -126,6 +168,8 @@ namespace app {
 
     void draw_gui(size_t step, Input &input, Renderer &renderer, Timer &timer) {
         draw_timing_panel(step, input, renderer, timer);
+        draw_settings_panel(step, input, renderer, timer);
+        draw_deposition_panel(step, input, renderer, timer);
     }
 
     void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, Timer &timer) {

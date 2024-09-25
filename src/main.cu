@@ -178,40 +178,6 @@ int main (int argc, char *argv[]) {
                 ImGui::EndTable();
             }
             ImGui::End();
-
-            auto flags = ImGuiWindowFlags_NoMove |
-                            ImGuiWindowFlags_NoScrollbar |
-                            ImGuiWindowFlags_AlwaysAutoResize |
-                            ImGuiWindowFlags_NoTitleBar |
-                            ImGuiWindowFlags_NoSavedSettings;
-
-            ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x, 0);
-            ImGui::SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
-            ImGui::Begin("Options", nullptr, flags);
-            if (ImGui::BeginTable("split", 1)) {
-                ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume cone", &plume.render);
-                ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume particles", &plume.particles.render);
-                ImGui::TableNextColumn();
-                ImGui::Text("Plume particle scale");
-                ImGui::TableNextColumn();
-                ImGui::SliderFloat("##plume_particle_scale", &plume.particles.scale, 0, 0.3);
-                ImGui::TableNextColumn();
-                ImGui::Checkbox("Show sputtered particles", &particles.render);
-                ImGui::TableNextColumn();
-                ImGui::Text("Sputtered particle scale");
-                ImGui::TableNextColumn();
-                ImGui::SliderFloat("##sputtered_particle_scale", &particles.scale, 0, 0.3);
-                ImGui::TableNextColumn();
-                ImGui::Checkbox("Show bounding boxes", &renderer.bvh.render);
-                ImGui::TableNextColumn();
-                ImGui::Text("Bounding box depth");
-                ImGui::TableNextColumn();
-                ImGui::SliderInt("##bvh_depth", &renderer.bvh.draw_depth, 0, h_scene.bvh_depth);
-            }
-            ImGui::EndTable();
-            ImGui::End();
         }
 
         // Record iteration timing information
