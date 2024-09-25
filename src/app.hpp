@@ -17,7 +17,6 @@ namespace app {
     constexpr auto imgui_flags = ImGuiWindowFlags_NoMove |
                                  ImGuiWindowFlags_NoScrollbar |
                                  ImGuiWindowFlags_AlwaysAutoResize |
-                                 ImGuiWindowFlags_NoInputs |
                                  ImGuiWindowFlags_NoTitleBar |
                                  ImGuiWindowFlags_NoSavedSettings;
 
@@ -100,16 +99,11 @@ namespace app {
 
     void draw_settings_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
         using namespace ImGui;
-        auto flags = ImGuiWindowFlags_NoMove |
-                        ImGuiWindowFlags_NoScrollbar |
-                        ImGuiWindowFlags_AlwaysAutoResize |
-                        ImGuiWindowFlags_NoTitleBar |
-                        ImGuiWindowFlags_NoSavedSettings;
 
         auto &[bvh, plume, particles, _] = renderer;
         ImVec2 top_right = ImVec2(GetIO().DisplaySize.x, 0);
         SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
-        Begin("Settings", nullptr, flags);
+        Begin("Settings", nullptr, imgui_flags);
         if (BeginTable("split", 1)) {
             TableNextColumn();
             Checkbox("Show plume cone", &plume.render);
@@ -141,7 +135,7 @@ namespace app {
 
         ImVec2 bottom_right = ImVec2(GetIO().DisplaySize.x, GetIO().DisplaySize.y);
         SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
-        Begin("Frame time", nullptr, imgui_flags);
+        Begin("Frame time", nullptr, imgui_flags | ImGuiWindowFlags_NoInputs);
 
         auto framerate_ms = 1000.0 / timer.dt_smoothed;
         auto transfer_percentage = (1.0 - timer.avg_time_compute/timer.avg_time_total) * 100.0;
