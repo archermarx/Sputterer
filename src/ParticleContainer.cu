@@ -81,7 +81,7 @@ void ParticleContainer::setup_shaders (vec3 color, float scale) {
 
     // TODO: have geometric primitives stored as strings in a c++ source file
     // Set up particle meshes
-    mesh.read_from_obj("../o_rect.obj");
+    mesh.load("square");
     mesh.set_buffers();
     glGenBuffers(1, &buffer);
 }

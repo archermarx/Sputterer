@@ -28,12 +28,12 @@ class ThrusterPlume {
         // Model parameters
         std::array<double, 7> model_params{
             1.0f,   // ratio of the main beam to the total beam
-                0.25f,  // ratio for divergence angle of the main to scattered beam
-                0.0f,   // "slope" for linear divergence angle function
-                0.0f,   // "intercept" for linear divergence angle function
-                0.0f,   // "slope" for linear neutral density function
-                0.0f,   // "intercept" for linear neutral density function
-                1.0f,   // charge exchange collision cross section (square Angstroms)
+            0.25f,  // ratio for divergence angle of the main to scattered beam
+            0.0f,   // "slope" for linear divergence angle function
+            0.0f,   // "intercept" for linear divergence angle function
+            0.0f,   // "slope" for linear neutral density function
+            0.0f,   // "intercept" for linear neutral density function
+            1.0f,   // charge exchange collision cross section (square Angstroms)
         };
 
         // Design parameters
@@ -71,14 +71,11 @@ class ThrusterPlume {
 
         [[nodiscard]] CurrentFraction current_fractions () const;
 
-        void set_buffers ();
         void setup_shaders (float len);
-
         void draw (Camera cam, float aspect_ratio);
 
     private:
         unsigned int vbo{}, vao{};
-
 };
 
 struct Species;

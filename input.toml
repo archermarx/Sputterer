@@ -29,7 +29,7 @@ diffuse_coeff = 0.7
 
 [[geometry]]                                        # Define geometry 
 name = "Thruster"                                   # Name
-file = "o_thruster.obj"                             # Mesh file
+model = "thruster"                                   # Mesh file
 material = "carbon"                                 # Which material to use
 collect = false                                     # Whether to log particles that stick to this geometry
 translate = { x = 0.0, y = 0.2285, z = -2.16 }      # Transformations (rotate, scale, translate) to apply to this mesh
@@ -39,7 +39,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
 
 [[geometry]]
 name = "QCM"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 collect = true
 scale = { x = 0.1241, y = 0.1241, z = 1.0 }
@@ -48,7 +48,7 @@ translate = { x = 1.0, y = 0.2285, z = -2.16 }
 
 #[[geometry]]
 #name = "chamber"
-#file = "o_chamber.obj"
+#model = "o_chamber.obj"
 #material = "carbon"
 #collect = false
 #scale = { x = 1.0, y = 1.0, z = 1.0 }
@@ -57,7 +57,7 @@ translate = { x = 1.0, y = 0.2285, z = -2.16 }
 
 [[geometry]]
 name = "beamdump_back_l"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 smooth = true
 scale = { x = 0.610, y = 0.610, z = 1.0 }
@@ -66,7 +66,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 0 }
 
 [[geometry]]
 name = "beamdump_back_r"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.610, y = 0.610, z = 1.0 }
 translate = { x = 0.334, y = 0.330, z = 2.074 }
@@ -74,7 +74,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 0 }
 
 [[geometry]]
 name = "beamdump_rt-1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = -0.138, y = 1.2575, z = 2.0 }
@@ -82,7 +82,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt0"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = -0.315, y = 1.2575, z = 2.0 }
@@ -90,7 +90,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = -0.492, y = 1.2575, z = 2.0 }
@@ -99,7 +99,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt2"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.626, y = 0.9525, z = 2.0 }
@@ -107,7 +107,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt3"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.845, y = 0.9525, z = 2.0 }
@@ -115,7 +115,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt4"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.124, y = 0.9525, z = 2.0 }
@@ -123,7 +123,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt5"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.383, y = 0.9525, z = 2.0 }
@@ -131,7 +131,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt6"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.632, y = 0.9525, z = 2.0 }
@@ -139,7 +139,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rt7"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.881, y = 0.9525, z = 2.0 }
@@ -147,7 +147,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_lt-1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = 0.138, y = 1.2575, z = 2.0 }
@@ -155,7 +155,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt0"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = 0.315, y = 1.2575, z = 2.0 }
@@ -163,7 +163,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.219, z = 1.0 }
 translate = { x = 0.492, y = 1.2575, z = 2.0 }
@@ -172,7 +172,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt2"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.626, y = 0.9525, z = 2.0 }
@@ -180,7 +180,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt3"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.845, y = 0.9525, z = 2.0 }
@@ -188,7 +188,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt4"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.124, y = 0.9525, z = 2.0 }
@@ -196,7 +196,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt5"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.383, y = 0.9525, z = 2.0 }
@@ -204,7 +204,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt6"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.632, y = 0.9525, z = 2.0 }
@@ -212,7 +212,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lt7"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.881, y = 0.9525, z = 2.0 }
@@ -220,7 +220,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_rb0"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.138, y = -0.9145, z = 2.0 }
@@ -228,7 +228,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.377, y = -0.9145, z = 2.0 }
@@ -236,7 +236,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb2"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.626, y = -0.9145, z = 2.0 }
@@ -244,7 +244,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb3"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -0.845, y = -0.9145, z = 2.0 }
@@ -252,7 +252,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb4"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.124, y = -0.9145, z = 2.0 }
@@ -260,7 +260,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb5"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.383, y = -0.9145, z = 2.0 }
@@ -268,7 +268,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb6"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.632, y = -0.9145, z = 2.0 }
@@ -276,7 +276,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_rb7"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = -1.881, y = -0.9145, z = 2.0 }
@@ -284,7 +284,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = 30 }
 
 [[geometry]]
 name = "beamdump_lb0"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.138, y = -0.9145, z = 2.0 }
@@ -292,7 +292,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb1"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.387, y = -0.9145, z = 2.0 }
@@ -300,7 +300,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb2"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.636, y = -0.9145, z = 2.0 }
@@ -308,7 +308,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb3"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 0.885, y = -0.9145, z = 2.0 }
@@ -316,7 +316,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb4"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.134, y = -0.9145, z = 2.0 }
@@ -324,7 +324,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb5"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.383, y = -0.9145, z = 2.0 }
@@ -332,7 +332,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb6"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.632, y = -0.9145, z = 2.0 }
@@ -340,7 +340,7 @@ rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -30 }
 
 [[geometry]]
 name = "beamdump_lb7"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 scale = { x = 0.305, y = 1.829, z = 1.0 }
 translate = { x = 1.881, y = -0.9145, z = 2.0 }

@@ -218,7 +218,13 @@ double sputtering_yield (double energy, double angle, Species incident, Species 
     return numerator/denominator;
 }
 
-void ThrusterPlume::set_buffers () {
+void ThrusterPlume::setup_shaders (float length) {
+    particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
+    cone_shader.load("plume.vert", "plume.frag", "plume.geom");
+    cone_shader.use();
+    cone_shader.set_float("length", length);
+    cone_shader.set_vec3("direction", direction);
+
     glGenBuffers(1, &vbo);
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -229,15 +235,6 @@ void ThrusterPlume::set_buffers () {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);
     glBindVertexArray(0);
-}
-
-void ThrusterPlume::setup_shaders (float length) {
-    particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
-    cone_shader.load("plume.vert", "plume.frag", "plume.geom");
-    cone_shader.use();
-    cone_shader.set_float("length", length);
-    cone_shader.set_vec3("direction", direction);
-    set_buffers();
 }
 
 void ThrusterPlume::draw (Camera camera, float aspect_ratio) {

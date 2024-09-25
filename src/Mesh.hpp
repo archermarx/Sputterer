@@ -79,8 +79,10 @@ public:
   Mesh () = default;
 
   ~Mesh ();
-
+    
+  void load (const string &path);
   void read_from_obj (const string &path);
+  void read_from_str (const string &str);
 
   void set_buffers ();
 

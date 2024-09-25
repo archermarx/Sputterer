@@ -40,12 +40,7 @@ void Mesh::load (const string &path) {
     if (file_path.extension() == ".obj") {
         read_from_obj(path); 
     } else {
-        if (!models::table.count(path)) {
-            std::ostringstream msg;
-            msg << "Model " << path << " not found!\n";
-            throw std::runtime_error(msg.str());
-        }
-        read_from_str(models::table.at(path));
+        read_from_str(models::table[path]);
     }
 }
 
@@ -73,7 +68,7 @@ void Mesh::read_from_str (const string &str) {
   while (!strStream.eof()) {
     // Read a line from the file;
     string line;
-    std::getline(strStream, line);
+    std::getline(objFile, line);
     std::istringstream lineStream(line);
 
     // Read first character of line;

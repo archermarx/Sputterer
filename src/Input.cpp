@@ -161,8 +161,8 @@ Input read_input (std::string filename) {
 
         // need to append the current working directory to make sure mesh files
         // are relative to where the input file is located
-        auto mesh_file = get_value<string>(tab, "file");
-        auto mesh_path = fs::absolute({filename}).parent_path()/mesh_file;
+        auto mesh_path = get_value<string>(tab, "model");
+        //auto mesh_path = fs::absolute({filename}).parent_path()/mesh_file;
 
         // object positions (optional)
         query_value(tab, "translate", surf.transform.translate);
@@ -178,7 +178,7 @@ Input read_input (std::string filename) {
         query_value(tab, "temperature_K", surf.material.temperature_K);
 
         auto &mesh = surf.mesh;
-        mesh.read_from_obj({mesh_path});
+        mesh.load({mesh_path});
         id++;
     }
 
