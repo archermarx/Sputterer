@@ -55,11 +55,9 @@ int main (int argc, char *argv[]) {
     // Initialize GPU
     device_vector<int> init{0};
 
-    // Read input
+    // Read input and open window, if required
     std::string filename = argc > 1 ? argv[1] : "input.toml";
     Input input = read_input(filename);
-
-    // enable window, opengl, and perform some setup
     auto window = app::initialize(input);
 
     // construct triangles
@@ -97,7 +95,6 @@ int main (int argc, char *argv[]) {
             ind++;
         }
     }
-
     std::vector<double> deposition_rates(collect_inds_global.size(), 0);
     host_vector<int> collected(collect_inds_global.size(), 0);
 
@@ -141,18 +138,11 @@ int main (int argc, char *argv[]) {
     // Create particle container for carbon atoms and renderer for BVH
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
     BVHRenderer bvh(&h_scene);
-
-    // Set up shaders
-    if (input.display) {
-        geometry.setup_shaders();
-        particles.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
-        plume.setup_shaders(input.chamber_length_m / 2);
-        bvh.setup_shaders();
-    }
+    app::Renderer renderer = {bvh, plume, particles, geometry};
+    renderer.setup(input);
 
     // Create timing objects
-    size_t frame = 0;
-
+    size_t step = 0;
     float avg_time_compute = 0.0f, avg_time_total = 0.0f;
     float iter_reset = 25;
     float time_const = 1/iter_reset;
@@ -189,7 +179,7 @@ int main (int argc, char *argv[]) {
             ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
             ImGui::Begin("Frame time", nullptr, flags);
             ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
-                    "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame, print_time(
+                    "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", step, print_time(
                         input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
                     (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
                     (avg_time_total/delta_time_smoothed)*100, particles.num_particles);
@@ -286,7 +276,7 @@ int main (int argc, char *argv[]) {
         delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
 
         // Main computations
-        if (frame > 0 && !app::sim_paused) {
+        if (step > 0 && !app::sim_paused) {
             start.record();
 
             // Push particles and sputter from surfaces
@@ -322,31 +312,21 @@ int main (int argc, char *argv[]) {
             avg_time_total = (1 - time_const)*avg_time_total + time_const*elapsed_copy;
         }
 
-        if (input.display) {
-            // draw to screen
-            geometry.draw(app::camera, app::aspect_ratio);
-            particles.draw(app::camera, app::aspect_ratio);
-            bvh.draw(app::camera, app::aspect_ratio);
-            plume.draw(app::camera, app::aspect_ratio);
-        }
+        renderer.draw(input);
 
         if (!app::sim_paused && physical_time > next_output_time ||
                 (!input.display && physical_time >= input.max_time_s) ||
                 (input.display && !window.open)) {
             // Write output to console at regular intervals, plus one additional when simulation terminates
-            std::cout << "Step " << frame << ", Simulation time: " << print_time(physical_time)
+            std::cout << "Step " << step << ", Simulation time: " << print_time(physical_time)
                 << ", Timestep: " << print_time(input.timestep_s) << ", Avg. step time: " << delta_time_smoothed
                 << " ms" << std::endl;
 
             // write output to file
             next_output_time += input.output_interval_s;}
 
-        if (input.display) {
-            window.end_render_loop();
-            app::process_input(window.window);
-        }
-
-        frame += !app::sim_paused;
+        app::end_frame(input, window);
+        step += !app::sim_paused;
     }
 
     if (input.verbosity > 0) std::cout << "Program terminated successfully." << std::endl;

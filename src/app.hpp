@@ -3,6 +3,9 @@
 
 #include "Camera.hpp"
 #include "Input.hpp"
+#include "ParticleContainer.cuh"
+#include "Surface.hpp"
+#include "ThrusterPlume.hpp"
 #include "Window.hpp"
 
 namespace app {
@@ -10,6 +13,9 @@ namespace app {
     constexpr unsigned int screen_width = 1360;
     constexpr unsigned int screen_height = 768;
     float aspect_ratio = static_cast<float>(screen_width)/static_cast<float>(screen_height);
+
+    constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
+    constexpr float carbon_particle_scale = 0.05;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -24,8 +30,32 @@ namespace app {
     void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset);
     void process_input (GLFWwindow *window);
 
+    struct Renderer {
+        BVHRenderer &bvh;
+        ThrusterPlume &plume;
+        ParticleContainer &particles;
+        SceneGeometry &geometry;
+
+        void setup (Input &input) {
+            if (input.display) {
+                geometry.setup_shaders();
+                particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
+                plume.setup_shaders(input.chamber_length_m / 2);
+                bvh.setup_shaders();
+            }
+        }
+        void draw (Input &input) {
+            if (input.display) {
+                geometry.draw(camera, aspect_ratio);
+                particles.draw(camera, aspect_ratio);
+                bvh.draw(camera, aspect_ratio);
+                plume.draw(camera, aspect_ratio);
+            }
+        };
+    };
+
     Window initialize(Input &input) {
-        Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
+        Window window{.name = "Sputterer", .width = screen_width, .height = screen_height};
         if (input.display) {
             window.enable();
             camera.initialize(input.chamber_radius_m);
@@ -35,6 +65,13 @@ namespace app {
             sim_paused = true;
         }
         return window;
+    }
+
+    void end_frame(Input &input, Window &window) {
+        if (input.display) {
+            window.end_render_loop();
+            app::process_input(window.window);
+        }
     }
 
     void process_input (GLFWwindow *window) {
