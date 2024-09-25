@@ -17,7 +17,7 @@ std::string fixed_path(const char *file) {
 }
 
 void Shader::load (const char *vertex_path, const char *fragment_path, const char *geometry_path) {
-
+    // TODO: shaders should probably actually just be strings in source code so they're embedded in executable
     // 1. Retrieve vertex and fragment source code from file path
     const auto vertex_code = read_from_file(fixed_path(vertex_path).c_str());
     const auto fragment_code = read_from_file(fixed_path(fragment_path).c_str());

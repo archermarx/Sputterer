@@ -51,11 +51,11 @@ string print_time (double time_s) {
 
 ParticleContainer find_plume_hits (Input &input,
                                    Scene &h_scene,
-                                   host_vector<Material> h_materials,
-                                   host_vector<size_t> h_material_ids,
-                                   host_vector<HitInfo> hits,
-                                   host_vector<float3> hit_positions,
-                                   host_vector<float> num_emit) {
+                                   host_vector<Material> &h_materials,
+                                   host_vector<size_t> &h_material_ids,
+                                   host_vector<HitInfo> &hits,
+                                   host_vector<float3> &hit_positions,
+                                   host_vector<float> &num_emit) {
     using namespace constants;
     host_vector <float3> vel;
     host_vector<float> ws;
@@ -124,6 +124,7 @@ ParticleContainer find_plume_hits (Input &input,
                     auto n_emit = yield*plume.beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
                     if (n_emit > max_emit)
                         max_emit = n_emit;
+
                     num_emit.push_back(n_emit);
                 }
             }
@@ -253,7 +254,7 @@ int main (int argc, char *argv[]) {
         window.initialize_imgui();
 
         // Load mesh shader
-        mesh_shader.load("../shaders/shader.vert", "../shaders/shader.frag");
+        mesh_shader.load("shader.vert", "shader.frag");
 
         // initialize mesh buffers
         for (auto &surf: input.surfaces) {
@@ -261,13 +262,14 @@ int main (int argc, char *argv[]) {
         }
 
         // Load particle shader
-        particle_shader.load("../shaders/particle.vert", "../shaders/particle.frag");
+        particle_shader.load("particle.vert", "particle.frag");
         particle_shader.use();
         constexpr vec3 particle_scale{0.01f};
         particle_shader.set_vec3("scale", particle_scale);
         particle_shader.set_vec3("cameraRight", app::camera.right);
         particle_shader.set_vec3("cameraUp", app::camera.up);
 
+        // TODO: have geometric primitives stored as strings in a c++ source file
         // Set up particle meshes
         pc.mesh.read_from_obj("../o_rect.obj");
         pc.set_buffers();
@@ -279,7 +281,7 @@ int main (int argc, char *argv[]) {
         input.plume.setup_shaders(input.chamber_length_m / 2);
 
         // set up BVH rendering
-        bvh_shader.load("../shaders/bvh.vert", "../shaders/bvh.frag", "../shaders/bvh.geom");
+        bvh_shader.load("bvh.vert", "bvh.frag", "bvh.geom");
         bvh_shader.use();
         bvh.set_buffers();
     }
@@ -313,7 +315,7 @@ int main (int argc, char *argv[]) {
     int bvh_draw_depth = h_scene.bvh_depth;
 
     // Pause simulation if displaying
-    app::simulation_paused = !input.display;
+    app::simulation_paused = input.display;
 
     while ((input.display && window.open) || (!input.display && physical_time < input.max_time_s)) {
         // TODO: can we move this out of main into a different function
@@ -510,15 +512,14 @@ int main (int argc, char *argv[]) {
                 << " ms" << std::endl;
 
             // write output to file
-            next_output_time += input.output_interval_s;
-        }
+            next_output_time += input.output_interval_s;}
 
         if (input.display) {
             window.end_render_loop();
             app::process_input(window.window);
         }
 
-        frame += 1;
+        if (!app::simulation_paused) frame += 1;
     }
 
     if (input.verbosity > 0) {
