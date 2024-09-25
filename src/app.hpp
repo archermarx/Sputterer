@@ -30,28 +30,35 @@ namespace app {
     void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset);
     void process_input (GLFWwindow *window);
 
-    struct Renderer {
-        BVHRenderer &bvh;
-        ThrusterPlume &plume;
-        ParticleContainer &particles;
-        SceneGeometry &geometry;
+    class Renderer {
+        public:
+            BVHRenderer bvh;
+            ThrusterPlume &plume;
+            ParticleContainer &particles;
+            SceneGeometry &geometry;
 
-        void setup (Input &input) {
-            if (input.display) {
-                geometry.setup_shaders();
-                particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
-                plume.setup_shaders(input.chamber_length_m / 2);
-                bvh.setup_shaders();
+            Renderer(Input &input, Scene *scene, ThrusterPlume &plume, 
+                     ParticleContainer &particles, SceneGeometry &geometry)
+                : bvh(scene), plume(plume), particles(particles), geometry(geometry){
+                setup(input);
             }
-        }
-        void draw (Input &input) {
-            if (input.display) {
-                geometry.draw(camera, aspect_ratio);
-                particles.draw(camera, aspect_ratio);
-                bvh.draw(camera, aspect_ratio);
-                plume.draw(camera, aspect_ratio);
+
+            void setup (Input &input) {
+                if (input.display) {
+                    geometry.setup_shaders();
+                    particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
+                    plume.setup_shaders(input.chamber_length_m / 2);
+                    bvh.setup_shaders();
+                }
             }
-        };
+            void draw (Input &input) {
+                if (input.display) {
+                    geometry.draw(camera, aspect_ratio);
+                    particles.draw(camera, aspect_ratio);
+                    bvh.draw(camera, aspect_ratio);
+                    plume.draw(camera, aspect_ratio);
+                }
+            };
     };
 
     Window initialize(Input &input) {
@@ -62,6 +69,7 @@ namespace app {
             glfwSetKeyCallback(window.window, pause_callback);
             glfwSetCursorPosCallback(window.window, mouse_cursor_callback);
             glfwSetScrollCallback(window.window, scroll_callback);
+            window.initialize_imgui();
             sim_paused = true;
         }
         return window;

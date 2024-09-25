@@ -135,11 +135,9 @@ int main (int argc, char *argv[]) {
     device_vector<HitInfo> d_hits{hits};
     device_vector<float> d_num_emit{num_emit};
 
-    // Create particle container for carbon atoms and renderer for BVH
+    // Create particle container for carbon atoms and renderer
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
-    BVHRenderer bvh(&h_scene);
-    app::Renderer renderer = {bvh, plume, particles, geometry};
-    renderer.setup(input);
+    app::Renderer renderer(input, &h_scene, plume, particles, geometry);
 
     // Create timing objects
     size_t step = 0;
@@ -251,11 +249,11 @@ int main (int argc, char *argv[]) {
                 ImGui::TableNextColumn();
                 ImGui::SliderFloat("##sputtered_particle_scale", &particles.scale, 0, 0.3);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show bounding boxes", &bvh.render);
+                ImGui::Checkbox("Show bounding boxes", &renderer.bvh.render);
                 ImGui::TableNextColumn();
                 ImGui::Text("Bounding box depth");
                 ImGui::TableNextColumn();
-                ImGui::SliderInt("##bvh_depth", &bvh.draw_depth, 0, h_scene.bvh_depth);
+                ImGui::SliderInt("##bvh_depth", &renderer.bvh.draw_depth, 0, h_scene.bvh_depth);
             }
             ImGui::EndTable();
             ImGui::End();

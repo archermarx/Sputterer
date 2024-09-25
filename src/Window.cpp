@@ -43,12 +43,7 @@ void Window::enable () {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   this->open = true;
-
-  std::cout << "GLFW window initialized." << std::endl;
-
   this->enabled = true;
-
-  initialize_imgui();
 }
 
 
