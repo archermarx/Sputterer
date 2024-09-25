@@ -359,25 +359,28 @@ __global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float hal
     }
 }
 
-void ParticleContainer::flag_out_of_bounds (float radius, float length) {
-    auto [grid, block] = get_kernel_launch_params(num_particles);
-
-    auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
-    auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
-    k_flag_oob<<<grid, block>>>(
-            d_pos_ptr, d_wgt_ptr
-            , radius*radius, length/2 - radius, num_particles);
-    cudaDeviceSynchronize();
-}
-
+// functor for determining whether a float is positive, used in flagging particles with positive weights
 struct IsPositive {
     __host__ __device__ bool operator() (const float &w) {
         return w > 0;
     }
 };
 
-void ParticleContainer::remove_flagged_particles () {
-    // reorder positions and velocities so that particles with negative weight follow those with positive weight
+void ParticleContainer::remove_out_of_bounds (float radius, float length) {
+
+    // Get raw pointers to position and weight data
+    auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
+    auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
+
+    // Mark particles that are OOB with negative weight
+    auto [grid, block] = get_kernel_launch_params(num_particles);
+    k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr,
+                                radius*radius, length/2 - radius,
+                                num_particles);
+    cudaDeviceSynchronize();
+
+    // reorder positions and velocities so that particles with negative or zero weight follow those with positive weight
+    // This could be done with a single partition if I was smarter
     thrust::partition(d_position.begin(), d_position.begin() + num_particles, d_weight.begin(), IsPositive());
     thrust::partition(d_velocity.begin(), d_velocity.begin() + num_particles, d_weight.begin(), IsPositive());
 
@@ -394,7 +397,6 @@ void ParticleContainer::remove_flagged_particles () {
     // Reset number of particles to the middle of the partition
     num_particles = static_cast<int>(thrust::distance(d_weight.begin(), ret));
 }
-
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {
     os << "==========================================================\n";

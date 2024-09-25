@@ -98,11 +98,8 @@ class ParticleContainer {
         [[nodiscard]] std::pair<dim3, dim3>
             get_kernel_launch_params (size_t num_elems, size_t block_size = 64) const;
 
-        // Set particles that leave bounds to have negative weights
-        void flag_out_of_bounds (float radius, float length);
-
-        // Remove particles with negative weights
-        void remove_flagged_particles ();
+        // Set particles that leave bounds to have negative weights and remove them
+        void remove_out_of_bounds (float radius, float length);
 
         // Copy particles on GPU to CPU
         void copy_to_cpu ();

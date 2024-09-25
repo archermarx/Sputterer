@@ -138,11 +138,8 @@ int main (int argc, char *argv[]) {
                              d_hits, d_num_emit, input.particle_weight,
                              input.timestep_s);
 
-            // flag particles that are out of bounds
-            particles.flag_out_of_bounds(input.chamber_radius_m, input.chamber_length_m);
-
-            // remove particles with negative weight (out of bounds and phantom emitted particles)
-            particles.remove_flagged_particles();
+            // flag and remove particles that are out of bounds
+            particles.remove_out_of_bounds(input.chamber_radius_m, input.chamber_length_m);
 
             // record stop time
             stop_compute.record();
