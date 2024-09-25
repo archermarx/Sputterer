@@ -14,27 +14,26 @@
 #include "Input.hpp"
 #include "ParticleContainer.cuh"
 
-ParticleContainer find_plume_hits (Input &input,
-                                   Scene &h_scene,
-                                   host_vector<Material> &h_materials,
-                                   host_vector<size_t> &h_material_ids,
-                                   host_vector<HitInfo> &hits,
-                                   host_vector<float3> &hit_positions,
-                                   host_vector<float> &num_emit) {
+void ThrusterPlume::find_hits (Input &input,
+                               Scene &h_scene,
+                               host_vector<Material> &h_materials,
+                               host_vector<size_t> &h_material_ids,
+                               host_vector<HitInfo> &hits,
+                               host_vector<float3> &hit_positions,
+                               host_vector<float> &num_emit) {
     using namespace constants;
     host_vector <float3> vel;
     host_vector<float> ws;
 
     // plume coordinate system
-    auto plume = input.plume;
-    auto plume_up = vec3{0.0, 1.0, 0.0};
-    auto plume_right = cross(plume.direction, plume_up);
-    plume_up = cross(plume_right, plume.direction);
+    auto up = vec3{0.0, 1.0, 0.0};
+    auto right = cross(direction, up);
+    up = cross(right, direction);
 
     auto incident = constants::xenon;
     auto target = constants::carbon;
 
-    auto [main_fraction, scattered_fraction, _] = plume.current_fractions();
+    auto [main_fraction, scattered_fraction, _] = current_fractions();
     auto beam_fraction = main_fraction + scattered_fraction;
     main_fraction = main_fraction/beam_fraction;
 
@@ -55,18 +54,18 @@ ParticleContainer find_plume_hits (Input &input,
             auto u = rand_uniform();
             double div_angle, beam_energy;
             if (u < main_fraction) {
-                div_angle = plume.main_divergence_angle();
-                beam_energy = plume.beam_energy_eV;
+                div_angle = main_divergence_angle();
+                beam_energy = beam_energy_eV;
             } else {
-                div_angle = plume.scattered_divergence_angle();
-                beam_energy = plume.scattered_energy_eV;
+                div_angle = scattered_divergence_angle();
+                beam_energy = scattered_energy_eV;
             }
 
             auto azimuth = rand_uniform(0, 2*constants::pi);
             auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
 
-            auto direction = cos(elevation)*plume.direction + sin(elevation)*(cos(azimuth)*plume_right + sin(azimuth)*plume_up);
-            Ray r{make_float3(plume.origin + direction*1e-3f), normalize(make_float3(direction))};
+            auto dir = cos(elevation)*direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
+            Ray r{make_float3(origin + dir*1e-3f), normalize(make_float3(dir))};
 
             auto hit = r.cast(h_scene);
 
@@ -86,7 +85,7 @@ ParticleContainer find_plume_hits (Input &input,
                     auto hit_angle = acos(cos_hit_angle);
 
                     auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
-                    auto n_emit = yield*plume.beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
+                    auto n_emit = yield*beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
                     if (n_emit > max_emit)
                         max_emit = n_emit;
 
@@ -107,9 +106,10 @@ ParticleContainer find_plume_hits (Input &input,
         std::cout << "Number of plume rays: " << num_rays << std::endl;
     }
 
-    ParticleContainer pc_plume{"plume", hit_positions.size()};
-    pc_plume.add_particles(hit_positions, vel, ws);
-    return pc_plume;
+    //ParticleContainer pc_plume{"plume", hit_positions.size()};
+    ///pc_plume.add_particles(hit_positions, vel, ws);
+    particles.initialize(hit_positions.size());
+    particles.add_particles(hit_positions, vel, ws);
 }
 
 [[maybe_unused]]  vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {

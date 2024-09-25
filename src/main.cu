@@ -140,14 +140,14 @@ int main (int argc, char *argv[]) {
     host_vector<float3> hit_positions;
     host_vector<float> num_emit;
     auto plume = input.plume;
-    plume.particles = find_plume_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
+    plume.find_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
     // Copy plume results to GPU
     device_vector<HitInfo> d_hits{hits};
     device_vector<float> d_num_emit{num_emit};
 
     // Create particle container for carbon atoms
-    ParticleContainer pc{"carbon", max_particles, 1.0f, 1};
+    ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
 
     // Display objects
     Shader mesh_shader{};
@@ -161,7 +161,7 @@ int main (int argc, char *argv[]) {
             surf.mesh.set_buffers();
         }
 
-        pc.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
+        particles.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
         plume.setup_shaders(input.chamber_length_m / 2);
         bvh.setup_shaders();
     }
@@ -208,7 +208,7 @@ int main (int argc, char *argv[]) {
                     "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", frame, print_time(
                         input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
                     (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
-                    (avg_time_total/delta_time_smoothed)*100, pc.num_particles);
+                    (avg_time_total/delta_time_smoothed)*100, particles.num_particles);
             ImGui::End();
 
             // Table of collected particle amounts
@@ -271,11 +271,11 @@ int main (int argc, char *argv[]) {
                 ImGui::TableNextColumn();
                 ImGui::SliderFloat("##plume_particle_scale", &plume.particles.scale, 0, 0.3);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show sputtered particles", &pc.render);
+                ImGui::Checkbox("Show sputtered particles", &particles.render);
                 ImGui::TableNextColumn();
                 ImGui::Text("Sputtered particle scale");
                 ImGui::TableNextColumn();
-                ImGui::SliderFloat("##sputtered_particle_scale", &pc.scale, 0, 0.3);
+                ImGui::SliderFloat("##sputtered_particle_scale", &particles.scale, 0, 0.3);
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show bounding boxes", &bvh.render);
                 ImGui::TableNextColumn();
@@ -306,15 +306,15 @@ int main (int argc, char *argv[]) {
             start.record();
 
             // Push particles and sputter from surfaces
-            pc.evolve(d_scene, d_materials, d_surface_ids, d_collected,
-                      d_hits, d_num_emit, input.particle_weight,
-                      input.timestep_s);
+            particles.evolve(d_scene, d_materials, d_surface_ids, d_collected,
+                             d_hits, d_num_emit, input.particle_weight,
+                             input.timestep_s);
 
             // flag particles that are out of bounds
-            pc.flag_out_of_bounds(input.chamber_radius_m, input.chamber_length_m);
+            particles.flag_out_of_bounds(input.chamber_radius_m, input.chamber_length_m);
 
             // remove particles with negative weight (out of bounds and phantom emitted particles)
-            pc.remove_flagged_particles();
+            particles.remove_flagged_particles();
 
             // record stop time
             stop_compute.record();
@@ -326,7 +326,7 @@ int main (int argc, char *argv[]) {
             }
 
             // Copy particle data back to CPU
-            pc.copy_to_cpu();
+            particles.copy_to_cpu();
             stop_copy.record();
 
             // timing
@@ -340,8 +340,6 @@ int main (int argc, char *argv[]) {
 
         // Rendering
         if (input.display) {
-            // 1. draw user-provided geometry
-
             // update update camera uniforms
             mesh_shader.use();
             mesh_shader.update_view(app::camera, app::aspect_ratio);
@@ -354,13 +352,8 @@ int main (int argc, char *argv[]) {
                 surface.mesh.draw();
             }
 
-            // Draw carbon particles
-            pc.draw(app::camera, app::aspect_ratio);
-            
-            // Draw bounding volume heirarchy
+            particles.draw(app::camera, app::aspect_ratio);
             bvh.draw(app::camera, app::aspect_ratio);
-
-            // Draw translucent plume cone and plume particles
             plume.draw(app::camera, app::aspect_ratio);
         }
 

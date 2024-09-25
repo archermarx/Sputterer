@@ -17,13 +17,6 @@ struct CurrentFraction {
 
 class Input;
 
-ParticleContainer find_plume_hits (Input &input,
-                                   Scene &h_scene,
-                                   host_vector<Material> &h_materials,
-                                   host_vector<size_t> &h_material_ids,
-                                   host_vector<HitInfo> &hits,
-                                   host_vector<float3> &hit_positions,
-                                   host_vector<float> &num_emit);
 
 class ThrusterPlume {
     public:
@@ -60,6 +53,14 @@ class ThrusterPlume {
 
         // display options
         bool render = true;
+        
+        void find_hits (Input &input,
+                       Scene &h_scene,
+                       host_vector<Material> &h_materials,
+                       host_vector<size_t> &h_material_ids,
+                       host_vector<HitInfo> &hits,
+                       host_vector<float3> &hit_positions,
+                       host_vector<float> &num_emit);
 
         [[nodiscard]] double main_divergence_angle () const;
 
