@@ -28,6 +28,9 @@ using std::vector, std::string;
 
 constexpr size_t max_particles = 35'000'000;
 
+// forward decl
+class Input;
+
 struct DeviceParticleContainer {
     float3 *position;
     float3 *velocity;
@@ -89,7 +92,7 @@ class ParticleContainer {
                 , const device_vector<Material> &mats, const device_vector<size_t> &ids
                 , device_vector<int> &collected
                 , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
-                , float input_weight, float dt);
+                , const Input &input);
 
         // add particles to the container
         void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
@@ -99,7 +102,7 @@ class ParticleContainer {
             get_kernel_launch_params (size_t num_elems, size_t block_size = 64) const;
 
         // Set particles that leave bounds to have negative weights and remove them
-        void remove_out_of_bounds (float radius, float length);
+        void remove_out_of_bounds (const Input &input);
 
         // Copy particles on GPU to CPU
         void copy_to_cpu ();

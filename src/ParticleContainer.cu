@@ -7,6 +7,7 @@
 #include "cuda_helpers.cuh"
 #include "gl_helpers.hpp"
 #include "Constants.hpp"
+#include "Input.hpp"
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
@@ -305,7 +306,7 @@ void ParticleContainer::evolve (Scene scene
         , const device_vector<Material> &mats, const device_vector<size_t> &ids
         , device_vector<int> &collected
         , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
-        , const float input_weight, const float dt) {
+        , const Input &input) {
 
     // TODO: could move all of the device geometric info into a struct
     auto d_id_ptr = thrust::raw_pointer_cast(ids.data());
@@ -322,11 +323,13 @@ void ParticleContainer::evolve (Scene scene
             , scene
             , d_mat_ptr, d_id_ptr, d_col_ptr
             , d_hit_ptr, d_emit_ptr, hits.size()
-            , input_weight, dt);
+            , input.particle_weight, input.timestep_s);
 
     this->num_particles += hits.size();
 
     cudaDeviceSynchronize();
+
+    remove_out_of_bounds(input);
 }
 
 float rand_uniform (float min, float max) {
@@ -366,17 +369,16 @@ struct IsPositive {
     }
 };
 
-void ParticleContainer::remove_out_of_bounds (float radius, float length) {
-
+void ParticleContainer::remove_out_of_bounds (const Input &input) {
     // Get raw pointers to position and weight data
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
 
     // Mark particles that are OOB with negative weight
-    auto [grid, block] = get_kernel_launch_params(num_particles);
-    k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr,
-                                radius*radius, length/2 - radius,
-                                num_particles);
+    const auto r = input.chamber_radius_m;
+    const auto l = input.chamber_length_m;
+    const auto [grid, block] = get_kernel_launch_params(num_particles);
+    k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr, r*r, l/2 - r, num_particles);
     cudaDeviceSynchronize();
 
     // reorder positions and velocities so that particles with negative or zero weight follow those with positive weight

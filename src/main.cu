@@ -133,13 +133,9 @@ int main (int argc, char *argv[]) {
         if (step > 0 && !app::sim_paused) {
             start.record();
 
-            // Push particles and sputter from surfaces
+            // Push particles and sputter from surfaces, then remove those that are out of bounds
             particles.evolve(d_scene, d_materials, d_surface_ids, d_collected,
-                             d_hits, d_num_emit, input.particle_weight,
-                             input.timestep_s);
-
-            // flag and remove particles that are out of bounds
-            particles.remove_out_of_bounds(input.chamber_radius_m, input.chamber_length_m);
+                             d_hits, d_num_emit, input);
 
             // record stop time
             stop_compute.record();
