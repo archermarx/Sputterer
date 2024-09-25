@@ -262,8 +262,8 @@ int main (int argc, char *argv[]) {
         }
 
         // set up shaders
-        pc.setup_shaders({0.05f, 0.05f, 0.05f});
-        pc_plume.setup_shaders({0.2f, 0.75f, 0.94f});
+        pc.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
+        pc_plume.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
         input.plume.setup_shaders(input.chamber_length_m / 2);
 
         // set up BVH rendering
@@ -363,8 +363,11 @@ int main (int argc, char *argv[]) {
             }
             ImGui::End();
 
-            flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize
-                | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
+            flags = ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoScrollbar |
+                    ImGuiWindowFlags_AlwaysAutoResize |
+                    ImGuiWindowFlags_NoTitleBar |
+                    ImGuiWindowFlags_NoSavedSettings;
 
             ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, 0);
             ImGui::SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
@@ -375,11 +378,21 @@ int main (int argc, char *argv[]) {
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show plume particles", &pc_plume.render);
                 ImGui::TableNextColumn();
+                ImGui::Text("Plume particle scale");
+                ImGui::TableNextColumn();
+                ImGui::SliderFloat("##plume_particle_scale", &pc_plume.scale, 0, 0.3);
+                ImGui::TableNextColumn();
                 ImGui::Checkbox("Show sputtered particles", &pc.render);
+                ImGui::TableNextColumn();
+                ImGui::Text("Sputtered particle scale");
+                ImGui::TableNextColumn();
+                ImGui::SliderFloat("##sputtered_particle_scale", &pc.scale, 0, 0.3);
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show bounding boxes", &render_bvh);
                 ImGui::TableNextColumn();
-                ImGui::SliderInt("BVH depth  ", &bvh_draw_depth, 0, h_scene.bvh_depth);
+                ImGui::Text("Bounding box depth");
+                ImGui::TableNextColumn();
+                ImGui::SliderInt("##bvh_depth", &bvh_draw_depth, 0, h_scene.bvh_depth);
             }
             ImGui::EndTable();
             ImGui::End();

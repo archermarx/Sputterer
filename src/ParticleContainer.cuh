@@ -36,6 +36,9 @@ struct DeviceParticleContainer {
     curandState *rng;
 };
 
+constexpr float DEFAULT_SCALE = 0.1f;
+constexpr vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
+
 class ParticleContainer {
     // Holds information for many particles of a specific species.
     // Species are differentiated by charge state and mass.
@@ -64,14 +67,15 @@ class ParticleContainer {
         device_vector<float> d_tmp;
 
         // Particle mesh
-        vec3 color;
+        vec3 color = DEFAULT_COLOR;
+        float scale = DEFAULT_SCALE;
         Mesh mesh{};
         Shader shader{};
         bool render = true;
 
         void draw (Camera cam, float aspect_ratio);
 
-        void setup_shaders (vec3 color); 
+        void setup_shaders (vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
 
         // Constructor
         ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
