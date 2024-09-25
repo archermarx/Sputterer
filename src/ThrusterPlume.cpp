@@ -13,6 +13,7 @@
 #include "ThrusterPlume.hpp"
 #include "Input.hpp"
 #include "ParticleContainer.cuh"
+#include "ShaderCode.hpp"
 
 void ThrusterPlume::find_hits (Input &input,
                                Scene &h_scene,
@@ -220,7 +221,7 @@ double sputtering_yield (double energy, double angle, Species incident, Species 
 
 void ThrusterPlume::setup_shaders (float length) {
     particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
-    cone_shader.load("plume.vert", "plume.frag", "plume.geom");
+    cone_shader.load(shaders::plume.vert, shaders::plume.frag, shaders::plume.geom);
     cone_shader.use();
     cone_shader.set_float("length", length);
     cone_shader.set_vec3("direction", direction);

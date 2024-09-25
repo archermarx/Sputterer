@@ -8,6 +8,7 @@
 #include "Camera.hpp"
 #include "Mesh.hpp"
 #include "Shader.hpp"
+#include "ShaderCode.hpp"
 #include "vec3.hpp"
 
 using std::vector, std::string;
@@ -37,7 +38,7 @@ struct SceneGeometry {
     vector<Surface> surfaces;    
     Shader shader;
     void setup_shaders() {
-        shader.load("shader.vert", "shader.frag");
+        shader.load(shaders::mesh.vert, shaders::mesh.frag);
         for (auto &surf: surfaces) {
             surf.mesh.set_buffers();
         }

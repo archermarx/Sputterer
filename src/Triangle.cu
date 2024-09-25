@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Triangle.cuh"
+#include "ShaderCode.hpp"
 
 #include "gl_helpers.hpp"
 
@@ -313,7 +314,7 @@ __host__ __device__ void Ray::intersect_bvh (Scene &scene, HitInfo &closest_hit,
 
 void BVHRenderer::setup_shaders () {
     draw_depth = scene->bvh_depth;
-    shader.load("bvh.vert", "bvh.frag", "bvh.geom");
+    shader.load(shaders::bvh.vert, shaders::bvh.frag, shaders::bvh.geom);
     shader.use();
 
     glGenBuffers(1, &vbo);

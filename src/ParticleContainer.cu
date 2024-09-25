@@ -8,6 +8,7 @@
 #include "gl_helpers.hpp"
 #include "Constants.hpp"
 #include "Input.hpp"
+#include "ShaderCode.hpp"
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
@@ -72,7 +73,7 @@ void ParticleContainer::copy_to_cpu () {
 
 void ParticleContainer::setup_shaders (vec3 color, float scale) {
     // Load particle shader
-    shader.load("particle.vert", "particle.frag");
+    shader.load(shaders::particle.vert, shaders::particle.frag);
     shader.use();
     // TODO: have scale controlled by a slider
     this->scale = scale;

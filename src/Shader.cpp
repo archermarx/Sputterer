@@ -9,27 +9,19 @@
 #include "glad/glad.h"
 #include "gl_helpers.hpp"
 
-std::string fixed_path(const char *file) {
-    std::string file_path = __FILE__;
-    std::string dir_path = file_path.substr(0, file_path.rfind("/"));
+using std::string;
 
-    return dir_path + "/../shaders/" + std::string(file);
-}
-
-void Shader::load (const char *vertex_path, const char *fragment_path, const char *geometry_path) {
-    // TODO: shaders should probably actually just be strings in source code so they're embedded in executable
-    // 1. Retrieve vertex and fragment source code from file path
-    const auto vertex_code = read_from_file(fixed_path(vertex_path).c_str());
-    const auto fragment_code = read_from_file(fixed_path(fragment_path).c_str());
-
-    // 2. Compile shaders and link
-    if (geometry_path == nullptr) {
-        id = create_shader_program({vertex_code, fragment_code}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
-    } else {
-        const auto geometry_code = read_from_file(fixed_path(geometry_path).c_str());
+void Shader::load (const char *vertex_code, const char *fragment_code, const char *geometry_code) {
+    if (geometry_code == nullptr) {
         id = create_shader_program(
-                {vertex_code, fragment_code, geometry_code}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER}
-                );
+            {string(vertex_code), string(fragment_code)},
+            {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER}
+        );
+    } else {
+        id = create_shader_program(
+            {string(vertex_code), string(fragment_code), string(geometry_code)},
+            {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER}
+        );
     }
 }
 
