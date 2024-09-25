@@ -60,7 +60,7 @@ class ThrusterPlume {
         void set_buffers ();
         void setup_shaders (float len);
 
-        void draw (glm::mat4);
+        void draw (Camera cam, float aspect_ratio);
 
     private:
         unsigned int vbo{}, vao{};

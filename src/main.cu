@@ -238,7 +238,7 @@ int main (int argc, char *argv[]) {
 
     // Display objects
     Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-    Shader mesh_shader{}, particle_shader{}, bvh_shader{};
+    Shader mesh_shader{}, bvh_shader{};
     BVHRenderer bvh(&h_scene);
     app::camera.initialize(input.chamber_radius_m);
 
@@ -261,26 +261,13 @@ int main (int argc, char *argv[]) {
             surf.mesh.set_buffers();
         }
 
-        // Load particle shader
-        particle_shader.load("particle.vert", "particle.frag");
-        particle_shader.use();
-        constexpr vec3 particle_scale{0.01f};
-        particle_shader.set_vec3("scale", particle_scale);
-        particle_shader.set_vec3("cameraRight", app::camera.right);
-        particle_shader.set_vec3("cameraUp", app::camera.up);
-
-        // TODO: have geometric primitives stored as strings in a c++ source file
-        // Set up particle meshes
-        pc.mesh.read_from_obj("../o_rect.obj");
-        pc.set_buffers();
-
-        pc_plume.mesh.read_from_obj("../o_rect.obj");
-        pc_plume.set_buffers();
-
-        // Load plume shader
+        // set up shaders
+        pc.setup_shaders({0.05f, 0.05f, 0.05f});
+        pc_plume.setup_shaders({0.2f, 0.75f, 0.94f});
         input.plume.setup_shaders(input.chamber_length_m / 2);
 
         // set up BVH rendering
+        // TODO: move into BVHRenderer
         bvh_shader.load("bvh.vert", "bvh.frag", "bvh.geom");
         bvh_shader.use();
         bvh.set_buffers();
@@ -309,8 +296,7 @@ int main (int argc, char *argv[]) {
         std::cout << "Beginning main loop." << std::endl;
     }
 
-    bool render_plume_particles = true;
-    bool render_sputtered_particles = true;
+    // TODO: move into BVHRenderer
     bool render_bvh = false;
     int bvh_draw_depth = h_scene.bvh_depth;
 
@@ -387,9 +373,9 @@ int main (int argc, char *argv[]) {
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show plume cone", &input.plume.render_cone);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume particles", &render_plume_particles);
+                ImGui::Checkbox("Show plume particles", &pc_plume.render);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show sputtered particles", &render_sputtered_particles);
+                ImGui::Checkbox("Show sputtered particles", &pc.render);
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show bounding boxes", &render_bvh);
                 ImGui::TableNextColumn();
@@ -452,10 +438,6 @@ int main (int argc, char *argv[]) {
 
         // Rendering
         if (input.display) {
-
-            // get camera matrix for use in particle and plume shaders
-            auto cam = app::camera.get_projection_matrix(app::aspect_ratio)*app::camera.get_view_matrix();
-
             // 1. draw user-provided geometry
 
             // update update camera uniforms
@@ -470,37 +452,22 @@ int main (int argc, char *argv[]) {
                 surface.mesh.draw();
             }
 
-            // 2. draw particles (instanced!)
-            if (render_sputtered_particles && pc.num_particles > 0) {
-                // activate particle shader
-                particle_shader.use();
-                particle_shader.set_vec3("cameraRight", app::camera.right);
-                particle_shader.set_vec3("cameraUp", app::camera.up);
-                particle_shader.set_vec3("objectColor", {0.05f, 0.05f, 0.05f});
-                particle_shader.set_mat4("camera", cam);
-
-                // draw particles
-                pc.draw();
-            }
+            // Draw carbon particles
+            pc.draw(app::camera, app::aspect_ratio);
 
             // Draw bounding volume heirarchy
+            // TODO: move into BVHRenderer
             if (render_bvh) {
                 bvh_shader.use();
-                bvh_shader.set_mat4("camera", cam);
+                bvh_shader.set_mat4("camera", app::camera.get_matrix(app::aspect_ratio));
                 bvh.draw(bvh_shader, bvh_draw_depth);
             }
 
             // Draw plume particles
-            if (render_plume_particles) {
-                particle_shader.use();
-                particle_shader.set_vec3("cameraUp", app::camera.up);
-                particle_shader.set_vec3("objectColor", {0.2f, 0.75f, 0.94f});
-                particle_shader.set_mat4("camera", cam);
-                pc_plume.draw();
-            }
+            pc_plume.draw(app::camera, app::aspect_ratio);
 
             // Draw translucent plume cone
-            input.plume.draw(cam);
+            input.plume.draw(app::camera, app::aspect_ratio);
         }
 
         if (!app::simulation_paused && physical_time > next_output_time ||

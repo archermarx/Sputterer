@@ -139,11 +139,14 @@ void ThrusterPlume::setup_shaders (float length) {
     set_buffers();
 }
 
-void ThrusterPlume::draw (glm::mat4 cam) {
+void ThrusterPlume::draw (Camera camera, float aspect_ratio) {
     if (render_cone) {
+        // get camera matrix
+        auto cam_mat = camera.get_matrix(aspect_ratio);
+
         // enable plume cone shader
         cone_shader.use(); 
-        cone_shader.set_mat4("camera", cam);
+        cone_shader.set_mat4("camera", cam_mat);
 
         // draw main beam
         auto div_angle = main_divergence_angle();
