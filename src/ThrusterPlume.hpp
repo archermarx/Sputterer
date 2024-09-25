@@ -6,6 +6,7 @@
 
 #include "vec3.hpp"
 #include "Shader.hpp"
+#include "Triangle.cuh"
 #include "ParticleContainer.cuh"
 
 struct CurrentFraction {
@@ -13,6 +14,16 @@ struct CurrentFraction {
     double scattered;
     double cex;
 };
+
+class Input;
+
+ParticleContainer find_plume_hits (Input &input,
+                                   Scene &h_scene,
+                                   host_vector<Material> &h_materials,
+                                   host_vector<size_t> &h_material_ids,
+                                   host_vector<HitInfo> &hits,
+                                   host_vector<float3> &hit_positions,
+                                   host_vector<float> &num_emit);
 
 class ThrusterPlume {
     public:

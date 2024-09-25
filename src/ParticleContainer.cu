@@ -14,19 +14,22 @@ __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
     curand_init(seed, tid, 0, &rng[tid]);
 }
 
+void ParticleContainer::initialize (size_t num) {
+    // Allocate memory on GPU
+    d_position.resize(num);
+    d_velocity.resize(num);
+    d_weight.resize(num);
+    d_tmp.resize(num);
+    d_rng.resize(num);
+
+    // Reinit RNG
+    size_t block_size = 512;
+    k_setup_rng<<<num/block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
+}
+
 ParticleContainer::ParticleContainer (string name, size_t num, double mass, int charge)
     : name(std::move(name)), mass(mass), charge(charge) {
-
-        // Allocate memory on GPU
-        d_position.resize(num);
-        d_velocity.resize(num);
-        d_weight.resize(num);
-        d_tmp.resize(num);
-        d_rng.resize(num);
-
-        // Set up RNG for later use
-        size_t block_size = 512;
-        k_setup_rng<<<num/block_size, block_size>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
+        initialize(num);
     }
 
 void

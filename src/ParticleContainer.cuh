@@ -81,6 +81,9 @@ class ParticleContainer {
         ParticleContainer () {};
         ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
+        // allocate memory and set up rng
+        void initialize (size_t num);
+
         // push particles to next positions (for now just use forward Euler)
         void evolve (Scene scene
                 , const device_vector<Material> &mats, const device_vector<size_t> &ids
