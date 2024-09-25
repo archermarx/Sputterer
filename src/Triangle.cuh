@@ -65,7 +65,7 @@ struct Triangle {
     float area;
 
     __host__ __device__ Triangle (float3 v0, float3 v1, float3 v2)
-        : v0(v0), v1(v1), v2(v2), norm{0.0f}, area{-1.0f}, centroid{(v0 + v1 + v2)/3.0f} {
+        : v0(v0), v1(v1), v2(v2), centroid{(v0 + v1 + v2)/3.0f} {
             auto e1 = v1 - v0;
             auto e2 = v2 - v0;
 
@@ -95,8 +95,8 @@ struct Triangle {
 struct HitInfo {
     bool hits{false};
     float t{1e30f};
-    float3 pos{0.0};
-    float3 norm{0.0};
+    float3 pos{};
+    float3 norm{};
     int id{-1};
 };
 

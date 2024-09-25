@@ -157,16 +157,25 @@ int main (int argc, char *argv[]) {
 
     Input input = read_input(filename);
 
+    // enable window, opengl, and perform some setup
+    Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
+    if (input.display) {
+        window.enable();
+        app::camera.initialize(input.chamber_radius_m);
+        glfwSetKeyCallback(window.window, app::pause_callback);
+        glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
+        glfwSetScrollCallback(window.window, app::scroll_callback);
+        window.initialize_imgui();
+    }
+
     // construct triangles
     // TODO: move to a function, maybe within input
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
-
     host_vector<char> h_to_collect;
     std::vector<int> collect_inds_global;
     std::vector<int> collect_inds_local;
-
     std::vector<string> surface_names;
 
     for (size_t id = 0; id < input.surfaces.size(); id++) {
@@ -227,7 +236,8 @@ int main (int argc, char *argv[]) {
     host_vector<HitInfo> hits;
     host_vector<float3> hit_positions;
     host_vector<float> num_emit;
-    auto pc_plume = find_plume_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
+    auto plume = input.plume;
+    plume.particles = find_plume_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
     // Copy plume results to GPU
     device_vector<HitInfo> d_hits{hits};
@@ -237,34 +247,19 @@ int main (int argc, char *argv[]) {
     ParticleContainer pc{"carbon", max_particles, 1.0f, 1};
 
     // Display objects
-    Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
     Shader mesh_shader{}, bvh_shader{};
     BVHRenderer bvh(&h_scene);
-    app::camera.initialize(input.chamber_radius_m);
 
+    // Set up shaders
     if (input.display) {
-        // enable window
-        window.enable();
-
-        // Register window callbacks
-        glfwSetKeyCallback(window.window, app::pause_callback);
-        glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
-        glfwSetScrollCallback(window.window, app::scroll_callback);
-
-        window.initialize_imgui();
-
-        // Load mesh shader
+        // Load mesh shaders and set up buffers
         mesh_shader.load("shader.vert", "shader.frag");
-
-        // initialize mesh buffers
         for (auto &surf: input.surfaces) {
             surf.mesh.set_buffers();
         }
 
-        // set up shaders
         pc.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
-        pc_plume.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
-        input.plume.setup_shaders(input.chamber_length_m / 2);
+        plume.setup_shaders(input.chamber_length_m / 2);
 
         // set up BVH rendering
         // TODO: move into BVHRenderer
@@ -374,13 +369,13 @@ int main (int argc, char *argv[]) {
             ImGui::Begin("Options", nullptr, flags);
             if (ImGui::BeginTable("split", 1)) {
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume cone", &input.plume.render_cone);
+                ImGui::Checkbox("Show plume cone", &plume.render);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show plume particles", &pc_plume.render);
+                ImGui::Checkbox("Show plume particles", &plume.particles.render);
                 ImGui::TableNextColumn();
                 ImGui::Text("Plume particle scale");
                 ImGui::TableNextColumn();
-                ImGui::SliderFloat("##plume_particle_scale", &pc_plume.scale, 0, 0.3);
+                ImGui::SliderFloat("##plume_particle_scale", &plume.particles.scale, 0, 0.3);
                 ImGui::TableNextColumn();
                 ImGui::Checkbox("Show sputtered particles", &pc.render);
                 ImGui::TableNextColumn();
@@ -476,11 +471,8 @@ int main (int argc, char *argv[]) {
                 bvh.draw(bvh_shader, bvh_draw_depth);
             }
 
-            // Draw plume particles
-            pc_plume.draw(app::camera, app::aspect_ratio);
-
-            // Draw translucent plume cone
-            input.plume.draw(app::camera, app::aspect_ratio);
+            // Draw translucent plume cone and plume particles
+            plume.draw(app::camera, app::aspect_ratio);
         }
 
         if (!app::simulation_paused && physical_time > next_output_time ||

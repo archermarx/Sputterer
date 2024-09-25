@@ -132,6 +132,7 @@ void ThrusterPlume::set_buffers () {
 }
 
 void ThrusterPlume::setup_shaders (float length) {
+    particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
     cone_shader.load("plume.vert", "plume.frag", "plume.geom");
     cone_shader.use();
     cone_shader.set_float("length", length);
@@ -140,7 +141,9 @@ void ThrusterPlume::setup_shaders (float length) {
 }
 
 void ThrusterPlume::draw (Camera camera, float aspect_ratio) {
-    if (render_cone) {
+    particles.draw(camera, aspect_ratio);
+
+    if (render) {
         // get camera matrix
         auto cam_mat = camera.get_matrix(aspect_ratio);
 

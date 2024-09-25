@@ -6,6 +6,7 @@
 
 #include "vec3.hpp"
 #include "Shader.hpp"
+#include "ParticleContainer.cuh"
 
 struct CurrentFraction {
     double main;
@@ -40,13 +41,14 @@ class ThrusterPlume {
         double scattered_energy_eV{250.0};
         double cex_energy_eV{50.0};
 
+        ParticleContainer particles{};
+
         // Shaders
         Shader cone_shader{};
         Shader particle_shader{};
 
         // display options
-        bool render_cone = true;
-        bool render_particles = true;
+        bool render = true;
 
         [[nodiscard]] double main_divergence_angle () const;
 

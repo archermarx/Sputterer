@@ -44,10 +44,10 @@ class ParticleContainer {
     // Species are differentiated by charge state and mass.
 
     public:
-        string name;            // name of particles
-        double mass;            // mass in atomic mass units
-        int charge;          // charge number
-        int num_particles{0}; // number of particles in container
+        string name = "noname";  // name of particles
+        double mass = 0.0;       // mass in atomic mass units
+        int charge = 0;          // charge number
+        int num_particles{0};    // number of particles in container
 
         // RNG state
         device_vector<curandState> d_rng;
@@ -78,6 +78,7 @@ class ParticleContainer {
         void setup_shaders (vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
 
         // Constructor
+        ParticleContainer () {};
         ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
         // push particles to next positions (for now just use forward Euler)
