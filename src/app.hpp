@@ -2,6 +2,7 @@
 #define SPUTTERER_APP_HPP
 
 #include "Camera.hpp"
+#include "DepositionInfo.hpp"
 #include "Input.hpp"
 #include "ParticleContainer.cuh"
 #include "Surface.hpp"
@@ -105,12 +106,40 @@ namespace app {
         bool should_output() { return physical_time >= next_output_time; }
         void update_averages(double elapsed_compute, double elapsed_copy) {
             avg_time_compute = exp_avg(avg_time_compute, elapsed_compute, time_const);
-            avg_time_total   = exp_avg(avg_time_total,   elapsed_copy, time_const);
+            avg_time_total   = exp_avg(avg_time_total,   elapsed_copy,    time_const);
         }
     };
 
-    void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
-
+    void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, DepositionInfo &dep_info, Timer timer) {
+        using namespace ImGui;
+        auto table_flags = ImGuiTableFlags_BordersH;
+        ImVec2 bottom_left = ImVec2(0, GetIO().DisplaySize.y);
+        SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
+        Begin("Particle collection info", nullptr, app::imgui_flags);
+        if (BeginTable("Table", 4, table_flags)) {
+            TableNextRow();
+            TableNextColumn();
+            Text("Surface name");
+            TableNextColumn();
+            Text("Triangle ID");
+            TableNextColumn();
+            Text("Particles collected");
+            TableNextColumn();
+            Text("Deposition rate [um/kh]");
+            for (int tri = 0; tri < dep_info.num_tris; tri++) {
+                TableNextRow();
+                TableNextColumn();
+                Text("%s", dep_info.surf_names[tri].c_str());
+                TableNextColumn();
+                Text("%li", dep_info.local_indices[tri]);
+                TableNextColumn();
+                Text("%d", dep_info.particles_collected[tri]);
+                TableNextColumn();
+                Text("%.3f", dep_info.deposition_rates[tri]);
+            }
+            EndTable();
+        }
+        End();
     }
 
     void draw_settings_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
@@ -176,16 +205,16 @@ namespace app {
         End();
     }
 
-    void draw_gui(size_t step, Input &input, Renderer &renderer, Timer &timer) {
+    void draw_gui(size_t step, Input &input, Renderer &renderer, DepositionInfo &dep_info, Timer &timer) {
         draw_timing_panel(step, input, renderer, timer);
         draw_settings_panel(step, input, renderer, timer);
-        draw_deposition_panel(step, input, renderer, timer);
+        draw_deposition_panel(step, input, renderer, dep_info, timer);
     }
 
-    void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, Timer &timer) {
+    void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, DepositionInfo &dep_info, Timer &timer) {
         if (!input.display) return;
         window.begin_render_loop();
-        draw_gui(step, input, renderer, timer);
+        draw_gui(step, input, renderer, dep_info, timer);
         
         // Record iteration timing information
         using namespace std::chrono;
@@ -196,10 +225,17 @@ namespace app {
         timer.dt_smoothed = exp_avg(timer.dt_smoothed, delta_time * 1000, time_const);
     }
 
-    void end_frame(Input &input, Window &window) {
+    void end_frame (Input &input, Window &window) {
         if (!input.display) return;
         window.end_render_loop();
         app::process_input(window.window);
+    }
+
+    void write_to_console (size_t step, Input &input, Timer &timer) {
+        std::cout << "  Step " << step
+                  << ", Simulation time: " << print_time(timer.physical_time)
+                  << ", Timestep: " << print_time(input.timestep_s)
+                  << ", Avg. step time: " << timer.dt_smoothed << " ms\n";
     }
 
     Window initialize(Input &input) {

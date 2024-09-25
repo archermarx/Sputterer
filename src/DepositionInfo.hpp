@@ -1,17 +1,23 @@
 #pragma once
-#ifndef SPUTTERER_OUTPUT_HPP
-#define SPUTTERER_OUTPUT_HPP
+#ifndef SPUTTERER_DEPOSITION_RATE_HPP
+#define SPUTTERER_DEPOSITION_RATE_HPP
 
 #include <string>
 #include <vector>
 
-struct Output {
-
+struct DepositionInfo {
     std::string filename;
     std::ofstream file;
+    size_t num_tris = 0;
+    std::vector<std::string> surf_names;
+    std::vector<size_t> local_indices;
+    std::vector<size_t> global_indices;
+    std::vector<double> areas;
+    std::vector<int> particles_collected;
+    std::vector<double> deposition_rates;
+    std::vector<double> mass_fluxes;
 
-    Output(std::string filename):
-        filename(filename) {
+    DepositionInfo(std::string filename) : filename(filename) {
         file.open(filename);
         // Write header
         file << "Time (s),"
@@ -25,7 +31,7 @@ struct Output {
             << "\n";
         file.close();
     }
-
+};
      //void append() {
      //   output_file.open(output_filename, std::ios_base::app);
 
@@ -53,5 +59,4 @@ struct Output {
      //   }
      //   output_file.close();
      //}
-};
-#endif // SPUTTERER_OUTPUT_HPP
+#endif // SPUTTERER_DEPOSITION_RATE_HPP

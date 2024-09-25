@@ -19,7 +19,7 @@
 #include "Window.hpp"
 #include "ThrusterPlume.hpp"
 #include "Constants.hpp"
-#include "Output.hpp"
+#include "DepositionInfo.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
@@ -27,17 +27,6 @@
 #include "Triangle.cuh"
 
 using std::vector, std::string;
-
-struct DepositionInfo {
-    size_t num_tris = 0;
-    vector<string> surf_names;
-    vector<size_t> local_indices;
-    vector<size_t> global_indices;
-    vector<double> areas;
-    vector<int> particles_collected;
-    vector<double> deposition_rates;
-    vector<double> mass_fluxes;
-};
 
 int main (int argc, char *argv[]) {
     using namespace constants;
@@ -53,8 +42,9 @@ int main (int argc, char *argv[]) {
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
-    DepositionInfo deposition_info{};
     auto &geometry = input.geometry;
+
+    DepositionInfo deposition_info("deposition.csv");
 
     for (size_t id = 0; id < geometry.surfaces.size(); id++) {
         const auto &surf = geometry.surfaces.at(id);
@@ -135,47 +125,11 @@ int main (int argc, char *argv[]) {
     app::Timer timer;
     cuda::Event start{}, stop_compute{}, stop_copy{};
 
-    // Create output file for deposition
-    Output output("deposition.csv");
-
     if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
 
     while ((input.display && window.open) || (!input.display && timer.physical_time < input.max_time_s)) {
         // Draw GUI and set up for this frame
-        app::begin_frame(step, input, window, renderer, timer);
-
-        // TODO: can we move this out of main into a different function
-        if (input.display) {
-            // Table of collected particle amounts
-            auto table_flags = ImGuiTableFlags_BordersH;
-            ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y);
-            ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
-            ImGui::Begin("Particle collection info", nullptr, app::imgui_flags);
-            if (ImGui::BeginTable("Table", 4, table_flags)) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::Text("Surface name");
-                ImGui::TableNextColumn();
-                ImGui::Text("Triangle ID");
-                ImGui::TableNextColumn();
-                ImGui::Text("Particles collected");
-                ImGui::TableNextColumn();
-                ImGui::Text("Deposition rate [um/kh]");
-                for (int tri = 0; tri < deposition_info.num_tris; tri++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%s", deposition_info.surf_names[tri].c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%i", deposition_info.local_indices[tri]);
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%d", deposition_info.particles_collected[tri]);
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%.3f", deposition_info.deposition_rates[tri]);
-                }
-                ImGui::EndTable();
-            }
-            ImGui::End();
-        }
+        app::begin_frame(step, input, window, renderer, deposition_info, timer);
 
         // Main computation loop
         if (step > 0 && !app::sim_paused) {
@@ -226,22 +180,19 @@ int main (int argc, char *argv[]) {
 
         // Finalize frame and increment timestep
         app::end_frame(input, window);
-        if (!app::sim_paused) {
-            step ++;
-            timer.physical_time += input.timestep_s;
-        }
 
         // Write output to console and file at regular intervals, plus one additional when simulation terminates
         if ((!app::sim_paused && timer.should_output()) ||
             (!input.display && timer.physical_time >= input.max_time_s) ||
             (input.display && !window.open)) {
-
-            std::cout << "  Step " << step
-                      << ", Simulation time: " << app::print_time(timer.physical_time)
-                      << ", Timestep: " << app::print_time(input.timestep_s)
-                      << ", Avg. step time: " << timer.dt_smoothed << " ms" << std::endl;
-
+            
+            app::write_to_console(step, input, timer);
             timer.next_output_time += input.output_interval_s;
+        }
+
+        if (!app::sim_paused) {
+            step ++;
+            timer.physical_time += input.timestep_s;
         }
     }
 
