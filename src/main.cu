@@ -120,13 +120,7 @@ int main (int argc, char *argv[]) {
     // Create timing objects
     size_t step = 0;
     app::Timer timer;
-    float iter_reset = 25;
-    float time_const = 1/iter_reset;
-    auto next_output_time = 0.0f;
-
     cuda::Event start{}, stop_compute{}, stop_copy{};
-    auto current_time = std::chrono::system_clock::now();
-    auto last_time = std::chrono::system_clock::now();
 
     // Create output file for deposition
     Output output("deposition.csv");
@@ -134,6 +128,7 @@ int main (int argc, char *argv[]) {
     if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
 
     while ((input.display && window.open) || (!input.display && timer.physical_time < input.max_time_s)) {
+        // Draw GUI and set up for this frame
         app::begin_frame(step, input, window, renderer, timer);
 
         // TODO: can we move this out of main into a different function
@@ -180,20 +175,7 @@ int main (int argc, char *argv[]) {
             ImGui::End();
         }
 
-        // Record iteration timing information
-        current_time = std::chrono::system_clock::now();
-        app::delta_time = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
-                        current_time - last_time).count())/1e6;
-        last_time = current_time;
-
-        // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
-        // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-        if (!app::sim_paused) {
-            timer.physical_time += input.timestep_s;
-        }
-        timer.dt_smoothed = (1 - time_const)*timer.dt_smoothed + time_const*app::delta_time*1000;
-
-        // Main computations
+        // Main computation loop
         if (step > 0 && !app::sim_paused) {
             start.record();
 
@@ -222,29 +204,33 @@ int main (int argc, char *argv[]) {
             stop_copy.record();
 
             // timing
-            float elapsed_compute, elapsed_copy;
-            elapsed_compute = cuda::event_elapsed_time(start, stop_compute);
-            elapsed_copy = cuda::event_elapsed_time(start, stop_copy);
-
-            timer.avg_time_compute = (1 - time_const)*timer.avg_time_compute + time_const*elapsed_compute;
-            timer.avg_time_total = (1 - time_const)*timer.avg_time_total + time_const*elapsed_copy;
+            double elapsed_compute = cuda::event_elapsed_time(start, stop_compute);
+            double elapsed_copy = cuda::event_elapsed_time(start, stop_copy);
+            timer.update_averages(elapsed_compute, elapsed_copy);
         }
 
+        // Draw scene
         renderer.draw(input);
 
-        if (!app::sim_paused && timer.physical_time > next_output_time ||
-                (!input.display && timer.physical_time >= input.max_time_s) ||
-                (input.display && !window.open)) {
-            // Write output to console at regular intervals, plus one additional when simulation terminates
-            std::cout << "Step " << step << ", Simulation time: " << app::print_time(timer.physical_time)
-                << ", Timestep: " << app::print_time(input.timestep_s) << ", Avg. step time: " << timer.dt_smoothed
-                << " ms" << std::endl;
-
-            // write output to file
-            next_output_time += input.output_interval_s;}
-
+        // Finalize frame and increment timestep
         app::end_frame(input, window);
-        step += !app::sim_paused;
+        if (!app::sim_paused) {
+            step ++;
+            timer.physical_time += input.timestep_s;
+        }
+
+        // Write output to console and file at regular intervals, plus one additional when simulation terminates
+        if ((!app::sim_paused && timer.should_output()) ||
+            (!input.display && timer.physical_time >= input.max_time_s) ||
+            (input.display && !window.open)) {
+
+            std::cout << "  Step " << step
+                      << ", Simulation time: " << app::print_time(timer.physical_time)
+                      << ", Timestep: " << app::print_time(input.timestep_s)
+                      << ", Avg. step time: " << timer.dt_smoothed << " ms" << std::endl;
+
+            timer.next_output_time += input.output_interval_s;
+        }
     }
 
     if (input.verbosity > 0) std::cout << "Program terminated successfully." << std::endl;

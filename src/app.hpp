@@ -22,10 +22,16 @@ namespace app {
 
     constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
     constexpr float carbon_particle_scale = 0.05;
+    constexpr int iter_avg = 25;    // iterations to average over when smoothing times
+    constexpr double time_const = 1.0 / iter_avg;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
+    // wall clock times
     float delta_time = 0.0f;
+    auto current_time = std::chrono::system_clock::now();
+    auto last_time = std::chrono::system_clock::now();
+
     float last_x = 0.0;
     float last_y = 0.0;
 
@@ -86,11 +92,21 @@ namespace app {
         return {buf};
     }
 
+    double exp_avg(double a, double b, double t) {
+        return (1 - t) * a + t * b;
+    }
+
     struct Timer {
         double physical_time = 0.0;
         double avg_time_compute = 0.0; 
         double avg_time_total = 0.0;
         double dt_smoothed = 0.0;
+        double next_output_time = 0.0;
+        bool should_output() { return physical_time >= next_output_time; }
+        void update_averages(double elapsed_compute, double elapsed_copy) {
+            avg_time_compute = exp_avg(avg_time_compute, elapsed_compute, time_const);
+            avg_time_total   = exp_avg(avg_time_total,   elapsed_copy, time_const);
+        }
     };
 
     void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
@@ -170,6 +186,14 @@ namespace app {
         if (!input.display) return;
         window.begin_render_loop();
         draw_gui(step, input, renderer, timer);
+        
+        // Record iteration timing information
+        using namespace std::chrono;
+        current_time = system_clock::now();
+        auto diff = current_time - last_time;
+        last_time = current_time;
+        delta_time = static_cast<float>(duration_cast<microseconds>(diff).count())/1e6;
+        timer.dt_smoothed = exp_avg(timer.dt_smoothed, delta_time * 1000, time_const);
     }
 
     void end_frame(Input &input, Window &window) {
