@@ -12,17 +12,13 @@
 using std::string;
 
 void Shader::load (const char *vertex_code, const char *fragment_code, const char *geometry_code) {
-    if (geometry_code == nullptr) {
-        id = create_shader_program(
-            {string(vertex_code), string(fragment_code)},
-            {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER}
-        );
-    } else {
-        id = create_shader_program(
-            {string(vertex_code), string(fragment_code), string(geometry_code)},
-            {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER}
-        );
+    std::vector<string> sources{string(vertex_code), string(fragment_code)};
+    std::vector<unsigned int> types {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
+    if (geometry_code != nullptr) {
+        sources.push_back(string(geometry_code));
+        types.push_back(GL_GEOMETRY_SHADER);
     }
+    id = create_shader_program(sources, types);
 }
 
 void Shader::use () const {
@@ -68,30 +64,6 @@ void Shader::update_view (const Camera &camera, float aspect_ratio) const {
 //----------------------------------------------------------------------------------------------------------------------------------
 //                                                 UTILITY FUNCTIONS
 //----------------------------------------------------------------------------------------------------------------------------------
-
-// Read the contents of a file into a string
-std::string read_from_file (const char *path) {
-    std::string contents;
-    std::ifstream v_file;
-
-    // ensure ifstream objects can throw exceptsions
-    v_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-    try {
-        // open file
-        v_file.open(path);
-        std::stringstream v_stream;
-        // read file's buffer contents into streams
-        v_stream << v_file.rdbuf();
-        // close file handlers
-        v_file.close();
-        // convert stream into string
-        contents = v_stream.str();
-    } catch (std::ifstream::failure const &) {
-        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ\n" << path << std::endl;
-    }
-    return contents;
-}
 
 // Compile shader source code into a shader of the provided type, where type is GL_FRAGMENT_SHADER or GL_VERTEX_SHADER
 // or similar.

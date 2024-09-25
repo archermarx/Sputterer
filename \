@@ -9,8 +9,12 @@
 #include "glad/glad.h"
 #include "Camera.hpp"
 
+// Declarations
 unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
+
 unsigned int compile_shader (const char *source, unsigned int type);
+
+std::string read_from_file (const char *path);
 
 class Shader {
 public:
