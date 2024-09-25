@@ -146,23 +146,16 @@ int main (int argc, char *argv[]) {
     float time_const = 1/iter_reset;
     double physical_time = 0;
     float delta_time_smoothed = 0;
-
     auto next_output_time = 0.0f;
 
     cuda::Event start{}, stop_compute{}, stop_copy{};
-
     auto current_time = std::chrono::system_clock::now();
     auto last_time = std::chrono::system_clock::now();
 
     // Create output file for deposition
     Output output("deposition.csv");
 
-    if (input.verbosity > 0) {
-        std::cout << "Beginning main loop." << std::endl;
-    }
-
-    // Pause simulation if displaying
-    app::sim_paused = input.display;
+    if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
 
     while ((input.display && window.open) || (!input.display && physical_time < input.max_time_s)) {
         // TODO: can we move this out of main into a different function
@@ -261,9 +254,8 @@ int main (int argc, char *argv[]) {
 
         // Record iteration timing information
         current_time = std::chrono::system_clock::now();
-        app::delta_time =
-            static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count())/
-            1e6;
+        app::delta_time = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
+                        current_time - last_time).count())/1e6;
         last_time = current_time;
 
         // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
