@@ -2,126 +2,146 @@
 #define SPUTTERER_APP_HPP
 
 #include "Camera.hpp"
+#include "Input.hpp"
+#include "Window.hpp"
 
 namespace app {
-// settings
-  constexpr unsigned int screen_width = 1360;
-  constexpr unsigned int screen_height = 768;
-  float aspect_ratio = static_cast<float>(screen_width)/static_cast<float>(screen_height);
+    // settings
+    constexpr unsigned int screen_width = 1360;
+    constexpr unsigned int screen_height = 768;
+    float aspect_ratio = static_cast<float>(screen_width)/static_cast<float>(screen_height);
 
-  Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+    Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
-  float delta_time = 0.0f;
-  float last_x = 0.0;
-  float last_y = 0.0;
+    float delta_time = 0.0f;
+    float last_x = 0.0;
+    float last_y = 0.0;
 
-  bool simulation_paused = true;
+    bool sim_paused = false;
 
-  void process_input (GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-      glfwSetWindowShouldClose(window, true);
+    void mouse_cursor_callback(GLFWwindow *window, double xpos_in, double ypos_in);
+    void pause_callback (GLFWwindow *window, int key, int scancode, int action, int mods);
+    void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset);
+    void process_input (GLFWwindow *window);
+
+    Window initialize(Input &input) {
+        Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
+        if (input.display) {
+            window.enable();
+            camera.initialize(input.chamber_radius_m);
+            glfwSetKeyCallback(window.window, pause_callback);
+            glfwSetCursorPosCallback(window.window, mouse_cursor_callback);
+            glfwSetScrollCallback(window.window, scroll_callback);
+            sim_paused = true;
+        }
+        return window;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Forward, delta_time);
+    void process_input (GLFWwindow *window) {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, true);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Forward, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Backward, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Left, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Right, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Up, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::Down, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+            camera.center = glm::vec3{0.0};
+        }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Backward, delta_time);
+    void pause_callback (GLFWwindow *window, int key, int scancode, int action, int mods) {
+        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+                sim_paused = !sim_paused;
+            }
+        }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Left, delta_time);
-    }
+    bool orbiting = false;
+    bool panning = false;
 
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Right, delta_time);
-    }
+    void mouse_cursor_callback (GLFWwindow *window, double xpos_in, double ypos_in) {
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Up, delta_time);
-    }
+        auto io = ImGui::GetIO();
+        if (io.WantCaptureMouse) {
+            return;
+        }
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-      camera.process_keyboard(Direction::Down, delta_time);
-    }
+        auto x_pos = static_cast<float>(xpos_in);
+        auto y_pos = static_cast<float>(ypos_in);
 
-    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-      camera.center = glm::vec3{0.0};
-    }
-  }
+        const auto orbit_button = GLFW_MOUSE_BUTTON_RIGHT;
+        const auto pan_button = GLFW_MOUSE_BUTTON_MIDDLE;
 
-  void pause_callback (GLFWwindow *window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-      if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        simulation_paused = !simulation_paused;
-      }
-    }
-  }
+        // Detection for left mouse drag/release
+        if (glfwGetMouseButton(window, orbit_button) == GLFW_RELEASE &&
+                glfwGetMouseButton(window, pan_button) == GLFW_RELEASE) {
+            if (orbiting || panning) {
+                orbiting = false;
+                panning = false;
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+            return;
+        } else if (glfwGetMouseButton(window, pan_button) == GLFW_RELEASE) {
+            if (panning) {
+                panning = false;
+            }
+            if (!orbiting) {
+                orbiting = true;
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+                last_x = x_pos;
+                last_y = y_pos;
+            }
+        } else {
+            if (orbiting) {
+                orbiting = false;
+            }
+            if (!panning) {
+                panning = true;
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+                last_x = x_pos;
+                last_y = y_pos;
+            }
+        }
 
-  bool orbiting = false;
-  bool panning = false;
+        float offset_x = x_pos - last_x;
+        float offset_y = y_pos - last_y;
 
-  void mouse_cursor_callback (GLFWwindow *window, double xpos_in, double ypos_in) {
-
-    auto io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
-      return;
-    }
-
-    auto x_pos = static_cast<float>(xpos_in);
-    auto y_pos = static_cast<float>(ypos_in);
-
-    const auto orbit_button = GLFW_MOUSE_BUTTON_RIGHT;
-    const auto pan_button = GLFW_MOUSE_BUTTON_MIDDLE;
-
-    // Detection for left mouse drag/release
-    if (glfwGetMouseButton(window, orbit_button) == GLFW_RELEASE &&
-        glfwGetMouseButton(window, pan_button) == GLFW_RELEASE) {
-      if (orbiting || panning) {
-        orbiting = false;
-        panning = false;
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-      }
-      return;
-    } else if (glfwGetMouseButton(window, pan_button) == GLFW_RELEASE) {
-      if (panning) {
-        panning = false;
-      }
-      if (!orbiting) {
-        orbiting = true;
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         last_x = x_pos;
         last_y = y_pos;
-      }
-    } else {
-      if (orbiting) {
-        orbiting = false;
-      }
-      if (!panning) {
-        panning = true;
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-        last_x = x_pos;
-        last_y = y_pos;
-      }
+
+        if (orbiting) {
+            camera.process_mouse_movement(offset_x, offset_y, CameraMovement::Orbit);
+        } else if (panning) {
+            camera.process_mouse_movement(offset_x, offset_y, CameraMovement::Pan);
+        }
     }
 
-    float offset_x = x_pos - last_x;
-    float offset_y = y_pos - last_y;
-
-    last_x = x_pos;
-    last_y = y_pos;
-
-    if (orbiting) {
-      camera.process_mouse_movement(offset_x, offset_y, CameraMovement::Orbit);
-    } else if (panning) {
-      camera.process_mouse_movement(offset_x, offset_y, CameraMovement::Pan);
+    void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset) {
+        camera.process_mouse_scroll(static_cast<float>(yoffset));
     }
-  }
-
-  void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset) {
-    camera.process_mouse_scroll(static_cast<float>(yoffset));
-  }
 } // namespace app
 
 #endif

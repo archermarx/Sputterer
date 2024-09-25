@@ -138,12 +138,12 @@ Input read_input (std::string filename) {
     // Read surfaces
     auto geometry = *input_table.get_as<toml::array>("geometry");
     auto num_surfaces = geometry.size();
-    input.surfaces.resize(num_surfaces);
+    input.geometry.surfaces.resize(num_surfaces);
 
     int id = 0;
     for (auto &&elem: geometry) {
         auto tab = *elem.as_table();
-        auto &surf = input.surfaces.at(id);
+        auto &surf = input.geometry.surfaces.at(id);
 
         // get material
         auto mat_name = get_value<string>(tab, "material");

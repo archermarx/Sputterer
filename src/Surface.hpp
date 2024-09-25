@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "Camera.hpp"
 #include "Mesh.hpp"
+#include "Shader.hpp"
 #include "vec3.hpp"
 
 using std::vector, std::string;
@@ -29,6 +31,26 @@ struct Surface {
   Mesh mesh{};
   Transform transform{};
   vec3 color{0.5f, 0.5f, 0.5f};
+};
+
+struct SceneGeometry {
+    vector<Surface> surfaces;    
+    Shader shader;
+    void setup_shaders() {
+        shader.load("shader.vert", "shader.frag");
+        for (auto &surf: surfaces) {
+            surf.mesh.set_buffers();
+        }
+    }
+    void draw(Camera camera, float aspect_ratio) {
+        shader.use();
+        shader.update_view(camera, aspect_ratio);
+        for (const auto &surface: surfaces) {
+            shader.set_mat4("model", surface.transform.get_matrix());
+            shader.set_vec3("objectColor", surface.color);
+            surface.mesh.draw();
+        }
+    }
 };
 
 #endif

@@ -47,6 +47,8 @@ void Window::enable () {
   std::cout << "GLFW window initialized." << std::endl;
 
   this->enabled = true;
+
+  initialize_imgui();
 }
 
 

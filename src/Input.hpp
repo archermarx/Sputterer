@@ -3,7 +3,6 @@
 #define SPUTTERER_INPUT_HPP
 
 #include <string>
-#include <vector>
 #include <array>
 
 #include "Surface.hpp"
@@ -20,7 +19,7 @@ struct Input {
     bool display = false;
 
     // User-specified geometry
-    vector<Surface> surfaces;
+    SceneGeometry geometry;
     
     // Chamber geometry
     double chamber_radius_m = -1.0;

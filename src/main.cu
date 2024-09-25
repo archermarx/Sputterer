@@ -55,24 +55,15 @@ int main (int argc, char *argv[]) {
     // Initialize GPU
     device_vector<int> init{0};
 
-    std::string filename = "input.toml";
-    if (argc > 1) filename = argv[1];
-
+    // Read input
+    std::string filename = argc > 1 ? argv[1] : "input.toml";
     Input input = read_input(filename);
 
     // enable window, opengl, and perform some setup
-    Window window{.name = "Sputterer", .width = app::screen_width, .height = app::screen_height};
-    if (input.display) {
-        window.enable();
-        app::camera.initialize(input.chamber_radius_m);
-        glfwSetKeyCallback(window.window, app::pause_callback);
-        glfwSetCursorPosCallback(window.window, app::mouse_cursor_callback);
-        glfwSetScrollCallback(window.window, app::scroll_callback);
-        window.initialize_imgui();
-    }
+    auto window = app::initialize(input);
 
     // construct triangles
-    // TODO: move to a function, maybe within input
+    // TODO: move to a function, maybe within input or scene geometry
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
@@ -80,9 +71,10 @@ int main (int argc, char *argv[]) {
     std::vector<int> collect_inds_global;
     std::vector<int> collect_inds_local;
     std::vector<string> surface_names;
+    auto &geometry = input.geometry;
 
-    for (size_t id = 0; id < input.surfaces.size(); id++) {
-        const auto &surf = input.surfaces.at(id);
+    for (size_t id = 0; id < geometry.surfaces.size(); id++) {
+        const auto &surf = geometry.surfaces.at(id);
         const auto &mesh = surf.mesh;
         const auto &material = surf.material;
 
@@ -146,21 +138,13 @@ int main (int argc, char *argv[]) {
     device_vector<HitInfo> d_hits{hits};
     device_vector<float> d_num_emit{num_emit};
 
-    // Create particle container for carbon atoms
+    // Create particle container for carbon atoms and renderer for BVH
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
-
-    // Display objects
-    Shader mesh_shader{};
     BVHRenderer bvh(&h_scene);
 
     // Set up shaders
     if (input.display) {
-        // Load mesh shaders and set up buffers
-        mesh_shader.load("shader.vert", "shader.frag");
-        for (auto &surf: input.surfaces) {
-            surf.mesh.set_buffers();
-        }
-
+        geometry.setup_shaders();
         particles.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
         plume.setup_shaders(input.chamber_length_m / 2);
         bvh.setup_shaders();
@@ -190,7 +174,7 @@ int main (int argc, char *argv[]) {
     }
 
     // Pause simulation if displaying
-    app::simulation_paused = input.display;
+    app::sim_paused = input.display;
 
     while ((input.display && window.open) || (!input.display && physical_time < input.max_time_s)) {
         // TODO: can we move this out of main into a different function
@@ -296,13 +280,13 @@ int main (int argc, char *argv[]) {
 
         // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
         // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
-        if (!app::simulation_paused) {
+        if (!app::sim_paused) {
             physical_time += input.timestep_s;
         }
         delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
 
         // Main computations
-        if (frame > 0 && !app::simulation_paused) {
+        if (frame > 0 && !app::sim_paused) {
             start.record();
 
             // Push particles and sputter from surfaces
@@ -338,26 +322,15 @@ int main (int argc, char *argv[]) {
             avg_time_total = (1 - time_const)*avg_time_total + time_const*elapsed_copy;
         }
 
-        // Rendering
         if (input.display) {
-            // update update camera uniforms
-            mesh_shader.use();
-            mesh_shader.update_view(app::camera, app::aspect_ratio);
-
-            for (const auto &surface: input.surfaces) {
-                // set the model matrix and object color per surface
-                mesh_shader.use();
-                mesh_shader.set_mat4("model", surface.transform.get_matrix());
-                mesh_shader.set_vec3("objectColor", surface.color);
-                surface.mesh.draw();
-            }
-
+            // draw to screen
+            geometry.draw(app::camera, app::aspect_ratio);
             particles.draw(app::camera, app::aspect_ratio);
             bvh.draw(app::camera, app::aspect_ratio);
             plume.draw(app::camera, app::aspect_ratio);
         }
 
-        if (!app::simulation_paused && physical_time > next_output_time ||
+        if (!app::sim_paused && physical_time > next_output_time ||
                 (!input.display && physical_time >= input.max_time_s) ||
                 (input.display && !window.open)) {
             // Write output to console at regular intervals, plus one additional when simulation terminates
@@ -373,12 +346,10 @@ int main (int argc, char *argv[]) {
             app::process_input(window.window);
         }
 
-        if (!app::simulation_paused) frame += 1;
+        frame += !app::sim_paused;
     }
 
-    if (input.verbosity > 0) {
-        std::cout << "Program terminated successfully." << std::endl;
-    }
+    if (input.verbosity > 0) std::cout << "Program terminated successfully." << std::endl;
 
     return 0;
 }
