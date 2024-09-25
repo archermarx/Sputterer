@@ -14,6 +14,13 @@ namespace app {
     constexpr unsigned int screen_height = 768;
     float aspect_ratio = static_cast<float>(screen_width)/static_cast<float>(screen_height);
 
+    constexpr auto imgui_flags = ImGuiWindowFlags_NoMove |
+                                 ImGuiWindowFlags_NoScrollbar |
+                                 ImGuiWindowFlags_AlwaysAutoResize |
+                                 ImGuiWindowFlags_NoInputs |
+                                 ImGuiWindowFlags_NoTitleBar |
+                                 ImGuiWindowFlags_NoSavedSettings;
+
     constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
     constexpr float carbon_particle_scale = 0.05;
 
@@ -61,6 +68,78 @@ namespace app {
             };
     };
 
+    string print_time (double time_s) {
+        char buf[64];
+        int factor = 1;
+        string str = "s";
+
+        if (time_s < 1e-6) {
+            factor = 1'000'000'000;
+            str = "ns";
+        } else if (time_s < 1e-3) {
+            factor = 1'000'000;
+            str = "us";
+        } else if (time_s < 1) {
+            factor = 1000;
+            str = "ms";
+        }
+        sprintf(buf, "%.3f %s", time_s*factor, str.c_str());
+        return {buf};
+    }
+
+    struct Timer {
+        double physical_time = 0.0;
+        double avg_time_compute = 0.0; 
+        double avg_time_total = 0.0;
+        double dt_smoothed = 0.0;
+    };
+
+    void draw_timing_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
+        using namespace ImGui;
+
+        ImVec2 bottom_right = ImVec2(GetIO().DisplaySize.x, GetIO().DisplaySize.y);
+        SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
+        Begin("Frame time", nullptr, imgui_flags);
+
+        auto framerate_ms = 1000.0 / timer.dt_smoothed;
+        auto transfer_percentage = (1.0 - timer.avg_time_compute/timer.avg_time_total) * 100.0;
+        auto compute_percentage = (timer.avg_time_total/timer.dt_smoothed)*100;
+
+        Text(
+            "Simulation step %li (%s)\n"
+            "Simulation time: %s\n"
+            "Compute time: %.3f ms (%.2f%% data transfer)\n"
+            "Frame time: %.3f ms (%.1f fps, %.2f%% compute\n"
+            "Particles: %i",
+            step,
+            print_time(input.timestep_s).c_str(),
+            print_time(timer.physical_time).c_str(),
+            timer.avg_time_compute,
+            transfer_percentage,
+            timer.dt_smoothed,
+            framerate_ms,
+            compute_percentage,
+            renderer.particles.num_particles
+        );
+        End();
+    }
+
+    void draw_gui(size_t step, Input &input, Renderer &renderer, Timer &timer) {
+        draw_timing_panel(step, input, renderer, timer);
+    }
+
+    void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, Timer &timer) {
+        if (!input.display) return;
+        window.begin_render_loop();
+        draw_gui(step, input, renderer, timer);
+    }
+
+    void end_frame(Input &input, Window &window) {
+        if (!input.display) return;
+        window.end_render_loop();
+        app::process_input(window.window);
+    }
+
     Window initialize(Input &input) {
         Window window{.name = "Sputterer", .width = screen_width, .height = screen_height};
         if (input.display) {
@@ -75,12 +154,6 @@ namespace app {
         return window;
     }
 
-    void end_frame(Input &input, Window &window) {
-        if (input.display) {
-            window.end_render_loop();
-            app::process_input(window.window);
-        }
-    }
 
     void process_input (GLFWwindow *window) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {

@@ -28,28 +28,6 @@
 
 using std::vector, std::string;
 
-string print_time (double time_s) {
-    char buf[64];
-    int factor = 1;
-    string str = "s";
-
-    if (time_s < 1e-6) {
-        factor = 1'000'000'000;
-        str = "ns";
-    } else if (time_s < 1e-3) {
-        factor = 1'000'000;
-        str = "us";
-    } else if (time_s < 1) {
-        factor = 1000;
-        str = "ms";
-    }
-
-    sprintf(buf, "%.3f %s", time_s*factor, str.c_str());
-
-    return {buf};
-}
-
-
 int main (int argc, char *argv[]) {
     using namespace constants;
     // Initialize GPU
@@ -141,11 +119,9 @@ int main (int argc, char *argv[]) {
 
     // Create timing objects
     size_t step = 0;
-    float avg_time_compute = 0.0f, avg_time_total = 0.0f;
+    app::Timer timer;
     float iter_reset = 25;
     float time_const = 1/iter_reset;
-    double physical_time = 0;
-    float delta_time_smoothed = 0;
     auto next_output_time = 0.0f;
 
     cuda::Event start{}, stop_compute{}, stop_copy{};
@@ -157,30 +133,16 @@ int main (int argc, char *argv[]) {
 
     if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
 
-    while ((input.display && window.open) || (!input.display && physical_time < input.max_time_s)) {
+    while ((input.display && window.open) || (!input.display && timer.physical_time < input.max_time_s)) {
+        app::begin_frame(step, input, window, renderer, timer);
+
         // TODO: can we move this out of main into a different function
         if (input.display) {
-            Window::begin_render_loop();
-
-            // Timing info
-            auto flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
-            float padding = 0.0f;
-            ImVec2 bottom_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, ImGui::GetIO().DisplaySize.y - padding);
-            ImGui::SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
-            ImGui::Begin("Frame time", nullptr, flags);
-            ImGui::Text("Simulation step %li (%s)\nSimulation time: %s\nCompute time: %.3f ms (%.2f%% data "
-                    "transfer)   \nFrame time: %.3f ms (%.1f fps, %.2f%% compute)   \nParticles: %i", step, print_time(
-                        input.timestep_s).c_str(), print_time(physical_time).c_str(), avg_time_compute,
-                    (1.0f - avg_time_compute/avg_time_total)*100, delta_time_smoothed, 1000/delta_time_smoothed,
-                    (avg_time_total/delta_time_smoothed)*100, particles.num_particles);
-            ImGui::End();
-
             // Table of collected particle amounts
             auto table_flags = ImGuiTableFlags_BordersH;
-            ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y - padding);
+            ImVec2 bottom_left = ImVec2(0, ImGui::GetIO().DisplaySize.y);
             ImGui::SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
-            ImGui::Begin("Particle collection info", nullptr, flags);
+            ImGui::Begin("Particle collection info", nullptr, app::imgui_flags);
             if (ImGui::BeginTable("Table", 4, table_flags)) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
@@ -198,7 +160,7 @@ int main (int argc, char *argv[]) {
                     double volume_carbon = mass_carbon/graphite_density;
                     double triangle_area = h_triangles[triangle_id_global].area;
                     double layer_thickness_um = volume_carbon/triangle_area*1e6;
-                    double physical_time_kh = physical_time/3600/1000;
+                    double physical_time_kh = timer.physical_time/3600/1000;
                     double deposition_rate = layer_thickness_um/physical_time_kh;
                     deposition_rates[row] = deposition_rate;
 
@@ -217,13 +179,13 @@ int main (int argc, char *argv[]) {
             }
             ImGui::End();
 
-            flags = ImGuiWindowFlags_NoMove |
-                    ImGuiWindowFlags_NoScrollbar |
-                    ImGuiWindowFlags_AlwaysAutoResize |
-                    ImGuiWindowFlags_NoTitleBar |
-                    ImGuiWindowFlags_NoSavedSettings;
+            auto flags = ImGuiWindowFlags_NoMove |
+                            ImGuiWindowFlags_NoScrollbar |
+                            ImGuiWindowFlags_AlwaysAutoResize |
+                            ImGuiWindowFlags_NoTitleBar |
+                            ImGuiWindowFlags_NoSavedSettings;
 
-            ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x - padding, 0);
+            ImVec2 top_right = ImVec2(ImGui::GetIO().DisplaySize.x, 0);
             ImGui::SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
             ImGui::Begin("Options", nullptr, flags);
             if (ImGui::BeginTable("split", 1)) {
@@ -261,9 +223,9 @@ int main (int argc, char *argv[]) {
         // set physical timestep_s. if we're displaying a window, we set the physical timestep_s based on the rendering
         // timestep_s to get smooth performance at different window sizes. If not, we just use the user-provided timestep_s
         if (!app::sim_paused) {
-            physical_time += input.timestep_s;
+            timer.physical_time += input.timestep_s;
         }
-        delta_time_smoothed = (1 - time_const)*delta_time_smoothed + time_const*app::delta_time*1000;
+        timer.dt_smoothed = (1 - time_const)*timer.dt_smoothed + time_const*app::delta_time*1000;
 
         // Main computations
         if (step > 0 && !app::sim_paused) {
@@ -298,18 +260,18 @@ int main (int argc, char *argv[]) {
             elapsed_compute = cuda::event_elapsed_time(start, stop_compute);
             elapsed_copy = cuda::event_elapsed_time(start, stop_copy);
 
-            avg_time_compute = (1 - time_const)*avg_time_compute + time_const*elapsed_compute;
-            avg_time_total = (1 - time_const)*avg_time_total + time_const*elapsed_copy;
+            timer.avg_time_compute = (1 - time_const)*timer.avg_time_compute + time_const*elapsed_compute;
+            timer.avg_time_total = (1 - time_const)*timer.avg_time_total + time_const*elapsed_copy;
         }
 
         renderer.draw(input);
 
-        if (!app::sim_paused && physical_time > next_output_time ||
-                (!input.display && physical_time >= input.max_time_s) ||
+        if (!app::sim_paused && timer.physical_time > next_output_time ||
+                (!input.display && timer.physical_time >= input.max_time_s) ||
                 (input.display && !window.open)) {
             // Write output to console at regular intervals, plus one additional when simulation terminates
-            std::cout << "Step " << step << ", Simulation time: " << print_time(physical_time)
-                << ", Timestep: " << print_time(input.timestep_s) << ", Avg. step time: " << delta_time_smoothed
+            std::cout << "Step " << step << ", Simulation time: " << app::print_time(timer.physical_time)
+                << ", Timestep: " << app::print_time(input.timestep_s) << ", Avg. step time: " << timer.dt_smoothed
                 << " ms" << std::endl;
 
             // write output to file
