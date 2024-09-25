@@ -14,7 +14,7 @@ struct Input {
     // simulation variables
     double timestep_s = 0.0;
     double max_time_s = 0.0;
-    double output_interval_s = 0.0;
+    int output_interval = -1;
     int verbosity = 0;
     bool display = false;
 

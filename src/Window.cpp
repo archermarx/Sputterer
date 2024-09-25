@@ -57,7 +57,6 @@ void Window::initialize_imgui () {
   // Setup platform/renderer backends
   ImGui_ImplGlfw_InitForOpenGL(this->window, true);
   ImGui_ImplOpenGL3_Init();
-  std::cout << "ImGUI initialized." << std::endl;
 }
 
 

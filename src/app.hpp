@@ -7,6 +7,7 @@
 #include "ParticleContainer.cuh"
 #include "Surface.hpp"
 #include "ThrusterPlume.hpp"
+#include "Timer.hpp"
 #include "Window.hpp"
 
 namespace app {
@@ -23,8 +24,6 @@ namespace app {
 
     constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
     constexpr float carbon_particle_scale = 0.05;
-    constexpr int iter_avg = 25;    // iterations to average over when smoothing times
-    constexpr double time_const = 1.0 / iter_avg;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -93,23 +92,6 @@ namespace app {
         return {buf};
     }
 
-    double exp_avg(double a, double b, double t) {
-        return (1 - t) * a + t * b;
-    }
-
-    struct Timer {
-        double physical_time = 0.0;
-        double avg_time_compute = 0.0; 
-        double avg_time_total = 0.0;
-        double dt_smoothed = 0.0;
-        double next_output_time = 0.0;
-        bool should_output() { return physical_time >= next_output_time; }
-        void update_averages(double elapsed_compute, double elapsed_copy) {
-            avg_time_compute = exp_avg(avg_time_compute, elapsed_compute, time_const);
-            avg_time_total   = exp_avg(avg_time_total,   elapsed_copy,    time_const);
-        }
-    };
-
     void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, DepositionInfo &dep_info, Timer timer) {
         using namespace ImGui;
         auto table_flags = ImGuiTableFlags_BordersH;
@@ -129,7 +111,7 @@ namespace app {
             for (int tri = 0; tri < dep_info.num_tris; tri++) {
                 TableNextRow();
                 TableNextColumn();
-                Text("%s", dep_info.surf_names[tri].c_str());
+                Text("%s", dep_info.surface_names[tri].c_str());
                 TableNextColumn();
                 Text("%li", dep_info.local_indices[tri]);
                 TableNextColumn();
@@ -251,7 +233,6 @@ namespace app {
         }
         return window;
     }
-
 
     void process_input (GLFWwindow *window) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {

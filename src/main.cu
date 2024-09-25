@@ -18,6 +18,7 @@
 #include "Surface.hpp"
 #include "Window.hpp"
 #include "ThrusterPlume.hpp"
+#include "Timer.hpp"
 #include "Constants.hpp"
 #include "DepositionInfo.hpp"
 
@@ -46,11 +47,11 @@ int main (int argc, char *argv[]) {
 
     DepositionInfo deposition_info("deposition.csv");
 
+    // TODO: can this be simplified and moved into a function?
     for (size_t id = 0; id < geometry.surfaces.size(); id++) {
         const auto &surf = geometry.surfaces.at(id);
         const auto &mesh = surf.mesh;
         const auto &material = surf.material;
-
         h_materials.push_back(surf.material);
 
         auto ind = 0;
@@ -65,19 +66,16 @@ int main (int argc, char *argv[]) {
             h_material_ids.push_back(id);
             if (material.collect) {
                 auto global_index = static_cast<int>(h_triangles.size()) - 1;
-                Triangle tri{v1, v2, v3};
-                deposition_info.surf_names.push_back(surf.name);
-                deposition_info.areas.push_back(tri.area);
+                deposition_info.surface_names.push_back(surf.name);
+                deposition_info.triangle_areas.push_back(tri.area);
                 deposition_info.global_indices.push_back(global_index);
                 deposition_info.local_indices.push_back(ind);
-                deposition_info.particles_collected.push_back(0);
-                deposition_info.deposition_rates.push_back(0);
-                deposition_info.mass_fluxes.push_back(0);
                 deposition_info.num_tris++;
             }
             ind++;
         }
     }
+    deposition_info.init_diagnostics();
 
     if (input.verbosity > 0) std::cout << "Meshes read." << std::endl;
 
@@ -122,7 +120,7 @@ int main (int argc, char *argv[]) {
 
     // Create timing objects
     size_t step = 0;
-    app::Timer timer;
+    Timer timer;
     cuda::Event start{}, stop_compute{}, stop_copy{};
 
     if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
@@ -154,16 +152,8 @@ int main (int argc, char *argv[]) {
                 // Copy number of particles collected to CPU
                 auto d_begin = d_collected.begin() + deposition_info.global_indices[id];
                 thrust::copy(d_begin, d_begin + 1, deposition_info.particles_collected.begin() + id);
-
-                // Compute deposition rate and carbon flux
-                double mass_carbon = deposition_info.particles_collected[id]*input.particle_weight*carbon.mass*m_u;
-                double volume_carbon = mass_carbon/graphite_density;
-                double triangle_area = deposition_info.areas[id];
-                double layer_thickness_um = volume_carbon/triangle_area*1e6;
-                double physical_time_kh = timer.physical_time/3600/1000;
-                deposition_info.deposition_rates[id] = layer_thickness_um/physical_time_kh;
-                deposition_info.mass_fluxes[id] = mass_carbon / triangle_area / timer.physical_time;
             }
+            deposition_info.update_diagnostics(input, timer.physical_time);
 
             // Copy particle data back to CPU
             particles.copy_to_cpu();
@@ -182,16 +172,16 @@ int main (int argc, char *argv[]) {
         app::end_frame(input, window);
 
         // Write output to console and file at regular intervals, plus one additional when simulation terminates
-        if ((!app::sim_paused && timer.should_output()) ||
+        if ((!app::sim_paused && (step % input.output_interval == 0)) ||
             (!input.display && timer.physical_time >= input.max_time_s) ||
             (input.display && !window.open)) {
-            
-            app::write_to_console(step, input, timer);
-            timer.next_output_time += input.output_interval_s;
+
+            if (input.verbosity > 0) app::write_to_console(step, input, timer);
+            deposition_info.write_to_file(step, timer.physical_time);
         }
 
         if (!app::sim_paused) {
-            step ++;
+            step++;
             timer.physical_time += input.timestep_s;
         }
     }

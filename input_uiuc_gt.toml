@@ -1,8 +1,10 @@
 [simulation]
 timestep_s = 10e-6         # Simulation timestep
 max_time_s = 3.0            # Maximum time to run the simulation (in seconds)
-output_interval_s = 0.001    # How frequently to output the deposition rates to chosen geometry
+output_interval = 0.001    # How frequently to output the deposition rates to chosen geometry
 particle_weight = 5e7      # Carbon macroparticle weight
+display = true
+verbosity = 0
 
 [plume_model]
 plume_origin = { x = 0.0, y = 0.0, z = -1.31 }  # Location of the plume origin (in meters)

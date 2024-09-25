@@ -87,9 +87,9 @@ Input read_input (std::string filename) {
     auto sim = get_table(input_table, "simulation");
     query_value(sim, "verbosity", input.verbosity);
     query_value(sim, "display", input.display);
+    query_value(sim, "output_interval", input.output_interval);
     set_value(sim, "timestep_s", input.timestep_s);
     set_value(sim, "max_time_s", input.max_time_s);
-    set_value(sim, "output_interval_s", input.output_interval_s);
     set_value(sim, "particle_weight", input.particle_weight);
 
     // Read chamber features

@@ -5,22 +5,29 @@
 #include <string>
 #include <vector>
 
+#include "Constants.hpp"
+#include "Input.hpp"
+#include "Timer.hpp"
+
 struct DepositionInfo {
     std::string filename;
     std::ofstream file;
     size_t num_tris = 0;
-    std::vector<std::string> surf_names;
+    double particle_weight;
+    std::vector<std::string> surface_names;
     std::vector<size_t> local_indices;
     std::vector<size_t> global_indices;
-    std::vector<double> areas;
+    std::vector<double> triangle_areas;
     std::vector<int> particles_collected;
     std::vector<double> deposition_rates;
+    std::vector<double> carbon_masses;
     std::vector<double> mass_fluxes;
 
-    DepositionInfo(std::string filename) : filename(filename) {
+    DepositionInfo (std::string filename) : filename(filename) {
         file.open(filename);
         // Write header
-        file << "Time (s),"
+        file << "Step,"
+            << "Time (s),"
             << "Surface name,"
             << "Local triangle ID,"
             << "Global triangle ID,"
@@ -31,32 +38,41 @@ struct DepositionInfo {
             << "\n";
         file.close();
     }
+
+    void init_diagnostics () {
+        particles_collected.resize(num_tris, 0);
+        deposition_rates.resize(num_tris, 0.0);
+        carbon_masses.resize(num_tris, 0.0);
+        mass_fluxes.resize(num_tris, 0.0);
+    }
+
+    void update_diagnostics (Input &input, double time) {
+        using namespace constants;
+        for (size_t id = 0; id < num_tris; id++) {
+            // Compute deposition rate and carbon flux
+            carbon_masses[id] = particles_collected[id] * input.particle_weight * carbon.mass * m_u;
+            double carbon_volume = carbon_masses[id]/ graphite_density;
+            double layer_thickness_um = carbon_volume / triangle_areas[id] * 1e6;
+            double physical_time_kh = time / 3600 / 1000;
+            deposition_rates[id] = layer_thickness_um / physical_time_kh;
+            mass_fluxes[id] = carbon_masses[id] / triangle_areas[id] / time;
+        }
+    }
+
+    void write_to_file (size_t step, double time) {
+       file.open(filename, std::ios_base::app);
+       for (int id = 0; id < num_tris; id++) {
+           file << step << ",";
+           file << time << ",";
+           file << surface_names[id] << ",";
+           file << local_indices[id] << ",";
+           file << global_indices[id] << ",";
+           file << particles_collected[id] << ",";
+           file << carbon_masses[id] << ",";
+           file << deposition_rates[id] << ",";
+           file << mass_fluxes[id] << "\n";
+       }
+       file.close();
+    }
 };
-     //void append() {
-     //   output_file.open(output_filename, std::ios_base::app);
-
-     //   for (int i = 0; i < collect_inds_global.size(); i++) {
-     //       auto triangle_id_global = collect_inds_global[i];
-
-     //       double mass_carbon = collected[i]*input.particle_weight*carbon.mass*m_u;
-     //       double volume_carbon = mass_carbon/graphite_density;
-     //       double triangle_area = h_triangles[triangle_id_global].area;
-     //       double layer_thickness_um = volume_carbon/triangle_area*1e6;
-     //       double physical_time_kh = physical_time/3600/1000;
-     //       double deposition_rate = layer_thickness_um/physical_time_kh;
-     //       double flux = mass_carbon / triangle_area / physical_time;
-     //       deposition_rates[i] = deposition_rate;
-     //       surface_fluxes[i] = flux;
-
-     //       output_file << physical_time << ",";
-     //       output_file << surface_names.at(h_material_ids[triangle_id_global]) << ",";
-     //       output_file << collect_inds_local.at(i) << ",";
-     //       output_file << triangle_id_global << ",";
-     //       output_file << collected[i] << ",";
-     //       output_file << mass_carbon << ",";
-     //       output_file << deposition_rates[i] << "\n";
-     //       output_file << surface_fluxes[i] << "\n";
-     //   }
-     //   output_file.close();
-     //}
 #endif // SPUTTERER_DEPOSITION_RATE_HPP
