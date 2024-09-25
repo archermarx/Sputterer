@@ -247,7 +247,7 @@ int main (int argc, char *argv[]) {
     ParticleContainer pc{"carbon", max_particles, 1.0f, 1};
 
     // Display objects
-    Shader mesh_shader{}, bvh_shader{};
+    Shader mesh_shader{};
     BVHRenderer bvh(&h_scene);
 
     // Set up shaders
@@ -260,12 +260,7 @@ int main (int argc, char *argv[]) {
 
         pc.setup_shaders({0.05f, 0.05f, 0.05f}, 0.05);
         plume.setup_shaders(input.chamber_length_m / 2);
-
-        // set up BVH rendering
-        // TODO: move into BVHRenderer
-        bvh_shader.load("bvh.vert", "bvh.frag", "bvh.geom");
-        bvh_shader.use();
-        bvh.set_buffers();
+        bvh.setup_shaders();
     }
 
     // Create timing objects
@@ -290,10 +285,6 @@ int main (int argc, char *argv[]) {
     if (input.verbosity > 0) {
         std::cout << "Beginning main loop." << std::endl;
     }
-
-    // TODO: move into BVHRenderer
-    bool render_bvh = false;
-    int bvh_draw_depth = h_scene.bvh_depth;
 
     // Pause simulation if displaying
     app::simulation_paused = input.display;
@@ -383,11 +374,11 @@ int main (int argc, char *argv[]) {
                 ImGui::TableNextColumn();
                 ImGui::SliderFloat("##sputtered_particle_scale", &pc.scale, 0, 0.3);
                 ImGui::TableNextColumn();
-                ImGui::Checkbox("Show bounding boxes", &render_bvh);
+                ImGui::Checkbox("Show bounding boxes", &bvh.render);
                 ImGui::TableNextColumn();
                 ImGui::Text("Bounding box depth");
                 ImGui::TableNextColumn();
-                ImGui::SliderInt("##bvh_depth", &bvh_draw_depth, 0, h_scene.bvh_depth);
+                ImGui::SliderInt("##bvh_depth", &bvh.draw_depth, 0, h_scene.bvh_depth);
             }
             ImGui::EndTable();
             ImGui::End();
@@ -462,14 +453,9 @@ int main (int argc, char *argv[]) {
 
             // Draw carbon particles
             pc.draw(app::camera, app::aspect_ratio);
-
+            
             // Draw bounding volume heirarchy
-            // TODO: move into BVHRenderer
-            if (render_bvh) {
-                bvh_shader.use();
-                bvh_shader.set_mat4("camera", app::camera.get_matrix(app::aspect_ratio));
-                bvh.draw(bvh_shader, bvh_draw_depth);
-            }
+            bvh.draw(app::camera, app::aspect_ratio);
 
             // Draw translucent plume cone and plume particles
             plume.draw(app::camera, app::aspect_ratio);

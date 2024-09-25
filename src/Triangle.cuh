@@ -150,12 +150,14 @@ class BVHRenderer {
         BVHRenderer(Scene *scene): scene(scene) {}
 
         Scene *scene;
+        Shader shader;
+        int draw_depth;
+        bool render = false;
 
         static void draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo);
-
-        void draw (Shader &shader, int draw_depth, size_t node_idx = 0);
-
-        void set_buffers ();
+        void draw_bvh (int depth, int node_idx);
+        void draw (Camera camera, float aspect_ratio);
+        void setup_shaders (); 
 
     private:
         unsigned int vao, vbo;
