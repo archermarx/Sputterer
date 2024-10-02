@@ -22,14 +22,14 @@ length_m = 6
 
 [[material]]                                        # Define a surface material
 name = "carbon"
-color = { r = 0.3, g = 0.3, b = 0.3 }
+color = 0.5
 temperature_K = 300                                 # Temperature (for diffuse reflections)
 sticking_coeff = 0.3
 diffuse_coeff = 0.7
 
 [[material]]                                        # Define a surface material
 name = "nosputter"
-color = { r = 0.5, g = 0.5, b = 0.5 }
+color = 0.5
 temperature_K = 100.0                              # Temperature (for diffuse reflections)
 sticking_coeff = 1.0
 diffuse_coeff = 0.0
@@ -48,7 +48,7 @@ name = "target"
 model = "square"
 material = "carbon"
 translate = { x = 0.0, y = -0.095, z = 0.0}
-scale = {x = 0.01, y = 0.01, z = 0.01}
+scale = 0.01 
 
 ## Target housing
 #[[geometry]]
@@ -65,38 +65,38 @@ name = "rpa1-face"
 model = "square"
 material = "carbon"
 collect = true
-color = { r = 0.9, g = 0.9, b = 0.9 }
+color = 0.9 
 translate = { x = 0.0, y = -0.13702538661514227, z = -0.09948802380109789}
-scale = {x = 0.01, y = 0.01, z = 0.01}
-rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
+scale = 0.01 
+rotate = {axis = {x = 1.0}, angle = 157.1}
 
 [[geometry]]
 name = "rpa1-body"
 model = "cube"
 material = "carbon"
-color = { r = 0.1, g = 0.1, b = 0.1 }
+color = 0.1 
 translate = { x = 0.0, y = -0.13900991876085733, z = -0.10418606936948308 }
-scale = {x = 0.005, y = 0.005, z = 0.005}
-rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
+scale = 0.01
+rotate = {axis = {x = 1.0}, angle = 157.1}
 
 [[geometry]]
 name = "rpa2-face"
 model = "square"
 material = "carbon"
 collect = true
-color = { x = 0.9, y = 0.9, z = 0.9 }
+color = 0.9
 translate = { x = 0.0, y = -0.15810618721429492, z = -0.055440140108718686}
-scale = {x = 0.01, y = 0.01, z = 0.01}
-rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
+scale = 0.01
+rotate = {axis = {x = 1.0}, angle = 131.3}
 
 [[geometry]]
 name = "rpa2-body"
 model = "cube"
 material = "carbon"
-color = { r = 0.1, g = 0.1, b = 0.1 }
+color = 0.1 
 translate = { x = 0.0, y = -0.16193763429516286, z = -0.05880614861531947 }
-scale = {x = 0.005, y = 0.005, z = 0.005}
-rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
+scale = 0.01 
+rotate = {axis = {x = 1.0}, angle = 131.3}
 
 [[geometry]]
 name = "shield"
@@ -104,4 +104,4 @@ model = "square"
 material = "nosputter"
 collect = false
 sputter = false
-translate = {x = 0.0, y = -0.605, z = -0.15}
+translate = [0.0, -0.605, -0.15]

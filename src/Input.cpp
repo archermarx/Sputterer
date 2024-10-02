@@ -54,8 +54,26 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
             query_value(*tab, "x", x);
             query_value(*tab, "y", y);
             query_value(*tab, "z", z);
-        
-            value = glm::vec3(x, y, z);
+
+        } else if (node.is_array()) {
+            // there has to be a better way to do this
+            auto arr = node.as_array();
+            int i = 0;
+            float out[3] = {0.0, 0.0, 0.0};
+            for (auto &&val: *arr) {
+                out[i] = static_cast<float>(val.as_floating_point()->get());;
+                i++;
+                if (i == 3) break;
+            }
+            x = out[0];
+            y = out[1];
+            z = out[2];
+        } else if (node.is_integer()){
+            auto val = static_cast<float>(node.as_integer()->get());
+            x = val; y = val; z = val;
+        } else if (node.is_floating_point()) {
+            auto val = static_cast<float>(node.as_floating_point()->get());
+            x = val; y = val; z = val;
         } else {
             valid = false;
         }
@@ -80,7 +98,6 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
                   << ".\n Expected value of type " << typeid(T).name() << "\n.";
     }
 }
-
 
 toml::table get_table(toml::table &parent, const std::string &key){
     if (parent.contains(key)) {
