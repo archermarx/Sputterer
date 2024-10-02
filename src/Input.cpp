@@ -12,6 +12,23 @@
 namespace fs = std::filesystem;
 
 template<typename T>
+void set_value (toml::table &table, const std::string &input_name, T &value);
+
+template<typename T>
+T get_value (toml::table &table, const std::string &key) {
+    T value;
+    set_value(table, key, value);
+    return value;
+}
+
+template<typename T>
+void query_value (toml::table &table, const std::string &key, T &value) {
+    if (table.contains(key)) {
+        value = get_value<T>(table, key);
+    }
+}
+
+template<typename T>
 void set_value (toml::table &table, const std::string &input_name, T &value) {
     auto node = table[input_name];
     bool valid = true;
@@ -23,15 +40,17 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
             valid = false;
         }
     } else if constexpr (std::is_same_v<T, glm::vec3>) {
+        float x = 0.0, y = 0.0, z = 0.0;
         if (node.is_table()) {
             auto tab = node.as_table();
-            auto x = get_value<float>(*tab, "x");
-            auto y = get_value<float>(*tab, "y");
-            auto z = get_value<float>(*tab, "z");
+            query_value(*tab, "x", x);
+            query_value(*tab, "y", y);
+            query_value(*tab, "z", z);
             value = glm::vec3(x, y, z);
         } else {
             valid = false;
         }
+        value = glm::vec3(x, y, z);
     } else {
         if (node.is_integer()) {
             value = static_cast<T>(node.as_integer()->get());
@@ -53,19 +72,6 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
     }
 }
 
-template<typename T>
-T get_value (toml::table &table, const std::string &key) {
-    T value;
-    set_value(table, key, value);
-    return value;
-}
-
-template<typename T>
-void query_value (toml::table &table, const std::string &key, T &value) {
-    if (table.contains(key)) {
-        value = get_value<T>(table, key);
-    }
-}
 
 toml::table get_table(toml::table &parent, const std::string &key){
     if (parent.contains(key)) {
