@@ -22,10 +22,12 @@ T get_value (toml::table &table, const std::string &key) {
 }
 
 template<typename T>
-void query_value (toml::table &table, const std::string &key, T &value) {
+bool query_value (toml::table &table, const std::string &key, T &value) {
     if (table.contains(key)) {
         value = get_value<T>(table, key);
+        return true;
     }
+    return false;
 }
 
 template<typename T>
@@ -43,9 +45,16 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
         float x = 0.0, y = 0.0, z = 0.0;
         if (node.is_table()) {
             auto tab = node.as_table();
+            // check for r,g,b
+            query_value(*tab, "r", x);
+            query_value(*tab, "g", y);
+            query_value(*tab, "b", z);
+
+            // check for x,y,z
             query_value(*tab, "x", x);
             query_value(*tab, "y", y);
             query_value(*tab, "z", z);
+        
             value = glm::vec3(x, y, z);
         } else {
             valid = false;
