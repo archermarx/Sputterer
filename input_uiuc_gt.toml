@@ -1,14 +1,14 @@
 [simulation]
 timestep_s = 10e-6         # Simulation timestep
 max_time_s = 3.0            # Maximum time to run the simulation (in seconds)
-output_interval = 0.001    # How frequently to output the deposition rates to chosen geometry
-particle_weight = 5e7      # Carbon macroparticle weight
+output_interval = 0.001 
+particle_weight = 5e11      # Carbon macroparticle weight
 display = true
-verbosity = 0
+verbosity = 1
 
-[plume_model]
-plume_origin = { x = 0.0, y = 0.0, z = -1.31 }  # Location of the plume origin (in meters)
-plume_direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
+[plume]
+origin = { x = 0.0, y = 0.0, z = -1.31 }  # Location of the plume origin (in meters)
+direction = { x = 0.0, y = 0.0, z = 1.0 }     # Orientation of the plume
 background_pressure_Torr = 5e-6                     # Facility background pressure (in Torr)
 ion_current_A = 15.0                                # Ion current in A
 model_parameters = [0.8, 0.8, 8.0, 0.45, 6.31e18, 1.259e15, 55.0]  # Plume model parameters
@@ -34,18 +34,18 @@ temperature_K = 100.0                              # Temperature (for diffuse re
 sticking_coeff = 1.0
 diffuse_coeff = 0.0
 
-[[geometry]]                                        # Define geometry 
-name = "Thruster"                                   # Name
-file = "o_thruster.obj"                             # Mesh file
-material = "nosputter"                                 # Which material to use
-collect = false                                     # Whether to log particles that stick to this geometry
-translate = { x = 0.0, y = 0, z = -1.37}      # Transformations (rotate, scale, translate) to apply to this mesh
-rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
+#[[geometry]]                                        # Define geometry 
+#name = "Thruster"                                   # Name
+#model = "thruster"                             # Mesh model
+#material = "nosputter"                                 # Which material to use
+#collect = false                                     # Whether to log particles that stick to this geometry
+#translate = { x = 0.0, y = 0, z = -1.37}      # Transformations (rotate, scale, translate) to apply to this mesh
+#rotate = { axis = { x = 0.0, y = 1.0, z = 0.0 }, angle = -90 }
 
 # C13 target
 [[geometry]]
 name = "target"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 translate = { x = 0.0, y = -0.095, z = 0.0}
 scale = {x = 0.01, y = 0.01, z = 0.01}
@@ -53,7 +53,7 @@ scale = {x = 0.01, y = 0.01, z = 0.01}
 ## Target housing
 #[[geometry]]
 #name = "target-housing"
-#file = "o_cylinder.obj"
+#model = "o_cylinder.obj"
 #material = "nosputter"
 #translate = {x = 0.0, y = -0.095, z = 0.005}
 #scale = {x = 0.005, y = 0.01, z = 0.005}
@@ -62,7 +62,7 @@ scale = {x = 0.01, y = 0.01, z = 0.01}
 # collector plates
 [[geometry]]
 name = "rpa1-face"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 collect = true
 color = { x = 0.9, y = 0.9, z = 0.9 }
@@ -72,7 +72,7 @@ rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
 
 [[geometry]]
 name = "rpa1-body"
-file = "o_cube.obj"
+model = "cube"
 material = "carbon"
 color = { x = 0.1, y = 0.1, z = 0.1 }
 translate = { x = 0.0, y = -0.13900991876085733, z = -0.10418606936948308 }
@@ -81,7 +81,7 @@ rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 157.1}
 
 [[geometry]]
 name = "rpa2-face"
-file = "o_rect.obj"
+model = "square"
 material = "carbon"
 collect = true
 color = { x = 0.9, y = 0.9, z = 0.9 }
@@ -91,7 +91,7 @@ rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
 
 [[geometry]]
 name = "rpa2-body"
-file = "o_cube.obj"
+model = "cube"
 material = "carbon"
 color = { x = 0.1, y = 0.1, z = 0.1 }
 translate = { x = 0.0, y = -0.16193763429516286, z = -0.05880614861531947 }
@@ -100,7 +100,7 @@ rotate = {axis = {x = 1.0, y = 0.0, z = 0.0}, angle = 131.3}
 
 [[geometry]]
 name = "shield"
-file = "o_rect.obj"
+model = "square"
 material = "nosputter"
 collect = false
 sputter = false

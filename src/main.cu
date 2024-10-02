@@ -131,6 +131,7 @@ int main (int argc, char *argv[]) {
 
         // Main computation loop
         if (step > 0 && !app::sim_paused) {
+
             start.record();
 
             // Push particles and sputter from surfaces, then remove those that are out of bounds
@@ -165,9 +166,10 @@ int main (int argc, char *argv[]) {
         app::end_frame(input, window);
 
         // Write output to console and file at regular intervals, plus one additional when simulation terminates
-        if ((!app::sim_paused && (step % input.output_interval == 0)) ||
+        if ( input.output_interval > 0 && (
+            (!app::sim_paused && (step % input.output_interval == 0)) ||
             (!input.display && timer.physical_time >= input.max_time_s) ||
-            (input.display && !window.open)) {
+            (input.display && !window.open))) {
 
             if (input.verbosity > 0) app::write_to_console(step, input, timer);
             deposition_info.write_to_file(step, timer.physical_time);

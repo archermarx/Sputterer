@@ -88,6 +88,9 @@ Input read_input (std::string filename) {
     query_value(sim, "verbosity", input.verbosity);
     query_value(sim, "display", input.display);
     query_value(sim, "output_interval", input.output_interval);
+    if (input.output_interval <= 0) {
+        input.output_interval = -1;
+    }
     set_value(sim, "timestep_s", input.timestep_s);
     set_value(sim, "max_time_s", input.max_time_s);
     set_value(sim, "particle_weight", input.particle_weight);
