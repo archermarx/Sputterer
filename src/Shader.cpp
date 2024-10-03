@@ -6,10 +6,15 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Shader.hpp"
+#include "ShaderCode.hpp"
 #include "glad/glad.h"
 #include "gl_helpers.hpp"
 
 using std::string;
+
+void Shader::use () const {
+    GL_CHECK(glUseProgram(id));
+}
 
 void Shader::load (const char *vertex_code, const char *fragment_code, const char *geometry_code) {
     std::vector<string> sources{string(vertex_code), string(fragment_code)};
@@ -21,45 +26,46 @@ void Shader::load (const char *vertex_code, const char *fragment_code, const cha
     id = create_shader_program(sources, types);
 }
 
-void Shader::use () const {
-    GL_CHECK(glUseProgram(id));
-}
-
-GLint Shader::get_uniform_location (const std::string &name) const {
-    GLint loc;
-    GL_CHECK(loc = glGetUniformLocation(id, name.c_str()));
-    if (loc < 0) {
-        std::cout << "ERROR::SHADER::UNIFORM_NOT_FOUND: " << name << std::endl;
-    }
-    return loc;
-}
-
-void Shader::set_bool (const std::string &name, bool value) const {
-    GL_CHECK(glUniform1i(get_uniform_location(name), (int) value));
-}
-
-void Shader::set_int (const std::string &name, int value) const {
-    GL_CHECK(glUniform1i(get_uniform_location(name), value));
-}
-
-void Shader::set_float (const std::string &name, float value) const {
-    auto loc = get_uniform_location(name);
-    GL_CHECK(glUniform1f(loc, value));
-}
-
-void Shader::set_vec3 (const std::string &name, glm::vec3 value) const {
-    GL_CHECK(glUniform3fv(get_uniform_location(name), 1, glm::value_ptr(value)));
-}
-
-void Shader::set_mat4 (const std::string &name, glm::mat4 value) const {
-    GL_CHECK(glUniformMatrix4fv(get_uniform_location(name), 1, GL_FALSE, glm::value_ptr(value)));
+void Shader::load (ShaderCode code) {
+    load(code.vert, code.frag, code.geom);
 }
 
 void Shader::update_view (const Camera &camera, float aspect_ratio) const {
-    set_mat4("view", camera.get_view_matrix());
-    set_mat4("projection", camera.get_projection_matrix(aspect_ratio));
-    set_vec3("viewPos", camera.distance*camera.orientation);
+    set_uniform("view", camera.get_view_matrix());
+    set_uniform("projection", camera.get_projection_matrix(aspect_ratio));
+    set_uniform("viewPos", camera.distance*camera.orientation, true);
 }
+
+inline void set_uniform_val(GLint loc, bool val)      {GL_CHECK(glUniform1i(loc, (int) val));}
+inline void set_uniform_val(GLint loc, int val)       {GL_CHECK(glUniform1i(loc, val));}
+inline void set_uniform_val(GLint loc, float val)     {GL_CHECK(glUniform1f(loc, val));}
+inline void set_uniform_val(GLint loc, double val)     {GL_CHECK(glUniform1f(loc, val));}
+inline void set_uniform_val(GLint loc, glm::vec3 val) {
+    GL_CHECK(glUniform3fv(loc, 1, glm::value_ptr(val)));
+}
+inline void set_uniform_val(GLint loc, glm::mat4 val) {
+    GL_CHECK(glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(val)));
+}
+
+template <typename T>
+void Shader::set_uniform (const std::string &name, T value, bool optional) const {
+    // Get uniform location
+    GLint loc;
+    GL_CHECK(loc = glGetUniformLocation(id, name.c_str()));
+
+    if (loc >= 0) {
+        set_uniform_val(loc, value);
+    } else if (!optional) {
+        std::cerr << "ERROR::SHADER::UNIFORM_NOT_FOUND: " << name << std::endl;
+    }
+}
+
+template void Shader::set_uniform<bool>(const std::string&, bool, bool) const;
+template void Shader::set_uniform<int>(const std::string&, int, bool) const;
+template void Shader::set_uniform<float>(const std::string&, float, bool) const;
+template void Shader::set_uniform<double>(const std::string&, double, bool) const;
+template void Shader::set_uniform<glm::vec3>(const std::string&, glm::vec3, bool) const;
+template void Shader::set_uniform<glm::mat4>(const std::string&, glm::mat4, bool) const;
 
 //----------------------------------------------------------------------------------------------------------------------------------
 //                                                 UTILITY FUNCTIONS

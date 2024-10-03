@@ -221,9 +221,6 @@ Mesh::~Mesh () {
 }
 
 void Mesh::draw () const {
-
-  // draw mesh
-  // std::cout << "VAO, VBO, EBO: " << VAO << ", " << VBO << ", " << EBO << "\n";
   GL_CHECK(glBindVertexArray(this->vao));
   GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo));
   GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo));

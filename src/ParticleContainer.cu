@@ -78,7 +78,7 @@ void ParticleContainer::setup_shaders (vec3 color, float scale) {
     // TODO: have scale controlled by a slider
     this->scale = scale;
     this->color = color;
-    shader.set_vec3("objectColor", color);
+    shader.set_uniform("objectColor", color);
 
     // TODO: have geometric primitives stored as strings in a c++ source file
     // Set up particle meshes
@@ -99,10 +99,10 @@ void ParticleContainer::draw (Camera camera, float aspect_ratio) {
     shader.use();
     // Set particle scale
     vec3 scale_vec{this->scale};
-    shader.set_vec3("scale", scale_vec);
-    shader.set_vec3("cameraRight", camera.right);
-    shader.set_vec3("cameraUp", camera.up);
-    shader.set_mat4("camera", cam_mat);
+    shader.set_uniform("scale", scale_vec);
+    shader.set_uniform("cameraRight", camera.right);
+    shader.set_uniform("cameraUp", camera.up);
+    shader.set_uniform("camera", cam_mat);
 
     // Bind vertex array
     auto vao = this->mesh.vao;

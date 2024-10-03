@@ -3,19 +3,11 @@
 #include "Camera.hpp"
 #include "vec3.hpp"
 #include "Triangle.cuh"
-
-void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
-    if (input.display) {
-        geometry.draw(camera, aspect_ratio);
-        particles.draw(camera, aspect_ratio);
-        bvh.draw(camera, aspect_ratio);
-        plume.draw(camera, aspect_ratio);
-    }
-}
+#include "gl_helpers.hpp"
 
 Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
-                    ParticleContainer &particles, SceneGeometry &geometry)
-    : bvh(scene), plume(plume), particles(particles), geometry(geometry)
+        ParticleContainer &particles, SceneGeometry &geometry)
+    : bvh(scene), plume(plume), particles(particles), geometry(geometry), grid()
 {
     if (input.display) {
         geometry.setup_shaders();
@@ -24,8 +16,70 @@ Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
     }
 }
 
+void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
+    if (input.display) {
+        geometry.draw(camera, aspect_ratio);
+        particles.draw(camera, aspect_ratio);
+        bvh.draw(camera, aspect_ratio);
+        grid.draw(camera, aspect_ratio);
+        plume.draw(camera, aspect_ratio);
+    }
+}
+
+GridRenderer::GridRenderer () {
+    shader.load(shaders::grid);
+    shader.use();
+    
+    glGenBuffers(1, &vbo);
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    float points[] = {0.0, 0.0, 0.0};
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);
+    glBindVertexArray(0);
+}
+
+void GridRenderer::draw_grid(Grid grid, int level, glm::vec3 center) {
+    auto num_lines = static_cast<int>(2 * grid.scale / grid.spacing + 1) * 2;
+    auto num_vertices = num_lines * 4;
+    // subdividing to get around 256 vertex limit on geometry shaders
+    if (num_vertices > 256) {
+        auto new_scale = grid.scale / 2;
+        Grid new_grid(grid);
+        new_grid.scale = new_scale;
+        draw_grid(new_grid, level, center + glm::vec3{ new_scale, 0.0,  new_scale});
+        draw_grid(new_grid, level, center + glm::vec3{ new_scale, 0.0, -new_scale});
+        draw_grid(new_grid, level, center + glm::vec3{-new_scale, 0.0, -new_scale});
+        draw_grid(new_grid, level, center + glm::vec3{-new_scale, 0.0,  new_scale});
+    } else {
+        shader.set_uniform("grid_center", center);
+        shader.set_uniform("grid_scale", grid.scale);
+        shader.set_uniform("grid_spacing", grid.spacing);
+        shader.set_uniform("linewidth", grid.linewidth);
+        shader.set_uniform("linecolor", grid.color);
+        shader.set_uniform("level", level);
+        glDrawArrays(GL_POINTS, 0, 1);
+    }
+}
+
+void GridRenderer::draw (Camera &camera, float aspect_ratio) {
+    if (!enabled) return;
+    shader.use();
+    shader.set_uniform("camera", camera.get_matrix(aspect_ratio));
+    shader.set_uniform("opacity", opacity);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    for (size_t i = 0; i < grids.size(); i++) {
+        draw_grid(grids[i], i);
+    }
+}
+
 BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(scene) {
-    shader.load(shaders::bvh.vert, shaders::bvh.frag, shaders::bvh.geom);
+    shader.load(shaders::bvh);
     shader.use();
 
     glGenBuffers(1, &vbo);
@@ -46,7 +100,7 @@ void BVHRenderer::draw_box (Shader &shader, BBox &box, unsigned int &vao, unsign
     auto center = box.center();
     auto extent = box.ub - box.lb;
     float points[] = {center.x, center.y, center.z};
-    shader.set_vec3("extent", {extent.x, extent.y, extent.z});
+    shader.set_uniform<glm::vec3>("extent", {extent.x, extent.y, extent.z});
     glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_POINTS, 0, 1);
 }
@@ -69,12 +123,12 @@ void BVHRenderer::draw_bvh (int depth, int node_idx) {
     }
 }
 
-void BVHRenderer::draw (Camera camera, float aspect_ratio) {
+void BVHRenderer::draw (Camera &camera, float aspect_ratio) {
     if (draw_depth == 0 || !enabled) {
         return;
     }
 
     shader.use();
-    shader.set_mat4("camera", camera.get_matrix(aspect_ratio));
+    shader.set_uniform("camera", camera.get_matrix(aspect_ratio));
     draw_bvh(draw_depth, 0);
 }

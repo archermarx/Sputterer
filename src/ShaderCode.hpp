@@ -1,14 +1,14 @@
 #ifndef SPUTTERER_SHADERCODE_HPP
 #define SPUTTERER_SHADERCODE_HPP
 
-namespace shaders {
-
 // GLSL shader code used in other places
 struct ShaderCode {
-    const char *vert;
-    const char *frag;
-    const char *geom;
+    const char *vert = nullptr;
+    const char *frag = nullptr;
+    const char *geom = nullptr;
 };
+
+namespace shaders {
 
 constexpr ShaderCode plume{
     .vert = R"""(
@@ -314,12 +314,79 @@ void main() {
     fragColor = vec4(resultColorCorrected, 1.0);
 }
     )""",
-    .geom = nullptr,
 };
 
+constexpr ShaderCode grid {
+    .vert = R"""(
+#version 330 core
+layout (location = 0) in vec3 aPos;
 
+void main() {
+    gl_Position = vec4(aPos, 1.0);
+}
+    )""",
+    .frag = R"""(
+#version 330 core
+
+uniform vec3 linecolor;
+uniform float opacity;
+
+void main() {
+    gl_FragColor = vec4(linecolor, opacity);
+}
+    )""",
+    .geom = R"""(
+#version 330 core
+
+layout(points) in;
+layout(triangle_strip, max_vertices = 256) out;
+
+uniform mat4 camera;
+uniform vec3 grid_center;
+uniform float grid_scale;
+uniform float grid_spacing;
+uniform float linewidth;
+uniform int level;
+
+vec4 x = vec4(1.0, 0.0, 0.0, 0.0);
+vec4 y = vec4(0.0, 1.0, 0.0, 0.0);
+vec4 z = vec4(0.0, 0.0, 1.0, 0.0);
+
+void draw_line(vec4 center, vec4 offset, vec4 perp) {
+    gl_Position = camera * (center + offset + linewidth * perp);
+    EmitVertex();
+    gl_Position = camera * (center + offset - linewidth * perp);
+    EmitVertex();
+    gl_Position = camera * (center - offset + linewidth * perp);
+    EmitVertex();
+    gl_Position = camera * (center - offset - linewidth * perp);
+    EmitVertex();
+    EndPrimitive();
 }
 
+void draw_grid_lines(vec4 center, vec4 parl, vec4 perp, int layer) {
+    float num_gridlines = grid_scale / grid_spacing + 1;
+    vec4 layer_offset = linewidth / 100 * y;
+    vec4 origin = center + layer * layer_offset;
+    vec4 len = grid_scale * parl;
+    for (int i = 0; i < num_gridlines; i++) {
+        vec4 offset = i * grid_spacing * perp;
+        draw_line(origin + offset, len, perp);
+        if (i > 0) draw_line(origin - offset, len, perp);
+    }
+}
 
+void build_grid(vec4 center) {
+    draw_grid_lines(center, x, z, 2*level);
+    draw_grid_lines(center, z, x, 2*level + 1);
+}
+
+void main() {
+    build_grid(gl_in[0].gl_Position + vec4(grid_center, 0.0));
+}
+    )""",
+};
+
+}
 
 #endif // SPUTTERER_SHADERCODE_HPP

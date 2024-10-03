@@ -47,8 +47,8 @@ struct SceneGeometry {
         shader.use();
         shader.update_view(camera, aspect_ratio);
         for (const auto &surface: surfaces) {
-            shader.set_mat4("model", surface.transform.get_matrix());
-            shader.set_vec3("objectColor", surface.color);
+            shader.set_uniform("model", surface.transform.get_matrix());
+            shader.set_uniform("objectColor", surface.color);
             surface.mesh.draw();
         }
     }

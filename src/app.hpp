@@ -94,11 +94,19 @@ namespace app {
     void draw_settings_panel(size_t step, Input &input, Renderer &renderer, Timer timer) {
         using namespace ImGui;
 
-        auto &[bvh, plume, particles, _] = renderer;
+        auto &bvh = renderer.bvh;
+        auto &plume = renderer.plume;
+        auto &particles = renderer.particles;
         ImVec2 top_right = ImVec2(GetIO().DisplaySize.x, 0);
         SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
         Begin("Settings", nullptr, imgui_flags);
         if (BeginTable("split", 1)) {
+            TableNextColumn();
+            Checkbox("Show grid", &renderer.grid.enabled);
+            TableNextColumn();
+            Text("Grid opacity");
+            TableNextColumn();
+            SliderFloat("##grid_opacity", &renderer.grid.opacity, 0.0, 1.0);
             TableNextColumn();
             Checkbox("Show plume cone", &plume.render);
             TableNextColumn();

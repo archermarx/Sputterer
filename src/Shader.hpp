@@ -5,37 +5,29 @@
 #include <string>
 #include <vector>
 
-#include <glm/gtc/type_ptr.hpp>
-#include "glad/glad.h"
 #include "Camera.hpp"
 
 unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
 unsigned int compile_shader (const char *source, unsigned int type);
 
+struct ShaderCode;
+
 class Shader {
-public:
-  // Program ID
-  unsigned int id;
+    public:
+        // Program ID
+        unsigned int id;
 
-  Shader () = default;
+        Shader () = default;
 
-  void load (const char *vertex_path, const char *fragment_path, const char *geometry_path = nullptr);
+        void load (ShaderCode shader);
+        void load (const char *vertex_path, const char *fragment_path, const char *geometry_path = nullptr);
+        void use () const;
 
-  void use () const;
+        void update_view (const Camera &camera, float aspect_ratio) const;
 
-  [[maybe_unused]] void set_bool (const std::string &name, bool value) const;
-
-  [[maybe_unused]] void set_int (const std::string &name, int value) const;
-
-  [[maybe_unused]] void set_float (const std::string &name, float value) const;
-
-  void set_vec3 (const std::string &name, glm::vec3 value) const;
-
-  void set_mat4 (const std::string &name, glm::mat4 value) const;
-
-  [[nodiscard]] GLint get_uniform_location (const std::string &name) const;
-
-  void update_view (const Camera &camera, float aspect_ratio) const;
+        template <typename T>
+        void set_uniform (const std::string &name, T value, bool optional = false) const;
 };
+
 
 #endif

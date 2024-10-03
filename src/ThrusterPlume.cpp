@@ -223,8 +223,8 @@ void ThrusterPlume::setup_shaders (float length) {
     particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
     cone_shader.load(shaders::plume.vert, shaders::plume.frag, shaders::plume.geom);
     cone_shader.use();
-    cone_shader.set_float("length", length);
-    cone_shader.set_vec3("direction", direction);
+    cone_shader.set_uniform("length", length);
+    cone_shader.set_uniform("direction", direction);
 
     glGenBuffers(1, &vbo);
     glGenVertexArrays(1, &vao);
@@ -247,19 +247,19 @@ void ThrusterPlume::draw (Camera camera, float aspect_ratio) {
 
         // enable plume cone shader
         cone_shader.use(); 
-        cone_shader.set_mat4("camera", cam_mat);
+        cone_shader.set_uniform("camera", cam_mat);
 
         // draw main beam
         auto div_angle = main_divergence_angle();
-        cone_shader.set_bool("main_beam", true);
-        cone_shader.set_float("angle", div_angle);
+        cone_shader.set_uniform("main_beam", true);
+        cone_shader.set_uniform("angle", div_angle);
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, 1);
         
         // draw scattered beam
         div_angle = scattered_divergence_angle();
-        cone_shader.set_bool("main_beam", false);
-        cone_shader.set_float("angle", div_angle);
+        cone_shader.set_uniform("main_beam", false);
+        cone_shader.set_uniform("angle", div_angle);
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, 1);
     }
