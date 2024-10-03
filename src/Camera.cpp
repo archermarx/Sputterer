@@ -32,7 +32,10 @@ void Camera::process_keyboard (Direction direction, float delta_time) {
         yaw -= yaw_speed*delta_time;
         break;
     case Direction::Up:
+        center.y += zoom_speed*delta_time;
+        break;
     case Direction::Down:
+        center.y -= zoom_speed*delta_time;
         break;
     }
     update_vectors();
