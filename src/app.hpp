@@ -20,7 +20,6 @@ namespace app {
     constexpr auto imgui_flags = ImGuiWindowFlags_NoMove |
                                  ImGuiWindowFlags_NoScrollbar |
                                  ImGuiWindowFlags_AlwaysAutoResize |
-                                 ImGuiWindowFlags_NoTitleBar |
                                  ImGuiWindowFlags_NoSavedSettings;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -99,7 +98,7 @@ namespace app {
         auto &particles = renderer.particles;
         ImVec2 top_right = ImVec2(GetIO().DisplaySize.x, 0);
         SetNextWindowPos(top_right, ImGuiCond_Always, ImVec2(1.0, 0.0));
-        Begin("Settings", nullptr, imgui_flags);
+        Begin("Display settings", nullptr, imgui_flags);
         if (BeginTable("split", 1)) {
             TableNextColumn();
             Checkbox("Show grid", &renderer.grid.enabled);
@@ -127,8 +126,8 @@ namespace app {
             Text("Bounding box depth");
             TableNextColumn();
             SliderInt("##bvh_depth", &bvh.draw_depth, 0, bvh.draw_depth);
+            EndTable();
         }
-        EndTable();
         End();
     }
 
@@ -137,7 +136,7 @@ namespace app {
 
         ImVec2 bottom_right = ImVec2(GetIO().DisplaySize.x, GetIO().DisplaySize.y);
         SetNextWindowPos(bottom_right, ImGuiCond_Always, ImVec2(1.0, 1.0));
-        Begin("Frame time", nullptr, imgui_flags | ImGuiWindowFlags_NoInputs);
+        Begin("Timing info", nullptr);
 
         auto framerate_ms = 1000.0 / timer.dt_smoothed;
         auto transfer_percentage = (1.0 - timer.avg_time_compute/timer.avg_time_total) * 100.0;
