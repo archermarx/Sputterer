@@ -194,6 +194,11 @@ namespace app {
                   << ", Avg. step time: " << timer.dt_smoothed << " ms\n";
     }
 
+    void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+        glViewport(0, 0, width, height);
+        aspect_ratio = static_cast<float>(width)/static_cast<float>(height);
+    }  
+
     Window initialize(Input &input) {
         Window window{.name = "Sputterer", .width = screen_width, .height = screen_height};
         if (input.display) {
@@ -202,6 +207,7 @@ namespace app {
             glfwSetKeyCallback(window.window, pause_callback);
             glfwSetCursorPosCallback(window.window, mouse_cursor_callback);
             glfwSetScrollCallback(window.window, scroll_callback);
+            glfwSetFramebufferSizeCallback(window.window, framebuffer_size_callback);
             window.initialize_imgui();
             sim_paused = true;
         }
