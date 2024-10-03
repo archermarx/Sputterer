@@ -21,6 +21,7 @@
 #include "Timer.hpp"
 #include "Constants.hpp"
 #include "DepositionInfo.hpp"
+#include "Renderer.hpp"
 
 // My headers (CUDA)
 #include "cuda.cuh"
@@ -116,7 +117,7 @@ int main (int argc, char *argv[]) {
 
     // Create particle container for carbon atoms and renderer
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
-    app::Renderer renderer(input, &h_scene, plume, particles, geometry);
+    Renderer renderer(input, &h_scene, plume, particles, geometry);
 
     // Create timing objects
     size_t step = 0;
@@ -160,7 +161,7 @@ int main (int argc, char *argv[]) {
         }
 
         // Draw scene
-        renderer.draw(input);
+        renderer.draw(input, app::camera, app::aspect_ratio);
 
         // Finalize frame and increment timestep
         app::end_frame(input, window);

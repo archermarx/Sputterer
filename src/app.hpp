@@ -9,6 +9,7 @@
 #include "ThrusterPlume.hpp"
 #include "Timer.hpp"
 #include "Window.hpp"
+#include "Renderer.hpp"
 
 namespace app {
     // settings
@@ -21,9 +22,6 @@ namespace app {
                                  ImGuiWindowFlags_AlwaysAutoResize |
                                  ImGuiWindowFlags_NoTitleBar |
                                  ImGuiWindowFlags_NoSavedSettings;
-
-    constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
-    constexpr float carbon_particle_scale = 0.05;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -41,37 +39,6 @@ namespace app {
     void pause_callback (GLFWwindow *window, int key, int scancode, int action, int mods);
     void scroll_callback ([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset);
     void process_input (GLFWwindow *window);
-
-    class Renderer {
-        public:
-            BVHRenderer bvh;
-            ThrusterPlume &plume;
-            ParticleContainer &particles;
-            SceneGeometry &geometry;
-
-            Renderer(Input &input, Scene *scene, ThrusterPlume &plume, 
-                     ParticleContainer &particles, SceneGeometry &geometry)
-                : bvh(scene), plume(plume), particles(particles), geometry(geometry){
-                setup(input);
-            }
-
-            void setup (Input &input) {
-                if (input.display) {
-                    geometry.setup_shaders();
-                    particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
-                    plume.setup_shaders(input.chamber_length_m / 2);
-                    bvh.setup_shaders();
-                }
-            }
-            void draw (Input &input) {
-                if (input.display) {
-                    geometry.draw(camera, aspect_ratio);
-                    particles.draw(camera, aspect_ratio);
-                    bvh.draw(camera, aspect_ratio);
-                    plume.draw(camera, aspect_ratio);
-                }
-            };
-    };
 
     string print_time (double time_s) {
         char buf[64];
@@ -235,36 +202,66 @@ namespace app {
     }
 
     void process_input (GLFWwindow *window) {
+        bool alt_pressed = false;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) {
+            // re-enable after other camera weirdness fixed
+            // alt_pressed = true;
+        }
+
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
         }
 
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Forward, delta_time);
+            if (alt_pressed) {
+                camera.process_keyboard(Direction::MoveForward, delta_time);
+            } else {
+                camera.process_keyboard(Direction::OrbitForward, delta_time);
+            }
         }
 
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Backward, delta_time);
+            if (alt_pressed) {
+                camera.process_keyboard(Direction::MoveBackward, delta_time);
+            } else {
+                camera.process_keyboard(Direction::OrbitBackward, delta_time);
+            }
         }
 
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Left, delta_time);
+            if (alt_pressed) {
+                camera.process_keyboard(Direction::MoveLeft, delta_time);
+            } else {
+                camera.process_keyboard(Direction::OrbitLeft, delta_time);
+            }
         }
 
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Right, delta_time);
+            if (alt_pressed) {
+                camera.process_keyboard(Direction::MoveRight, delta_time);
+            } else {
+                camera.process_keyboard(Direction::OrbitRight, delta_time);
+            }
         }
 
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Up, delta_time);
+            camera.process_keyboard(Direction::MoveUp, delta_time);
         }
 
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-            camera.process_keyboard(Direction::Down, delta_time);
+            camera.process_keyboard(Direction::MoveDown, delta_time);
         }
 
         if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
             camera.center = glm::vec3{0.0};
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::ZoomIn, delta_time);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+            camera.process_keyboard(Direction::ZoomOut, delta_time);
         }
     }
 

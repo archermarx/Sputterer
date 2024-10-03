@@ -19,23 +19,43 @@ glm::mat4 Camera::get_matrix (float aspect_ratio, float min, float max) const {
 
 void Camera::process_keyboard (Direction direction, float delta_time) {
     switch (direction) {
-    case Direction::Forward:
+    case Direction::OrbitForward:
         pitch += pitch_speed*delta_time;
         break;
-    case Direction::Backward:
+    case Direction::OrbitBackward:
         pitch -= pitch_speed*delta_time;
         break;
-    case Direction::Left:
+    case Direction::OrbitLeft:
         yaw += yaw_speed*delta_time;
         break;
-    case Direction::Right:
+    case Direction::OrbitRight:
         yaw -= yaw_speed*delta_time;
         break;
-    case Direction::Up:
-        center.y += zoom_speed*delta_time;
+    case Direction::MoveForward:
+        center -= move_speed * orientation * delta_time;
         break;
-    case Direction::Down:
-        center.y -= zoom_speed*delta_time;
+    case Direction::MoveBackward:
+        center += move_speed * orientation * delta_time;
+        break;
+    case Direction::MoveLeft:       
+        center -= move_speed * right * delta_time;
+        break;
+    case Direction::MoveRight:
+        center += move_speed * right * delta_time;
+        break;
+    case Direction::MoveUp:
+        center.y += move_speed*delta_time;
+        break;
+    case Direction::MoveDown:
+        center.y -= move_speed*delta_time;
+        break;
+    case Direction::ZoomIn:
+        distance -= zoom_speed*delta_time;
+        distance = std::min(max_zoom_distance, std::max(min_zoom_distance, distance));
+        break;
+    case Direction::ZoomOut:
+        distance += zoom_speed*delta_time;
+        distance = std::min(max_zoom_distance, std::max(min_zoom_distance, distance));
         break;
     }
     update_vectors();

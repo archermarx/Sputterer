@@ -14,7 +14,9 @@
 #include "vec3.hpp"
 
 enum class Direction {
-    Forward, Backward, Left, Right, Up, Down
+    MoveForward, MoveBackward, MoveLeft, MoveRight, MoveUp, MoveDown,
+    OrbitForward, OrbitBackward, OrbitLeft, OrbitRight,
+    ZoomIn, ZoomOut
 };
 
 enum class CameraMovement {
@@ -32,6 +34,7 @@ constexpr auto default_fov = 75.0f;
 constexpr auto default_yaw_speed = 100.0f;
 constexpr auto default_pitch_speed = 100.0f;
 constexpr auto default_zoom_speed = 0.5f;
+constexpr auto default_move_speed = 0.5f;
 
 constexpr auto min_zoom_distance = 0.01f;
 constexpr auto max_zoom_distance = 20.0f;
@@ -57,6 +60,7 @@ class Camera {
         float orbit_sensitivity{default_orbit_sensitivity};
         float pan_sensitivity{default_pan_sensitivity};
         float zoom_speed{default_zoom_speed};
+        float move_speed{default_move_speed};
         float fov{default_fov};
 
         // Returns the view matrix calculated using euler angles and the glfw look at matrix
