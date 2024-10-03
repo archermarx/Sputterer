@@ -50,5 +50,13 @@ target_compile_features(sputterer PUBLIC cxx_std_20)
 set_property(TARGET sputterer PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2 -g")
+
+# detect cxx compiler and set flags
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2 -g")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS "/Wall /O2")
+endif()
+
 set(CMAKE_CUDA_FLAGS "-std=c++20 -expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")
+
