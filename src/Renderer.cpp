@@ -4,8 +4,27 @@
 #include "vec3.hpp"
 #include "Triangle.cuh"
 
-void BVHRenderer::setup_shaders () {
-    draw_depth = scene->bvh_depth;
+void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
+    if (input.display) {
+        geometry.draw(camera, aspect_ratio);
+        particles.draw(camera, aspect_ratio);
+        bvh.draw(camera, aspect_ratio);
+        plume.draw(camera, aspect_ratio);
+    }
+}
+
+Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
+                    ParticleContainer &particles, SceneGeometry &geometry)
+    : bvh(scene), plume(plume), particles(particles), geometry(geometry)
+{
+    if (input.display) {
+        geometry.setup_shaders();
+        particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
+        plume.setup_shaders(input.chamber_length_m / 2);
+    }
+}
+
+BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(scene) {
     shader.load(shaders::bvh.vert, shaders::bvh.frag, shaders::bvh.geom);
     shader.use();
 
@@ -51,7 +70,7 @@ void BVHRenderer::draw_bvh (int depth, int node_idx) {
 }
 
 void BVHRenderer::draw (Camera camera, float aspect_ratio) {
-    if (draw_depth == 0 || !render) {
+    if (draw_depth == 0 || !enabled) {
         return;
     }
 

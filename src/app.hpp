@@ -114,11 +114,11 @@ namespace app {
             TableNextColumn();
             SliderFloat("##sputtered_particle_scale", &particles.scale, 0, 0.3);
             TableNextColumn();
-            Checkbox("Show bounding boxes", &bvh.render);
+            Checkbox("Show bounding boxes", &bvh.enabled);
             TableNextColumn();
             Text("Bounding box depth");
             TableNextColumn();
-            SliderInt("##bvh_depth", &bvh.draw_depth, 0, bvh.scene->bvh_depth);
+            SliderInt("##bvh_depth", &bvh.draw_depth, 0, bvh.draw_depth);
         }
         EndTable();
         End();
