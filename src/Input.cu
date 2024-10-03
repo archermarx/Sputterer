@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <unordered_map>
 
-#include "Input.hpp"
+#include "Input.h"
 
 namespace fs = std::filesystem;
 

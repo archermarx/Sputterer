@@ -1,15 +1,15 @@
-#ifndef SPUTTERER_APP_HPP
-#define SPUTTERER_APP_HPP
+#ifndef SPUTTERER_APP_H
+#define SPUTTERER_APP_H
 
-#include "Camera.hpp"
-#include "DepositionInfo.hpp"
-#include "Input.hpp"
-#include "ParticleContainer.cuh"
-#include "Surface.hpp"
-#include "ThrusterPlume.hpp"
-#include "Timer.hpp"
-#include "Window.hpp"
-#include "Renderer.hpp"
+#include "Camera.h"
+#include "DepositionInfo.h"
+#include "Input.h"
+#include "ParticleContainer.h"
+#include "Surface.h"
+#include "ThrusterPlume.h"
+#include "Timer.h"
+#include "Window.h"
+#include "Renderer.h"
 
 namespace app {
     // settings

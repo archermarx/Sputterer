@@ -12,21 +12,19 @@
 #include "imgui.h"
 
 // My headers (c++)
-#include "app.hpp"
-#include "Input.hpp"
-#include "Shader.hpp"
-#include "Surface.hpp"
-#include "Window.hpp"
-#include "ThrusterPlume.hpp"
-#include "Timer.hpp"
-#include "Constants.hpp"
-#include "DepositionInfo.hpp"
-#include "Renderer.hpp"
-
-// My headers (CUDA)
-#include "cuda.cuh"
-#include "ParticleContainer.cuh"
-#include "Triangle.cuh"
+#include "app.h"
+#include "Input.h"
+#include "Shader.h"
+#include "Surface.h"
+#include "Window.h"
+#include "ThrusterPlume.h"
+#include "Timer.h"
+#include "Constants.h"
+#include "DepositionInfo.h"
+#include "Renderer.h"
+#include "cuda_helpers.h"
+#include "ParticleContainer.h"
+#include "Triangle.h"
 
 using std::vector, std::string;
 

@@ -1,19 +1,15 @@
-//
-// Created by marksta on 4/30/24.
-//
-
 #include <complex>
-
-#include "gl_helpers.hpp"
 
 // header for erfi
 #include "../include/Faddeeva.hpp"
 
-#include "Constants.hpp"
-#include "ThrusterPlume.hpp"
-#include "Input.hpp"
-#include "ParticleContainer.cuh"
-#include "ShaderCode.hpp"
+#include "gl_helpers.h"
+#include "Camera.h"
+#include "Constants.h"
+#include "ThrusterPlume.h"
+#include "Input.h"
+#include "ParticleContainer.h"
+#include "ShaderCode.h"
 
 void ThrusterPlume::find_hits (Input &input,
                                Scene &h_scene,
@@ -238,7 +234,7 @@ void ThrusterPlume::setup_shaders (float length) {
     glBindVertexArray(0);
 }
 
-void ThrusterPlume::draw (Camera camera, float aspect_ratio) {
+void ThrusterPlume::draw (Camera &camera, float aspect_ratio) {
     particles.draw(camera, aspect_ratio);
 
     if (render) {

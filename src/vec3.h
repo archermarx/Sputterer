@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SPUTTERER_VEC3_HPP
-#define SPUTTERER_VEC3_HPP
+#ifndef SPUTTERER_VEC3_H
+#define SPUTTERER_VEC3_H
 
 #include <glm/gtc/type_ptr.hpp>
 #include <iosfwd>

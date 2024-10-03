@@ -1,22 +1,20 @@
-#pragma once
-#ifndef SPUTTERER_THRUSTERPLUME_HPP
-#define SPUTTERER_THRUSTERPLUME_HPP
+#ifndef SPUTTERER_THRUSTERPLUME_H
+#define SPUTTERER_THRUSTERPLUME_H
 
 #include <array>
 
-#include "vec3.hpp"
-#include "Shader.hpp"
-#include "Triangle.cuh"
-#include "ParticleContainer.cuh"
+#include "vec3.h"
+#include "Shader.h"
+#include "Triangle.h"
+#include "ParticleContainer.h"
+
+class Input;
 
 struct CurrentFraction {
     double main;
     double scattered;
     double cex;
 };
-
-class Input;
-
 
 class ThrusterPlume {
     public:
@@ -72,7 +70,7 @@ class ThrusterPlume {
         [[nodiscard]] CurrentFraction current_fractions () const;
 
         void setup_shaders (float len);
-        void draw (Camera cam, float aspect_ratio);
+        void draw (Camera &cam, float aspect_ratio);
 
     private:
         unsigned int vbo{}, vao{};
@@ -82,4 +80,4 @@ struct Species;
 
 double sputtering_yield (double energy, double angle, Species incident, Species target);
 
-#endif // SPUTTERER_THRUSTERPLUME_HPP
+#endif // SPUTTERER_THRUSTERPLUME_H

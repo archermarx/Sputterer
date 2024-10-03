@@ -1,14 +1,13 @@
-#pragma once
-#ifndef SPUTTERER_INPUT_HPP
-#define SPUTTERER_INPUT_HPP
+#ifndef SPUTTERER_INPUT_H
+#define SPUTTERER_INPUT_H
 
 #include <string>
 #include <array>
 
-#include "Surface.hpp"
-#include "Window.hpp"
-#include "ThrusterPlume.hpp"
-#include "vec3.hpp"
+#include "Surface.h"
+#include "Window.h"
+#include "ThrusterPlume.h"
+#include "vec3.h"
 
 struct Input {
     // simulation variables

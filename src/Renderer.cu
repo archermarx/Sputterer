@@ -1,9 +1,10 @@
-#include "Renderer.hpp"
-#include "Shader.hpp"
-#include "Camera.hpp"
-#include "vec3.hpp"
-#include "Triangle.cuh"
-#include "gl_helpers.hpp"
+#include "Renderer.h"
+#include "Shader.h"
+#include "ShaderCode.h"
+#include "Camera.h"
+#include "vec3.h"
+#include "Triangle.h"
+#include "gl_helpers.h"
 
 Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
         ParticleContainer &particles, SceneGeometry &geometry)

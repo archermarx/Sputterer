@@ -1,8 +1,8 @@
 #include <iostream>
-#include "Triangle.cuh"
-#include "ShaderCode.hpp"
+#include "Triangle.h"
+#include "ShaderCode.h"
 
-#include "gl_helpers.hpp"
+#include "gl_helpers.h"
 
 std::ostream &operator<< (std::ostream &os, const float3 &v) {
     os << "[" << v.x << ", " << v.y << ", " << v.z << "]";

@@ -1,4 +1,3 @@
-#pragma once
 #ifndef SPUTTERER_TIMER_H
 #define SPUTTERER_TIMER_H
 

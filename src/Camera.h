@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SPUTTERER_CAMERA_HPP
-#define SPUTTERER_CAMERA_HPP
+#ifndef SPUTTERER_CAMERA_H
+#define SPUTTERER_CAMERA_H
 
 #include <iosfwd>
 
@@ -11,7 +11,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "vec3.hpp"
+#include "vec3.h"
 
 enum class Direction {
     MoveForward, MoveBackward, MoveLeft, MoveRight, MoveUp, MoveDown,

@@ -1,14 +1,14 @@
 #pragma once
-#ifndef SPUTTERER_TRIANGLE_CUH
-#define SPUTTERER_TRIANGLE_CUH
+#ifndef SPUTTERER_TRIANGLE_H
+#define SPUTTERER_TRIANGLE_H
 
 #include <iosfwd>
 #include <thrust/host_vector.h>
-#include <Shader.hpp>
 
+#include "Shader.h"
+#include "vec3.h"
 using thrust::host_vector;
 
-#include "vec3.hpp"
 
 std::ostream &operator<< (std::ostream &os, const float3 &v);
 

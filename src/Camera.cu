@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "Camera.hpp"
+#include "Camera.h"
 
 // Returns the view matrix calculated using euler angles and the lookat matrix
 glm::mat4 Camera::get_view_matrix () const {

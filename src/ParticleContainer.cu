@@ -3,12 +3,13 @@
 #include <thrust/distance.h>
 #include <thrust/partition.h>
 
-#include "ParticleContainer.cuh"
-#include "cuda_helpers.cuh"
-#include "gl_helpers.hpp"
-#include "Constants.hpp"
-#include "Input.hpp"
-#include "ShaderCode.hpp"
+#include "Camera.h"
+#include "ParticleContainer.h"
+#include "cuda_helpers.h"
+#include "gl_helpers.h"
+#include "Constants.h"
+#include "Input.h"
+#include "ShaderCode.h"
 
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
@@ -87,7 +88,7 @@ void ParticleContainer::setup_shaders (vec3 color, float scale) {
     glGenBuffers(1, &buffer);
 }
 
-void ParticleContainer::draw (Camera camera, float aspect_ratio) {
+void ParticleContainer::draw (Camera &camera, float aspect_ratio) {
     if (!render || num_particles <= 0) {
         return;
     }

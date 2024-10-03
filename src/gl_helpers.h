@@ -1,5 +1,5 @@
-#ifndef _GL_HELPERS_H
-#define _GL_HELPERS_H
+#ifndef SPUTTERER_GL_HELPERS_H
+#define SPUTTERER_GL_HELPERS_H
 
 #include <stdio.h>
 #include <glad/glad.h>
@@ -32,3 +32,4 @@ inline void gl_check(const char *file, int line) {
 
 
 #endif
+

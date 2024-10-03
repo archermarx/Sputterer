@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SPUTTERER_PARTICLECONTAINER_CUH
-#define SPUTTERER_PARTICLECONTAINER_CUH
+#ifndef SPUTTERER_PARTICLECONTAINER_H
+#define SPUTTERER_PARTICLECONTAINER_H
 
 // STL headers
 #include <iostream>
@@ -16,11 +16,11 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "Surface.hpp"
-#include "Shader.hpp"
+#include "Surface.h"
+#include "Shader.h"
 
-#include "cuda.cuh"
-#include "Triangle.cuh"
+#include "cuda.h"
+#include "Triangle.h"
 
 using thrust::host_vector, thrust::device_vector;
 
@@ -76,7 +76,7 @@ class ParticleContainer {
         Shader shader{};
         bool render = true;
 
-        void draw (Camera cam, float aspect_ratio);
+        void draw (Camera &cam, float aspect_ratio);
 
         void setup_shaders (vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
 

@@ -1,15 +1,12 @@
-#pragma once
+#ifndef SPUTTERER_MESH_H
+#define SPUTTERER_MESH_H
 
-#ifndef SPUTTERER_MESH_HPP
-#define SPUTTERER_MESH_HPP
-
-// Standard libraries
 #include <cstddef>
 #include <string>
 #include <vector>
 #include <memory>
 
-#include "vec3.hpp"
+#include "vec3.h"
 
 using std::string, std::vector;
 

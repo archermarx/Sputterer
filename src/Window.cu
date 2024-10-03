@@ -7,7 +7,7 @@
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
 
-#include "Window.hpp"
+#include "Window.h"
 
 void Window::enable () {
     glfwInit();

@@ -1,9 +1,5 @@
-//
-// Created by marksta on 5/2/24.
-//
-#pragma once
-#ifndef SPUTTERER_CONSTANTS_HPP
-#define SPUTTERER_CONSTANTS_HPP
+#ifndef SPUTTERER_CONSTANTS_H
+#define SPUTTERER_CONSTANTS_H
 
 struct Species {
     double mass;
@@ -24,4 +20,4 @@ namespace constants {
     constexpr Species carbon{.mass = 12.011, .atomic_number = 6};
 }
 
-#endif //SPUTTERER_CONSTANTS_HPP
+#endif //SPUTTERER_CONSTANTS_H

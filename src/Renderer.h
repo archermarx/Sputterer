@@ -1,16 +1,16 @@
-#ifndef SPUTTERER_RENDERER_HPP
-#define SPUTTERER_RENDERER_HPP
+#ifndef SPUTTERER_RENDERER_H
+#define SPUTTERER_RENDERER_H
 
 #include <vector>
 
-#include "Camera.hpp"
-#include "Shader.hpp"
-#include "Triangle.cuh"
-#include "ThrusterPlume.hpp"
-#include "ParticleContainer.cuh"
-#include "Surface.hpp"
-#include "vec3.hpp"
-#include "Input.hpp"
+#include "Camera.h"
+#include "Shader.h"
+#include "Triangle.h"
+#include "ThrusterPlume.h"
+#include "ParticleContainer.h"
+#include "Surface.h"
+#include "vec3.h"
+#include "Input.h"
 
 constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
 constexpr float carbon_particle_scale = 0.05;
@@ -69,4 +69,4 @@ class Renderer {
         void draw (Input &input, Camera &camera, float aspect_ratio);
 };
 
-#endif // SPUTTERER_RENDERER_HPP
+#endif // SPUTTERER_RENDERER_H

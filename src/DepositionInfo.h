@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "Constants.hpp"
-#include "Input.hpp"
-#include "Timer.hpp"
+#include "Constants.h"
+#include "Input.h"
+#include "Timer.h"
 
 struct DepositionInfo {
     std::string filename;

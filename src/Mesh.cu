@@ -4,9 +4,9 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#include "Mesh.hpp"
-#include "Models.hpp"
-#include "gl_helpers.hpp"
+#include "Mesh.h"
+#include "Models.h"
+#include "gl_helpers.h"
 
 std::ostream &operator<< (std::ostream &os, const Vertex &v) {
   os << "{ pos: " << v.pos << ", norm: " << v.norm << "}";

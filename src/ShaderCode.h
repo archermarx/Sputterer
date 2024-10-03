@@ -1,5 +1,5 @@
-#ifndef SPUTTERER_SHADERCODE_HPP
-#define SPUTTERER_SHADERCODE_HPP
+#ifndef SPUTTERER_SHADERCODE_H
+#define SPUTTERER_SHADERCODE_H
 
 // GLSL shader code used in other places
 struct ShaderCode {
@@ -389,4 +389,4 @@ void main() {
 
 }
 
-#endif // SPUTTERER_SHADERCODE_HPP
+#endif // SPUTTERER_SHADERCODE_H

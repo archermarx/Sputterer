@@ -4,11 +4,12 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-#include "Shader.hpp"
-#include "ShaderCode.hpp"
 #include "glad/glad.h"
-#include "gl_helpers.hpp"
+
+#include "gl_helpers.h"
+#include "Camera.h"
+#include "Shader.h"
+#include "ShaderCode.h"
 
 using std::string;
 

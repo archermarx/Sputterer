@@ -1,11 +1,13 @@
 #pragma once
-#ifndef SPUTTERER_SHADER_HPP
-#define SPUTTERER_SHADER_HPP
+#ifndef SPUTTERER_SHADER_H
+#define SPUTTERER_SHADER_H
 
 #include <string>
 #include <vector>
 
-#include "Camera.hpp"
+//#include "Camera.h"
+
+class Camera;
 
 unsigned int create_shader_program (const std::vector<std::string> &sources, const std::vector<unsigned int> &types);
 unsigned int compile_shader (const char *source, unsigned int type);
