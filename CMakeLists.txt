@@ -38,7 +38,7 @@ file(GLOB sources
 
 add_executable(sputterer ${sources})
 target_link_libraries(sputterer PRIVATE tomlplusplus::tomlplusplus glfw)
-target_compile_features(sputterer PUBLIC cxx_std_20)
+target_compile_features(sputterer PUBLIC cxx_std_17)
 
 set_property(TARGET sputterer PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
@@ -51,5 +51,5 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "/Wall /O2")
 endif()
 
-set(CMAKE_CUDA_FLAGS "-std=c++20 -expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")
+set(CMAKE_CUDA_FLAGS "-expt-relaxed-constexpr -Xcudafe=\"--diag_suppress=20012\"")
 
