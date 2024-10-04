@@ -40,7 +40,7 @@ struct DeviceParticleContainer {
 };
 
 constexpr float DEFAULT_SCALE = 0.1f;
-constexpr vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
+const vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
 
 class ParticleContainer {
     // Holds information for many particles of a specific species.

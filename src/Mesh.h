@@ -29,11 +29,7 @@ struct TriElement {
 
   TriElement() = default;
 
-  TriElement(int a, int b, int c) {
-    i1 = a, i2 = b, i3 = c;
-  }
-  
-  TriElement(unsigned long a, unsigned long b, unsigned long c) {
+  TriElement(size_t a, size_t b, size_t c) {
     i1 = a, i2 = b, i3 = c;
   }
 

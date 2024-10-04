@@ -12,8 +12,8 @@
 #include "vec3.h"
 #include "Input.h"
 
-constexpr vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
-constexpr float carbon_particle_scale = 0.05;
+const vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
+const float carbon_particle_scale = 0.05;
 
 struct Grid {
     float scale = 6.0;
