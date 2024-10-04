@@ -1,7 +1,3 @@
-// defines to get TOML working with nvcc
-#define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN 1
-#define TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED 1
-
 #include <iostream>
 #include <filesystem>
 #include <unordered_map>

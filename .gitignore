@@ -7,3 +7,4 @@ build
 cmake-build-debug
 *.csv
 .vs
+out
