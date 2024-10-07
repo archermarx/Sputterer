@@ -39,8 +39,6 @@ Shader::Shader(const char *source, unsigned int type) {
         std::cout << "ERROR: " << this->type_str() << " shader compilation failed" << std::endl;
         glGetShaderInfoLog(this->id, shader_log_size, NULL, info_log);
         std::cout << "INFO: " << info_log << std::endl;
-    } else {
-        std::cout << this->type_str() << " shader compiled successfully" << std::endl;
     }
 }
 
@@ -73,8 +71,6 @@ void ShaderProgram::link(ShaderCode code, const std::string name) {
         std::cout << "ERROR: shader program " << name << " linking failed" << std::endl;
         glGetProgramInfoLog(this->id, shader_log_size, nullptr, info_log);
         std::cout << "INFO: " << info_log << std::endl;
-    } else {
-        std::cout << "shader program " << name << " linked successfully" << std::endl;
     }
 }
 

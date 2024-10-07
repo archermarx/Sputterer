@@ -25,8 +25,8 @@ struct Grid {
 
 class GeometryRenderer {
   public:
-    vector<Surface> surfaces;
-    GeometryRenderer(std::vector<Surface> surfaces);
+    vector<Surface> &surfaces;
+    GeometryRenderer(std::vector<Surface> &surfaces);
     void draw (Camera &camera, float aspect_ratio);
 
   private:

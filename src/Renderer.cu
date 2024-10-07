@@ -28,7 +28,7 @@ void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
     }
 }
 
-GeometryRenderer::GeometryRenderer(std::vector<Surface> surfaces) : surfaces(surfaces) {
+GeometryRenderer::GeometryRenderer(std::vector<Surface> &surfaces) : surfaces(surfaces) {
     shader.link(shaders::mesh, "geometry");
     for (auto &surf : surfaces) {
         surf.mesh.set_buffers();
