@@ -310,11 +310,8 @@ namespace app {
     bool panning = false;
 
     void mouse_cursor_callback (GLFWwindow *window, double xpos_in, double ypos_in) {
-
         auto io = ImGui::GetIO();
-        if (io.WantCaptureMouse) {
-            return;
-        }
+        if (io.WantCaptureMouse) return;
 
         auto x_pos = static_cast<float>(xpos_in);
         auto y_pos = static_cast<float>(ypos_in);

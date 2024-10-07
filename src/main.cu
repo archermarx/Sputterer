@@ -43,7 +43,7 @@ int main (int argc, char *argv[]) {
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
 
-    auto surfaces = input.surfaces;
+    std::vector<Surface>& surfaces = input.surfaces;
 
     DepositionInfo deposition_info("deposition.csv");
 

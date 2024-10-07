@@ -6,7 +6,7 @@
 #include "gl_helpers.h"
 
 Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
-        ParticleContainer &particles, std::vector<Surface> surfaces)
+        ParticleContainer &particles, std::vector<Surface> &surfaces)
     : bvh(scene)
     , plume(plume)
     , particles(particles)

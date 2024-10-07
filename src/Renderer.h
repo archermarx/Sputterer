@@ -24,13 +24,12 @@ struct Grid {
 };
 
 class GeometryRenderer {
-  public:
-    vector<Surface> &surfaces;
-    GeometryRenderer(std::vector<Surface> &surfaces);
-    void draw (Camera &camera, float aspect_ratio);
-
-  private:
-    ShaderProgram shader;
+    public:
+        vector<Surface> &surfaces;
+        GeometryRenderer(std::vector<Surface> &surfaces);
+        void draw (Camera &camera, float aspect_ratio);
+    private:
+        ShaderProgram shader;
 };
 
 class GridRenderer {
@@ -75,7 +74,7 @@ class Renderer {
         GridRenderer grid;
 
         Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
-                  ParticleContainer &particles, std::vector<Surface> surfaces);
+                ParticleContainer &particles, std::vector<Surface> &surfaces);
 
         void draw (Input &input, Camera &camera, float aspect_ratio);
 };
