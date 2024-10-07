@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SPUTTERER_GL_HELPERS_H
 #define SPUTTERER_GL_HELPERS_H
 
@@ -20,15 +21,7 @@ const static std::map<GLenum, std::string> GL_ERRORS = {
     {0x0507, "GL_CONTEXT_LOST"}
 };
 
-inline void gl_check(const char *file, int line) {
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        std::string errString(GL_ERRORS.at(err));
-        fprintf(stderr, "OpenGL Error %x: %s. In file '%s' on line %d\n", err, errString.c_str(), file, line);
-        fflush(stderr);
-        exit(err);
-    }
-}
+void gl_check (const char *file, int line);
 
 
 #endif

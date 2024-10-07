@@ -3,6 +3,8 @@
 // header for erfi
 #include "../include/Faddeeva.hpp"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include "gl_helpers.h"
 #include "Camera.h"
 #include "Constants.h"
@@ -10,6 +12,9 @@
 #include "Input.h"
 #include "ParticleContainer.h"
 #include "ShaderCode.h"
+
+ThrusterPlume::ThrusterPlume(PlumeInputs inputs)
+    : inputs(inputs) {}
 
 void ThrusterPlume::find_hits (Input &input,
                                Scene &h_scene,
@@ -23,9 +28,9 @@ void ThrusterPlume::find_hits (Input &input,
     host_vector<float> ws;
 
     // plume coordinate system
-    auto up = vec3{0.0, 1.0, 0.0};
-    auto right = cross(direction, up);
-    up = cross(right, direction);
+    auto up = glm::vec3{0.0, 1.0, 0.0};
+    auto right = cross(inputs.direction, up);
+    up = cross(right, inputs.direction);
 
     auto incident = constants::xenon;
     auto target = constants::carbon;
@@ -52,17 +57,17 @@ void ThrusterPlume::find_hits (Input &input,
             double div_angle, beam_energy;
             if (u < main_fraction) {
                 div_angle = main_divergence_angle();
-                beam_energy = beam_energy_eV;
+                beam_energy = inputs.beam_energy_eV;
             } else {
                 div_angle = scattered_divergence_angle();
-                beam_energy = scattered_energy_eV;
+                beam_energy = inputs.scattered_energy_eV;
             }
 
             auto azimuth = rand_uniform(0, 2*constants::pi);
             auto elevation = abs(rand_normal(0, div_angle/sqrt(2.0)));
 
-            auto dir = cos(elevation)*direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
-            Ray r{make_float3(origin + dir*1e-3f), normalize(make_float3(dir))};
+            auto dir = cos(elevation)*inputs.direction + sin(elevation)*(cos(azimuth)*right + sin(azimuth)*up);
+            Ray r{make_float3(inputs.origin + dir*1e-3f), normalize(make_float3(dir))};
 
             auto hit = r.cast(h_scene);
 
@@ -82,7 +87,7 @@ void ThrusterPlume::find_hits (Input &input,
                     auto hit_angle = acos(cos_hit_angle);
 
                     auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
-                    auto n_emit = yield*beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
+                    auto n_emit = yield*inputs.beam_current_A*beam_fraction/q_e/num_rays/input.particle_weight;
                     if (n_emit > max_emit)
                         max_emit = n_emit;
 
@@ -109,15 +114,15 @@ void ThrusterPlume::find_hits (Input &input,
     particles.add_particles(hit_positions, vel, ws);
 }
 
-[[maybe_unused]]  vec2 ThrusterPlume::convert_to_thruster_coords (const vec3 position) const {
+[[maybe_unused]]  glm::vec2 ThrusterPlume::convert_to_thruster_coords (const glm::vec3 position) const {
 
     // vector from plume origin to position
-    auto offset = position - this->origin;
+    auto offset = position - inputs.origin;
     auto radius = glm::length(offset);
 
     // angle between this vector and plume direction
-    auto dot_prod = glm::dot(offset, this->direction);
-    auto cos_angle = dot_prod/(radius*glm::length(this->direction));
+    auto dot_prod = glm::dot(offset, inputs.direction);
+    auto cos_angle = dot_prod/(radius*glm::length(inputs.direction));
     auto angle = acos(cos_angle);
 
     return {radius, angle};
@@ -145,13 +150,13 @@ void ThrusterPlume::find_hits (Input &input,
 }
 
 double ThrusterPlume::scattered_divergence_angle () const {
-    return (this->main_divergence_angle())/(this->model_params[1]);
+    return (this->main_divergence_angle())/(inputs.model_params[1]);
 }
 
 constexpr double torr_to_pa = 133.322;
 
 double ThrusterPlume::main_divergence_angle () const {
-    return this->model_params[2]*torr_to_pa*this->background_pressure_Torr + this->model_params[3];
+    return inputs.model_params[2]*torr_to_pa*inputs.background_pressure_Torr + inputs.model_params[3];
 }
 
 CurrentFraction ThrusterPlume::current_fractions () const {
@@ -159,10 +164,10 @@ CurrentFraction ThrusterPlume::current_fractions () const {
     using namespace constants;
 
     // divergence angles
-    const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = this->model_params;
+    const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = inputs.model_params;
 
     // neutral density
-    auto neutral_density = t4*this->background_pressure_Torr + t5;
+    auto neutral_density = t4*inputs.background_pressure_Torr + t5;
 
     // get fraction of current in beam vs in main
     auto exp_factor = exp(-1.0*neutral_density*sigma_cex*1e-20);
@@ -217,17 +222,17 @@ double sputtering_yield (double energy, double angle, Species incident, Species 
 
 void ThrusterPlume::setup_shaders (float length) {
     particles.setup_shaders({0.2f, 0.75f, 0.94f}, 0.15);
-    cone_shader.load(shaders::plume.vert, shaders::plume.frag, shaders::plume.geom);
+    cone_shader.link(shaders::plume);
     cone_shader.use();
     cone_shader.set_uniform("length", length);
-    cone_shader.set_uniform("direction", direction);
+    cone_shader.set_uniform("direction", inputs.direction);
 
     glGenBuffers(1, &vbo);
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    float points[] = {this->origin.x, this->origin.y, this->origin.z};
+    float points[] = {inputs.origin.x, inputs.origin.y, inputs.origin.z};
     glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(points), 0);

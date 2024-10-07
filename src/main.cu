@@ -42,13 +42,14 @@ int main (int argc, char *argv[]) {
     host_vector<Triangle> h_triangles;
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
-    auto &geometry = input.geometry;
+
+    auto surfaces = input.surfaces;
 
     DepositionInfo deposition_info("deposition.csv");
 
     // TODO: can this be simplified and moved into a function?
-    for (size_t id = 0; id < geometry.surfaces.size(); id++) {
-        const auto &surf = geometry.surfaces.at(id);
+    for (size_t id = 0; id < surfaces.size(); id++) {
+        const auto &surf = surfaces.at(id);
         const auto &mesh = surf.mesh;
         const auto &material = surf.material;
         h_materials.push_back(surf.material);
@@ -106,7 +107,7 @@ int main (int argc, char *argv[]) {
     host_vector<HitInfo> hits;
     host_vector<float3> hit_positions;
     host_vector<float> num_emit;
-    auto plume = input.plume;
+    ThrusterPlume plume(input.plume);
     plume.find_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
     // Copy plume results to GPU
@@ -115,7 +116,7 @@ int main (int argc, char *argv[]) {
 
     // Create particle container for carbon atoms and renderer
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
-    Renderer renderer(input, &h_scene, plume, particles, geometry);
+    Renderer renderer(input, &h_scene, plume, particles, surfaces);
 
     // Create timing objects
     size_t step = 0;

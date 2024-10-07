@@ -3,6 +3,20 @@
 
 #include "Camera.h"
 
+Camera::Camera(glm::vec3 position)
+    : orientation(glm::normalize(position))
+    , distance(glm::length(position)) {
+    update_vectors();
+}
+
+void Camera::initialize(float dist) {
+    orientation = glm::normalize(glm::vec3(dist));
+    distance = 2.0f * dist;
+    yaw = -135;
+    pitch = 30;
+    update_vectors();
+}
+
 // Returns the view matrix calculated using euler angles and the lookat matrix
 glm::mat4 Camera::get_view_matrix () const {
     return glm::lookAt(center + orientation*distance, center, up);

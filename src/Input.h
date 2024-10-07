@@ -6,8 +6,7 @@
 
 #include "Surface.h"
 #include "Window.h"
-#include "ThrusterPlume.h"
-#include "vec3.h"
+#include "PlumeInputs.h"
 
 struct Input {
     // simulation variables
@@ -18,16 +17,16 @@ struct Input {
     bool display = false;
 
     // User-specified geometry
-    SceneGeometry geometry;
+    std::vector<Surface> surfaces;
     
     // Chamber geometry
     double chamber_radius_m = -1.0;
     double chamber_length_m = -1.0;
 
     // Plume model inputs
-    ThrusterPlume plume{};
+    PlumeInputs plume;
 
-    // particle weight
+    // Macroparticle weight
     double particle_weight{1.0f};
 };
 

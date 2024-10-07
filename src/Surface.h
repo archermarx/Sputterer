@@ -3,10 +3,10 @@
 
 #include <string>
 #include <vector>
+#include <glm/vec3.hpp>
 
 #include "Mesh.h"
 #include "Shader.h"
-#include "vec3.h"
 
 using std::vector, std::string;
 
@@ -28,14 +28,11 @@ struct Surface {
   // Geometric options
   Mesh mesh{};
   Transform transform{};
-  vec3 color{0.5f, 0.5f, 0.5f};
+  glm::vec3 color{0.5f, 0.5f, 0.5f};
 };
 
-struct SceneGeometry {
-    vector<Surface> surfaces;    
-    Shader shader;
-    void setup_shaders();
-    void draw(Camera &camera, float aspect_ratio);
-};
+struct Camera;
+
+
 
 #endif

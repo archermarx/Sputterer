@@ -11,8 +11,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "vec3.h"
-
 enum class Direction {
     MoveForward, MoveBackward, MoveLeft, MoveRight, MoveUp, MoveDown,
     OrbitForward, OrbitBackward, OrbitLeft, OrbitRight,
@@ -42,12 +40,12 @@ constexpr auto max_zoom_distance = 20.0f;
 class Camera {
     public:
         // camera attributes
-        vec3 orientation;
-        vec3 front{0.0f, 0.0f, -1.0f};
-        vec3 up{0.0f, 1.0f, 0.0f};
-        vec3 right{1.0f, 0.0f, 0.0f};
-        vec3 world_up{0.0f, 1.0f, 0.0f};
-        vec3 center{0.0f, 0.0f, 0.0f};
+        glm::vec3 orientation;
+        glm::vec3 front{0.0f, 0.0f, -1.0f};
+        glm::vec3 up{0.0f, 1.0f, 0.0f};
+        glm::vec3 right{1.0f, 0.0f, 0.0f};
+        glm::vec3 world_up{0.0f, 1.0f, 0.0f};
+        glm::vec3 center{0.0f, 0.0f, 0.0f};
 
         // Euler angles
         float yaw{default_yaw};
@@ -84,19 +82,10 @@ class Camera {
         void update_vectors (CameraMovement movement_type = CameraMovement::Orbit);
 
         // Initialize variables
-        void initialize(double dist) {
-            orientation = glm::normalize(glm::vec3(dist));
-            distance = 2.0f * dist;
-            yaw = -135;
-            pitch = 30;
-            update_vectors();
-        }
+        void initialize (float dist);
 
         // Constructor with vectors
-        explicit Camera (vec3 position = {0.0f, 0.0f, 0.0f})
-            : orientation(glm::normalize(position)), distance(glm::length(position)) {
-                update_vectors();
-            }
+        explicit Camera(glm::vec3 position = {0.0f, 0.0f, 0.0f});
 };
 
 #endif

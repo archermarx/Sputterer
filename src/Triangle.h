@@ -4,11 +4,11 @@
 
 #include <iosfwd>
 #include <thrust/host_vector.h>
+#include <glm/glm.hpp>
 
 #include "Shader.h"
-#include "vec3.h"
-using thrust::host_vector;
 
+using thrust::host_vector;
 
 std::ostream &operator<< (std::ostream &os, const float3 &v);
 
@@ -48,7 +48,7 @@ inline __host__ __device__ float3 normalize (const float3 v) {
     return v/length(v);
 }
 
-inline __host__ __device__ float3 make_float3 (const vec3 &v) {
+inline __host__ __device__ float3 make_float3 (const glm::vec3 &v) {
     return {v.x, v.y, v.z};
 }
 

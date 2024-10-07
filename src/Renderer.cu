@@ -2,16 +2,17 @@
 #include "Shader.h"
 #include "ShaderCode.h"
 #include "Camera.h"
-#include "vec3.h"
 #include "Triangle.h"
 #include "gl_helpers.h"
 
 Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
-        ParticleContainer &particles, SceneGeometry &geometry)
-    : bvh(scene), plume(plume), particles(particles), geometry(geometry), grid()
-{
+        ParticleContainer &particles, std::vector<Surface> surfaces)
+    : bvh(scene)
+    , plume(plume)
+    , particles(particles)
+    , grid()
+    , geometry(surfaces) {
     if (input.display) {
-        geometry.setup_shaders();
         particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
         plume.setup_shaders(input.chamber_length_m / 2);
     }
@@ -27,8 +28,28 @@ void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
     }
 }
 
+GeometryRenderer::GeometryRenderer(std::vector<Surface> surfaces) : surfaces(surfaces) {
+    shader.link(shaders::mesh, "geometry");
+    for (auto &surf : surfaces) {
+        surf.mesh.set_buffers();
+    }
+}
+
+void GeometryRenderer::draw(Camera &camera, float aspect_ratio) {
+    shader.use();
+    shader.set_uniform("view", camera.get_view_matrix());
+    shader.set_uniform("projection", camera.get_projection_matrix(aspect_ratio));
+    shader.set_uniform("viewPos", camera.distance * camera.orientation, true);
+    for (const auto &surface : surfaces) {
+        shader.set_uniform("model", surface.transform.get_matrix());
+        shader.set_uniform("objectColor", surface.color);
+        surface.mesh.draw();
+    }
+}
+
+
 GridRenderer::GridRenderer () {
-    shader.load(shaders::grid);
+    shader.link(shaders::grid, "grid");
     shader.use();
     
     glGenBuffers(1, &vbo);
@@ -80,7 +101,7 @@ void GridRenderer::draw (Camera &camera, float aspect_ratio) {
 }
 
 BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(scene) {
-    shader.load(shaders::bvh);
+    shader.link(shaders::bvh, "bvh");
     shader.use();
 
     glGenBuffers(1, &vbo);
@@ -95,7 +116,7 @@ BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(sc
     glBindVertexArray(0);
 }
 
-void BVHRenderer::draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo) {
+void BVHRenderer::draw_box (ShaderProgram &shader, BBox &box, unsigned int &vao, unsigned int &vbo) {
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     auto center = box.center();
@@ -107,9 +128,7 @@ void BVHRenderer::draw_box (Shader &shader, BBox &box, unsigned int &vao, unsign
 }
 
 void BVHRenderer::draw_bvh (int depth, int node_idx) {
-    if (depth == 0) {
-        return;
-    }
+    if (depth == 0) return;
 
     auto &node = this->scene->nodes[node_idx];
     // draw current box
@@ -125,9 +144,7 @@ void BVHRenderer::draw_bvh (int depth, int node_idx) {
 }
 
 void BVHRenderer::draw (Camera &camera, float aspect_ratio) {
-    if (draw_depth == 0 || !enabled) {
-        return;
-    }
+    if (draw_depth == 0 || !enabled) return;
 
     shader.use();
     shader.set_uniform("camera", camera.get_matrix(aspect_ratio));

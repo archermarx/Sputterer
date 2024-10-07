@@ -72,9 +72,9 @@ void ParticleContainer::copy_to_cpu () {
     weight = host_vector<float>(d_weight.begin(), d_weight.begin() + num_particles);
 }
 
-void ParticleContainer::setup_shaders (vec3 color, float scale) {
+void ParticleContainer::setup_shaders (glm::vec3 color, float scale) {
     // Load particle shader
-    shader.load(shaders::particle.vert, shaders::particle.frag);
+    shader.link(shaders::particle);
     shader.use();
     // TODO: have scale controlled by a slider
     this->scale = scale;
@@ -99,7 +99,7 @@ void ParticleContainer::draw (Camera &camera, float aspect_ratio) {
     // enable shader and set uniforms
     shader.use();
     // Set particle scale
-    vec3 scale_vec{this->scale};
+    glm::vec3 scale_vec{this->scale};
     shader.set_uniform("scale", scale_vec);
     shader.set_uniform("cameraRight", camera.right);
     shader.set_uniform("cameraUp", camera.up);
@@ -110,13 +110,13 @@ void ParticleContainer::draw (Camera &camera, float aspect_ratio) {
     GL_CHECK(glBindVertexArray(vao));
 
     // Send over model matrix data
-    auto mat_vector_size = static_cast<GLsizei>(this->num_particles*sizeof(vec3));
+    auto mat_vector_size = static_cast<GLsizei>(this->num_particles*sizeof(glm::vec3));
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, this->buffer));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, mat_vector_size, &position[0], GL_DYNAMIC_DRAW));
 
     // Set attribute pointers for translation
     GL_CHECK(glEnableVertexAttribArray(2));
-    GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), nullptr));
+    GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr));
     GL_CHECK(glVertexAttribDivisor(2, 1));
 
     // Bind element array buffer

@@ -10,7 +10,11 @@ namespace fs = std::filesystem;
 #include "gl_helpers.h"
 
 std::ostream &operator<< (std::ostream &os, const Vertex &v) {
-  os << "{ pos: " << v.pos << ", norm: " << v.norm << "}";
+    os << "{ pos: "
+       << "[" << v.pos[0] << ", " << v.pos[1] << ", " << v.pos[2] << "]"
+       << ", norm: " 
+       << "[" << v.norm[0] << ", " << v.norm[1] << ", " << v.norm[2] << "]"
+       << "}";
   return os;
 }
 
@@ -142,7 +146,7 @@ void Mesh::read_from_str (const string &str) {
       auto c = vertexCoords.at(i3);
 
       // Compute face normal and add to all three vertex normals
-      vec3 faceNorm = glm::normalize(glm::cross((b - a), (c - a)));
+      glm::vec3 faceNorm = glm::normalize(glm::cross((b - a), (c - a)));
       vertices.at(i1).norm += faceNorm;
       vertices.at(i2).norm += faceNorm;
       vertices.at(i3).norm += faceNorm;

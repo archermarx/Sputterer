@@ -16,10 +16,10 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
+#include <glm/glm.hpp>
 #include "Surface.h"
 #include "Shader.h"
-
-#include "cuda.h"
+#include "cuda_helpers.h"
 #include "Triangle.h"
 
 using thrust::host_vector, thrust::device_vector;
@@ -40,7 +40,7 @@ struct DeviceParticleContainer {
 };
 
 constexpr float DEFAULT_SCALE = 0.1f;
-const vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
+const glm::vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
 
 class ParticleContainer {
     // Holds information for many particles of a specific species.
@@ -70,15 +70,15 @@ class ParticleContainer {
         device_vector<float> d_tmp;
 
         // Particle mesh
-        vec3 color = DEFAULT_COLOR;
+        glm::vec3 color = DEFAULT_COLOR;
         float scale = DEFAULT_SCALE;
         Mesh mesh{};
-        Shader shader{};
+        ShaderProgram shader;
         bool render = true;
 
         void draw (Camera &cam, float aspect_ratio);
 
-        void setup_shaders (vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
+        void setup_shaders (glm::vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
 
         // Constructor
         ParticleContainer () {};

@@ -9,10 +9,11 @@
 #include "ThrusterPlume.h"
 #include "ParticleContainer.h"
 #include "Surface.h"
-#include "vec3.h"
 #include "Input.h"
 
-const vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
+#include <glm/glm.hpp>
+
+const glm::vec3 carbon_particle_color = {0.05f, 0.05f, 0.05f};
 const float carbon_particle_scale = 0.05;
 
 struct Grid {
@@ -20,6 +21,16 @@ struct Grid {
     float spacing = 1.0;
     glm::vec3 color = {0.9, 0.9, 0.9};
     float linewidth = 0.005;
+};
+
+class GeometryRenderer {
+  public:
+    vector<Surface> surfaces;
+    GeometryRenderer(std::vector<Surface> surfaces);
+    void draw (Camera &camera, float aspect_ratio);
+
+  private:
+    ShaderProgram shader;
 };
 
 class GridRenderer {
@@ -36,7 +47,7 @@ class GridRenderer {
         void draw_grid (Grid grid, int level, glm::vec3 center = {0.0, 0.0, 0.0});
         void draw (Camera &camera, float aspect_ratio);
     private:
-        Shader shader;
+        ShaderProgram shader;
         unsigned int vao, vbo, ebo;
 };
 
@@ -48,10 +59,10 @@ class BVHRenderer {
         BVHRenderer(Scene *scene);
         void draw (Camera &camera, float aspect_ratio);
         void draw_bvh (int depth, int node_idx);
-        static void draw_box (Shader &shader, BBox &box, unsigned int &vao, unsigned int &vbo);
+        static void draw_box (ShaderProgram &shader, BBox &box, unsigned int &vao, unsigned int &vbo);
     private:
         Scene *scene;
-        Shader shader;
+        ShaderProgram shader;
         unsigned int vao, vbo;
 };
 
@@ -60,11 +71,11 @@ class Renderer {
         BVHRenderer bvh;
         ThrusterPlume &plume;
         ParticleContainer &particles;
-        SceneGeometry &geometry; 
+        GeometryRenderer geometry; 
         GridRenderer grid;
 
         Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
-                  ParticleContainer &particles, SceneGeometry &geometry);
+                  ParticleContainer &particles, std::vector<Surface> surfaces);
 
         void draw (Input &input, Camera &camera, float aspect_ratio);
 };

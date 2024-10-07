@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <unordered_map>
 
+#include <glm/glm.hpp>
+
 #include "toml.h"
 #include "Input.h"
 
@@ -147,7 +149,7 @@ Input read_input (std::string filename) {
 
     // Read materials
     std::unordered_map<string, Material> materials;
-    std::unordered_map<string, vec3> material_colors;
+    std::unordered_map<string, glm::vec3> material_colors;
     auto input_materials = *input_table.get_as<toml::array>("material");
 
     for (auto &&material_node: input_materials) {
@@ -156,7 +158,7 @@ Input read_input (std::string filename) {
         // Populate material
         Material material;
         auto material_name = get_value<string>(mat, "name");
-        auto material_color = get_value<vec3>(mat, "color");
+        auto material_color = get_value<glm::vec3>(mat, "color");
         set_value(mat, "sticking_coeff", material.sticking_coeff);
         set_value(mat, "diffuse_coeff", material.diffuse_coeff);
         set_value(mat, "temperature_K", material.temperature_K);
@@ -169,12 +171,12 @@ Input read_input (std::string filename) {
     // Read surfaces
     auto geometry = *input_table.get_as<toml::array>("geometry");
     auto num_surfaces = geometry.size();
-    input.geometry.surfaces.resize(num_surfaces);
+    input.surfaces.resize(num_surfaces);
 
     int id = 0;
     for (auto &&elem: geometry) {
         auto tab = *elem.as_table();
-        auto &surf = input.geometry.surfaces.at(id);
+        auto &surf = input.surfaces.at(id);
 
         // get material
         auto mat_name = get_value<string>(tab, "material");
