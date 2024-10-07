@@ -58,6 +58,25 @@ namespace app {
         return {buf};
     }
 
+    void draw_keybinding_panel() {
+        using namespace ImGui;
+        SetNextWindowPos(ImVec2(0.0, 0.0), ImGuiCond_Always, ImVec2(0.0, 0.0));
+        Begin("Keybindings", nullptr, app::imgui_flags);
+
+        Text(
+            "Orbit camera:    right click + drag\n"
+            "                 w/a/s/d\n"
+            "Pan camera:      middle click + drag\n"
+            "Zoom:            mouse scroll\n"
+            "                 q/e\n"
+            "Camera up/down:  shift/ctrl\n"
+            "Pause/unpause:   space\n"
+            "Close window:    esc"
+        );
+
+        End();
+    }
+
     void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, DepositionInfo &dep_info, Timer timer) {
         using namespace ImGui;
         auto table_flags = ImGuiTableFlags_BordersH;
@@ -165,6 +184,7 @@ namespace app {
         draw_timing_panel(step, input, renderer, timer);
         draw_settings_panel(step, input, renderer, timer);
         draw_deposition_panel(step, input, renderer, dep_info, timer);
+        draw_keybinding_panel();
     }
 
     void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, DepositionInfo &dep_info, Timer &timer) {
