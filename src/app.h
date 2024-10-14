@@ -71,6 +71,7 @@ namespace app {
             "                 q/e\n"
             "Camera up/down:  shift/ctrl\n"
             "Pause/unpause:   space\n"
+            "Reset camera:    enter\n"
             "Close window:    esc"
         );
 
@@ -79,20 +80,27 @@ namespace app {
 
     void draw_deposition_panel(size_t step, Input &input, Renderer &renderer, DepositionInfo &dep_info, Timer timer) {
         using namespace ImGui;
-        auto table_flags = ImGuiTableFlags_BordersH;
-        ImVec2 bottom_left = ImVec2(0, GetIO().DisplaySize.y);
+        auto table_flags = ImGuiTableFlags_BordersH |
+                           ImGuiTableFlags_BordersV |
+                           ImGuiTableFlags_ScrollY  |
+                           ImGuiTableFlags_HighlightHoveredColumn;
+        
+        auto size_x = GetIO().DisplaySize.x;
+        auto size_y = GetIO().DisplaySize.y;
+        auto bottom_left = ImVec2(0.0, size_y);
+        auto table_size = ImVec2(0.3 * size_x, 0.2 * size_y);
         SetNextWindowPos(bottom_left, ImGuiCond_Always, ImVec2(0.0, 1.0));
         Begin("Particle collection info", nullptr, app::imgui_flags);
-        if (BeginTable("Table", 4, table_flags)) {
-            TableNextRow();
+        if (BeginTable("Table", 4, table_flags, table_size)) {
+            TableNextRow(ImGuiTableRowFlags_Headers);
             TableNextColumn();
             Text("Surface name");
             TableNextColumn();
             Text("Triangle ID");
             TableNextColumn();
-            Text("Particles collected");
+            Text("# Particles");
             TableNextColumn();
-            Text("Deposition rate [um/kh]");
+            Text("Dep. rate [um/kh]");
             for (int tri = 0; tri < dep_info.num_tris; tri++) {
                 TableNextRow();
                 TableNextColumn();
@@ -188,9 +196,10 @@ namespace app {
     }
 
     void begin_frame(size_t step, Input &input, Window &window, Renderer &renderer, DepositionInfo &dep_info, Timer &timer) {
-        if (!input.display) return;
-        window.begin_render_loop();
-        draw_gui(step, input, renderer, dep_info, timer);
+        if (input.display) {
+            window.begin_render_loop();
+            draw_gui(step, input, renderer, dep_info, timer);
+        }
         
         // Record iteration timing information
         using namespace std::chrono;
@@ -202,9 +211,10 @@ namespace app {
     }
 
     void end_frame (Input &input, Window &window) {
-        if (!input.display) return;
-        window.end_render_loop();
-        app::process_input(window.window);
+        if (input.display) {
+            window.end_render_loop();
+            app::process_input(window.window);
+        }
     }
 
     void write_to_console (size_t step, Input &input, Timer &timer) {

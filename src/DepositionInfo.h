@@ -18,10 +18,13 @@ struct DepositionInfo {
     std::vector<size_t> local_indices;
     std::vector<size_t> global_indices;
     std::vector<double> triangle_areas;
+    std::vector<double> centroid_x;
+    std::vector<double> centroid_y;
+    std::vector<double> centroid_z;
     std::vector<int> particles_collected;
     std::vector<double> deposition_rates;
     std::vector<double> carbon_masses;
-    std::vector<double> mass_fluxes;
+    std::vector<double> fluxes;
 
     DepositionInfo (std::string filename) : filename(filename) {
         file.open(filename);
@@ -31,10 +34,14 @@ struct DepositionInfo {
             << "Surface name,"
             << "Local triangle ID,"
             << "Global triangle ID,"
+            << "Triangle area [m^2],"
+            << "Centroid x [m],"
+            << "Centroid y [m],"
+            << "Centroid z [m],"
             << "Macroparticles collected,"
             << "Mass collected (kg),"
             << "Deposition rate (um/khr),"
-            << "Surface mass flux (kg/m^2/s)"
+            << "Particle flux (#/m^2/s)"
             << "\n";
         file.close();
     }
@@ -43,7 +50,7 @@ struct DepositionInfo {
         particles_collected.resize(num_tris, 0);
         deposition_rates.resize(num_tris, 0.0);
         carbon_masses.resize(num_tris, 0.0);
-        mass_fluxes.resize(num_tris, 0.0);
+        fluxes.resize(num_tris, 0.0);
     }
 
     void update_diagnostics (Input &input, double time) {
@@ -55,7 +62,8 @@ struct DepositionInfo {
             double layer_thickness_um = carbon_volume / triangle_areas[id] * 1e6;
             double physical_time_kh = time / 3600 / 1000;
             deposition_rates[id] = layer_thickness_um / physical_time_kh;
-            mass_fluxes[id] = carbon_masses[id] / triangle_areas[id] / time;
+            fluxes[id] = particles_collected[id] * input.particle_weight 
+                        / triangle_areas[id] / time;
         }
     }
 
@@ -67,10 +75,14 @@ struct DepositionInfo {
            file << surface_names[id] << ",";
            file << local_indices[id] << ",";
            file << global_indices[id] << ",";
+           file << triangle_areas[id] << ",";
+           file << centroid_x[id] << ",";
+           file << centroid_y[id] << ",";
+           file << centroid_z[id] << ",";
            file << particles_collected[id] << ",";
            file << carbon_masses[id] << ",";
            file << deposition_rates[id] << ",";
-           file << mass_fluxes[id] << "\n";
+           file << fluxes[id] << "\n";
        }
        file.close();
     }

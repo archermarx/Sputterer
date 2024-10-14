@@ -68,6 +68,10 @@ int main (int argc, char *argv[]) {
                 auto global_index = static_cast<int>(h_triangles.size()) - 1;
                 deposition_info.surface_names.push_back(surf.name);
                 deposition_info.triangle_areas.push_back(tri.area);
+                auto c = tri.centroid;
+                deposition_info.centroid_x.push_back(c.x);
+                deposition_info.centroid_y.push_back(c.y);
+                deposition_info.centroid_z.push_back(c.z);
                 deposition_info.global_indices.push_back(global_index);
                 deposition_info.local_indices.push_back(ind);
                 deposition_info.num_tris++;
@@ -117,6 +121,7 @@ int main (int argc, char *argv[]) {
     // Create particle container for carbon atoms and renderer
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
     Renderer renderer(input, &h_scene, plume, particles, surfaces);
+    renderer.setup(input);
 
     // Create timing objects
     size_t step = 0;
@@ -131,7 +136,7 @@ int main (int argc, char *argv[]) {
 
         // Main computation loop
         if (step > 0 && !app::sim_paused) {
-
+            // Record iteration start time
             start.record();
 
             // Push particles and sputter from surfaces, then remove those that are out of bounds

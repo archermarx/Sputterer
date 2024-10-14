@@ -7,12 +7,19 @@
 
 Renderer::Renderer (Input &input, Scene *scene, ThrusterPlume &plume,
         ParticleContainer &particles, std::vector<Surface> &surfaces)
-    : bvh(scene)
+    : enabled(input.display)
+    , bvh(scene)
     , plume(plume)
     , particles(particles)
     , grid()
-    , geometry(surfaces) {
-    if (input.display) {
+    , geometry(surfaces) {}
+
+void Renderer::setup (Input &input) {
+    if (enabled) {
+        bvh.setup();
+        grid.setup();
+        geometry.setup();
+        // TODO: create seperate particle and plume renderers
         particles.setup_shaders(carbon_particle_color, carbon_particle_scale);
         plume.setup_shaders(input.chamber_length_m / 2);
     }
@@ -28,7 +35,9 @@ void Renderer::draw (Input &input, Camera &camera, float aspect_ratio) {
     }
 }
 
-GeometryRenderer::GeometryRenderer(std::vector<Surface> &surfaces) : surfaces(surfaces) {
+GeometryRenderer::GeometryRenderer(std::vector<Surface> &surfaces) : surfaces(surfaces) {}
+
+void GeometryRenderer::setup () {
     shader.link(shaders::mesh, "geometry");
     for (auto &surf : surfaces) {
         surf.mesh.set_buffers();
@@ -47,8 +56,9 @@ void GeometryRenderer::draw(Camera &camera, float aspect_ratio) {
     }
 }
 
+GridRenderer::GridRenderer () {}
 
-GridRenderer::GridRenderer () {
+void GridRenderer::setup () {
     shader.link(shaders::grid, "grid");
     shader.use();
     
@@ -100,7 +110,9 @@ void GridRenderer::draw (Camera &camera, float aspect_ratio) {
     }
 }
 
-BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(scene) {
+BVHRenderer::BVHRenderer (Scene *scene) : draw_depth(scene->bvh_depth), scene(scene) {}
+
+void BVHRenderer::setup () {
     shader.link(shaders::bvh, "bvh");
     shader.use();
 
