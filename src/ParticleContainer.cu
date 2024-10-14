@@ -286,10 +286,14 @@ k_evolve (DeviceParticleContainer pc
 
         // add new particles (negative weight if not real)
         if (u < p_emit*dt) {
-            pc.position[tid] = hit.pos + 1e-2*dt*vel;
+            // offset particles from surface to avoid re-intersecting emission surface and to produce more
+            // continuous flow
+            auto pos_offset = curand_uniform(local_rng) * dt * vel;
+            pc.position[tid] = hit.pos + pos_offset;
             pc.velocity[tid] = vel;
             pc.weight[tid] = input_weight;
         } else {
+            // flag particle for removal
             pc.position[tid] = -1000.000*hit.pos;
             pc.velocity[tid] = {0.0, 0.0, 0.0};
             pc.weight[tid] = -1.0;
@@ -348,18 +352,25 @@ float rand_normal (float mean, float std) {
     return dist(rng);
 }
 
-__global__ void k_flag_oob (float3 *pos, float *weight, float radius2, float halflength, size_t n) {
+__global__ void k_flag_oob (float3 *pos, float3 *vel, float *weight,
+                            float radius2, float halflength, size_t n) {
     unsigned int id = threadIdx.x + blockIdx.x*blockDim.x;
     if (id < n && weight[id] > 0) {
         auto r = pos[id];
-        auto dist2 = r.x*r.x + r.y*r.y;
-        auto dist_backcap = dist2 + (r.z + halflength)*(r.z + halflength);
-        auto dist_frontcap = dist2 + (r.z - halflength)*(r.z - halflength);
-        if (dist2 > radius2
-                || (r.z < -halflength && dist_backcap > radius2)
-                || (r.z > halflength && dist_frontcap > radius2)) {
-            // Particles that are oob get negative weight
+        auto v = vel[id];
+        auto vel2 = v.x*v.x + v.y*v.y * v.z*v.z;
+        if (vel2 < 1e-3) {
             weight[id] = -1;
+        } else {
+            auto dist2 = r.x*r.x + r.y*r.y; // distance in x-y plane from center
+            auto dist_backcap = dist2 + (r.z + halflength)*(r.z + halflength);
+            auto dist_frontcap = dist2 + (r.z - halflength)*(r.z - halflength);
+            if (dist2 > radius2
+                    || (r.z < -halflength && dist_backcap > radius2)
+                    || (r.z > halflength && dist_frontcap > radius2)) {
+                // Particles that are oob get negative weight
+                weight[id] = -1;
+            }
         }
     }
 }
@@ -374,13 +385,17 @@ struct IsPositive {
 void ParticleContainer::remove_out_of_bounds (const Input &input) {
     // Get raw pointers to position and weight data
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
+    auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
     auto d_wgt_ptr = thrust::raw_pointer_cast(d_weight.data());
 
-    // Mark particles that are OOB with negative weight
+    // Mark particles that are OOB or have zero velocity with negative weight
     const auto r = input.chamber_radius_m;
     const auto l = input.chamber_length_m;
     const auto [grid, block] = get_kernel_launch_params(num_particles);
-    k_flag_oob<<<grid, block>>>(d_pos_ptr, d_wgt_ptr, r*r, l/2 - r, num_particles);
+    
+    k_flag_oob<<<grid, block>>>(
+        d_pos_ptr, d_vel_ptr, d_wgt_ptr, r*r, l/2 - r, num_particles
+    );
     cudaDeviceSynchronize();
 
     // reorder positions and velocities so that particles with negative or zero weight follow those with positive weight
