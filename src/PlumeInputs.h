@@ -28,6 +28,10 @@ struct PlumeInputs {
     double beam_energy_eV{300.0};
     double scattered_energy_eV{250.0};
     double cex_energy_eV{50.0};
+
+    // diagnostics
+    bool probe{true};                // whether to run a simulated faraday probe sweep
+    double probe_distance_m{1.0}; // distance between probe and plume origin
 };
 
 #endif // SPUTTERER_PLUME_INPUTS_H

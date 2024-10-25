@@ -49,6 +49,8 @@ class ThrusterPlume {
     ThrusterPlume(PlumeInputs inputs);
     void setup_shaders (float len);
     void draw (Camera &cam, float aspect_ratio);
+    CurrentFraction current_density (glm::vec2 coords) const;
+    void probe() const;
 
   private:
     unsigned int vbo{}, vao{};

@@ -1,4 +1,7 @@
 #include <complex>
+#include <fstream>
+#include <iostream>
+
 
 // header for erfi
 #include "../include/Faddeeva.hpp"
@@ -45,6 +48,10 @@ void ThrusterPlume::find_hits (Input &input,
     float max_iters = 5;
     float max_emit_prob = 0.0;
     int num_rays = 10'000;
+    
+    double avg_current_density = 0.0;
+    double avg_angle = 0.0;
+    double avg_radius = 0.0;
 
     for (int iter = 0; iter < max_iters; iter++) {
         // TODO: do this on GPU
@@ -92,6 +99,13 @@ void ThrusterPlume::find_hits (Input &input,
                         max_emit = n_emit;
 
                     num_emit.push_back(n_emit);
+
+                    auto coord = convert_to_thruster_coords({hit_pos.x, hit_pos.y, hit_pos.z});
+                    auto [j_beam, j_scat, j_cex] = current_density(coord);
+                    auto j_tot = j_beam + j_scat + j_cex;
+                    avg_current_density += j_tot;
+                    avg_radius += coord.x;
+                    avg_angle += coord.y;
                 }
             }
         }
@@ -106,10 +120,15 @@ void ThrusterPlume::find_hits (Input &input,
     if (input.verbosity > 0) {
         std::cout << "Max emission probability: " << max_emit_prob << std::endl;
         std::cout << "Number of plume rays: " << num_rays << std::endl;
+        avg_current_density /= hit_positions.size();
+        avg_angle /= hit_positions.size();
+        avg_radius /= hit_positions.size();
+        std::cout << "Avg current density: " << avg_current_density << " A/m^2\n";
+        std::cout << "Avg angle: " << avg_angle * 180 / constants::pi << " deg\n";
+        std::cout << "Avg radius: " << avg_radius << " m\n";
     }
 
-    //ParticleContainer pc_plume{"plume", hit_positions.size()};
-    ///pc_plume.add_particles(hit_positions, vel, ws);
+
     particles.initialize(hit_positions.size());
     particles.add_particles(hit_positions, vel, ws);
 }
@@ -128,25 +147,22 @@ void ThrusterPlume::find_hits (Input &input,
     return {radius, angle};
 }
 
-[[maybe_unused]] double current_density_scale (const double angle, const double div_angle, const double frac) {
+[[maybe_unused]] double current_density_scale (double g) {
     using namespace std::complex_literals;
     using namespace Faddeeva;
     using namespace constants;
 
     const auto pi_threehalves = sqrt(pi*pi*pi);
-    auto erfi_arg1 = 0.5*div_angle;
-    auto alpha_squared = div_angle*div_angle;
-    auto erfi_arg2 = 0.5*(1i - alpha_squared)/div_angle;
-    auto erfi_arg3 = 0.5*(1i + alpha_squared)/div_angle;
+    auto g2 = g*g;
+    auto erfi_arg1 = 0.5*g;
+    auto erfi_arg2 = 0.5*(1i*pi - g2)/g;
+    auto erfi_arg3 = 0.5*(1i*pi + g2)/g;
     auto erfi_1 = erfi(erfi_arg1);
     auto erfi_2 = erfi(erfi_arg2);
     auto erfi_3 = erfi(erfi_arg3);
-    auto denom = pi_threehalves*div_angle*exp(-(erfi_arg1*erfi_arg1))*(2*erfi_1 + erfi_2 - erfi_3);
+    auto denom = 0.5 * pi_threehalves * g * exp(-0.25*g2) * (2*erfi_1 + erfi_2 - erfi_3);
 
-    auto angle_frac = angle/div_angle;
-    auto numer = 2*frac*exp(-(angle_frac*angle_frac));
-
-    return numer/denom.real();
+    return 1.0/denom.real();
 }
 
 double ThrusterPlume::scattered_divergence_angle () const {
@@ -167,11 +183,11 @@ CurrentFraction ThrusterPlume::current_fractions () const {
     const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = inputs.model_params;
 
     // neutral density
-    auto neutral_density = t4*inputs.background_pressure_Torr + t5;
+    auto neutral_density = t4*inputs.background_pressure_Torr*torr_to_pa + t5;
 
     // get fraction of current in beam vs in main
     auto exp_factor = exp(-1.0*neutral_density*sigma_cex*1e-20);
-    auto cex_current_factor = (1.0 - exp_factor);
+    auto cex_current_factor = 1.0 - exp_factor;
     auto beam_current_factor = exp_factor;
 
     return {.main = (1 - t0)*beam_current_factor, .scattered = t0*beam_current_factor, .cex = cex_current_factor,};
@@ -218,6 +234,53 @@ double sputtering_yield (double energy, double angle, Species incident, Species 
     auto numerator = q*s_n*term_1*pow(term_2, f)*exp(b*(1 - term_2));
     auto denominator = lambda*inv_w + term_1;
     return numerator/denominator;
+}
+
+CurrentFraction ThrusterPlume::current_density (glm::vec2 coords) const {
+    using namespace constants;
+    const auto [frac_beam, frac_scat, frac_cex] = current_fractions();
+    const auto theta_beam = main_divergence_angle();
+    const auto theta_scat = scattered_divergence_angle();
+
+    const auto r = coords.x;
+    const auto theta = coords.y;
+
+    const auto A1 = frac_beam * current_density_scale(theta_beam);
+    const auto A2 = frac_scat * current_density_scale(theta_scat);
+    std::cout << "A1, A2 = " << A1 << ", " << A2 << "\n";
+
+    const auto angle_frac_1 = theta / theta_beam;
+    const auto angle_frac_2 = theta / theta_scat;
+    const auto a_beam = A1 * exp(-(angle_frac_1*angle_frac_1));
+    const auto a_scat = A2 * exp(-(angle_frac_2*angle_frac_2));
+    
+    const auto inv_r2 = 1.0 / r*r;
+    const auto j_beam = inputs.beam_current_A * a_beam * inv_r2; 
+    const auto j_scat = inputs.beam_current_A * a_scat * inv_r2;
+    const auto j_cex = inputs.beam_current_A * frac_cex / (2*pi) * inv_r2;
+    return {j_beam, j_scat, j_cex};
+}
+
+void ThrusterPlume::probe () const {
+    using namespace constants;
+
+    constexpr double min_angle = 0;
+    constexpr double max_angle = 90;
+
+    std::ofstream output;
+    output.open("current_density.csv");
+    output << "theta[deg],"
+           << "beam current density[A/m^2],scattered current density[A/m^2],"
+           << "cex current density[A/m^2],total current density[A/m^2]\n";
+    for (int i = min_angle; i <= max_angle; i++) {
+        const double theta = i * pi / 180;
+        const auto [j_beam, j_scat, j_cex] = current_density({inputs.probe_distance_m, theta});
+        const auto j_tot = j_beam + j_scat + j_cex;
+        output << i << "," << j_beam << "," << j_scat << "," << j_cex << "," << j_tot << "\n";
+    }
+    output.close();
+
+    std::cout << "Current density data written" << std::endl;
 }
 
 void ThrusterPlume::setup_shaders (float length) {

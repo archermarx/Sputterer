@@ -29,10 +29,8 @@ struct Surface {
   Mesh mesh{};
   Transform transform{};
   glm::vec3 color{0.5f, 0.5f, 0.5f};
+  bool has_current_density{false};
+  glm::vec3 current_density{0.0f, 0.0f, 0.0f};
 };
-
-struct Camera;
-
-
 
 #endif

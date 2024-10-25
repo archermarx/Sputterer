@@ -123,6 +123,11 @@ int main (int argc, char *argv[]) {
     Renderer renderer(input, &h_scene, plume, particles, surfaces);
     renderer.setup(input);
 
+    // generate plume diagnostics if applicable
+    if (input.plume.probe) {
+        plume.probe();
+    }
+
     // Create timing objects
     size_t step = 0;
     Timer timer;

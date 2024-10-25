@@ -130,21 +130,32 @@ Input read_input (std::string filename) {
     set_value(chamber, "radius_m", input.chamber_radius_m);
     set_value(chamber, "length_m", input.chamber_length_m);
 
-    // Read plume parameters
-    auto plume = get_table(input_table, "plume");
-    set_value(plume, "origin", input.plume.origin);
-    set_value(plume, "direction", input.plume.direction);
-    input.plume.direction = glm::normalize(input.plume.direction);
-    set_value(plume, "background_pressure_Torr", input.plume.background_pressure_Torr);
-    set_value(plume, "ion_current_A", input.plume.beam_current_A);
-    set_value(plume, "beam_energy_eV", input.plume.beam_energy_eV);
-    set_value(plume, "scattered_energy_eV", input.plume.scattered_energy_eV);
-    set_value(plume, "cex_energy_eV", input.plume.cex_energy_eV);
-    auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
-    auto ind = 0;
-    for (auto &&plume_param: *plume_params_arr) {
-        input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
-        ind++;
+    bool has_plasma_source = false;
+
+    // Read plume parameters, if one exists
+    if (input_table.contains("plume")) {
+        auto plume = get_table(input_table, "plume");
+
+        has_plasma_source = true;
+
+        set_value(plume, "origin", input.plume.origin);
+        set_value(plume, "direction", input.plume.direction);
+        input.plume.direction = glm::normalize(input.plume.direction);
+        set_value(plume, "background_pressure_Torr", input.plume.background_pressure_Torr);
+        set_value(plume, "ion_current_A", input.plume.beam_current_A);
+        set_value(plume, "beam_energy_eV", input.plume.beam_energy_eV);
+        set_value(plume, "scattered_energy_eV", input.plume.scattered_energy_eV);
+        set_value(plume, "cex_energy_eV", input.plume.cex_energy_eV);
+        auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
+        auto ind = 0;
+        for (auto &&plume_param: *plume_params_arr) {
+            input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
+            ind++;
+        }
+    
+        // read plume diagnostics variables
+        query_value(plume, "probe", input.plume.probe);
+        query_value(plume, "probe_distance_m", input.plume.probe_distance_m);
     }
 
     // Read materials
@@ -191,11 +202,7 @@ Input read_input (std::string filename) {
         query_value(tab, "name", surf.name);
         query_value(tab, "collect", material.collect);
         query_value(tab, "sputter", material.sputter);
-
-        // need to append the current working directory to make sure mesh files
-        // are relative to where the input file is located
         auto mesh_path = get_value<string>(tab, "model");
-        //auto mesh_path = fs::absolute({filename}).parent_path()/mesh_file;
 
         // object positions (optional)
         query_value(tab, "translate", surf.transform.translate);
@@ -209,10 +216,22 @@ Input read_input (std::string filename) {
 
         query_value(tab, "color", surf.color);
         query_value(tab, "temperature_K", surf.material.temperature_K);
+        if (tab.contains("current_density")) {
+            surf.has_current_density = true;
+            has_plasma_source = true;
+            query_value(tab, "current_density", surf.current_density);
+        }
 
         auto &mesh = surf.mesh;
         mesh.load({mesh_path});
         id++;
+    }
+
+    if (!has_plasma_source) {
+        std::ostringstream msg;
+        msg << "No plasma source specified!\n"
+            << "Either assign a current density vector to a surface or include a plume in the inputs" << std::endl;
+        throw std::runtime_error(msg.str());
     }
 
     if (input.verbosity > 0) {

@@ -9,12 +9,16 @@ verbosity = 1
 [plume]
 origin = { z = -1.31 }  # Location of the plume origin (in meters)
 direction = { z = 1.0 }     # Orientation of the plume
-background_pressure_Torr = 5e-6                     # Facility background pressure (in Torr)
-ion_current_A = 15.0                                # Ion current in A
-model_parameters = [0.8, 0.8, 8.0, 0.45, 6.31e18, 1.259e15, 55.0]  # Plume model parameters
+background_pressure_Torr = 6.2e-6                     # Facility background pressure (in Torr)
+ion_current_A = 12.0                                # Ion current in A
+model_parameters = [
+    0.3, 0.4, 0.0, 0.2, 0.0, 0.0, 55.0
+]  # Plume model parameters
 beam_energy_eV = 600.0                              # Ion energy in the main beam
 scattered_energy_eV = 600.0                         # Ion energy in the scattered beam
 cex_energy_eV = 50.0                                # CEX ion energy
+probe = true                                        # probe data should be output
+probe_distance_m = 1.0
 
 [chamber]
 radius_m = 1
@@ -26,13 +30,15 @@ color = 0.5
 temperature_K = 300                                 # Temperature (for diffuse reflections)
 sticking_coeff = 0.3
 diffuse_coeff = 0.7
+sputter = true
 
 [[material]]                                        # Define a surface material
 name = "nosputter"
 color = 0.5
 temperature_K = 100.0                              # Temperature (for diffuse reflections)
 sticking_coeff = 1.0
-diffuse_coeff = 0.0
+diffuse_coeff = 0.05
+sputter = false
 
 #[[geometry]]                                        # Define geometry 
 #name = "Thruster"                                   # Name
