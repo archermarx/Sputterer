@@ -247,7 +247,6 @@ CurrentFraction ThrusterPlume::current_density (glm::vec2 coords) const {
 
     const auto A1 = frac_beam * current_density_scale(theta_beam);
     const auto A2 = frac_scat * current_density_scale(theta_scat);
-    std::cout << "A1, A2 = " << A1 << ", " << A2 << "\n";
 
     const auto angle_frac_1 = theta / theta_beam;
     const auto angle_frac_2 = theta / theta_scat;
