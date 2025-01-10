@@ -1,15 +1,30 @@
 # Sputterer
+
 ## Installation
 1. Install `cmake`
-2. Set up the build dir
+2. Install dependencies
+```
+sudo apt install libwayland-dev libxkbcommon-dev xorg-dev
+```
+3. Clone the repo and enter the directory
+```
+git clone https://github.com/archermarx/Sputterer.git
+cd Sputterer
+```
+4. Initialize submodules
+```
+git submodule init
+git submodule update 
+```
+5. Set up the build dir
 ```
 cmake -S . -B build
 ```
-3. Build the executable
+6. Build the executable
 ```
 cmake --build build
 ```
-4. The `sputterer` executable will be in the build dir
+7. The `sputterer` executable will be in the build dir
 
 ### Great Lakes
 You will need to load, at minimum, the gcc, cuda, and cmake modules before installing.
