@@ -1,9 +1,9 @@
+// Sputterer, version 0.1.0
+//
 // C++ headers
 #include <iostream>
-#include <fstream>
 #include <string>
 #include <vector>
-#include <chrono>
 
 // GLM headers
 #include <glm/glm.hpp>
@@ -14,12 +14,10 @@
 // My headers (c++)
 #include "app.h"
 #include "Input.h"
-#include "Shader.h"
 #include "Surface.h"
 #include "Window.h"
 #include "ThrusterPlume.h"
 #include "Timer.h"
-#include "Constants.h"
 #include "DepositionInfo.h"
 #include "Renderer.h"
 #include "cuda_helpers.h"
@@ -43,7 +41,7 @@ int main (int argc, char *argv[]) {
     host_vector<size_t> h_material_ids;
     host_vector<Material> h_materials;
 
-    std::vector<Surface>& surfaces = input.surfaces;
+    std::vector<Surface> &surfaces = input.surfaces;
 
     DepositionInfo deposition_info("deposition.csv");
 
@@ -55,11 +53,11 @@ int main (int argc, char *argv[]) {
         h_materials.push_back(surf.material);
 
         auto ind = 0;
-        for (const auto &[i1, i2, i3]: mesh.triangles) {
+        for (const auto &[i1, i2, i3] : mesh.triangles) {
             auto model = surf.transform.get_matrix();
-            auto v1 = make_float3(model*glm::vec4(mesh.vertices[i1].pos, 1.0));
-            auto v2 = make_float3(model*glm::vec4(mesh.vertices[i2].pos, 1.0));
-            auto v3 = make_float3(model*glm::vec4(mesh.vertices[i3].pos, 1.0));
+            auto v1 = make_float3(model * glm::vec4(mesh.vertices[i1].pos, 1.0));
+            auto v2 = make_float3(model * glm::vec4(mesh.vertices[i2].pos, 1.0));
+            auto v3 = make_float3(model * glm::vec4(mesh.vertices[i3].pos, 1.0));
 
             Triangle tri{v1, v2, v3};
             h_triangles.push_back(tri);
@@ -81,7 +79,8 @@ int main (int argc, char *argv[]) {
     }
     deposition_info.init_diagnostics();
 
-    if (input.verbosity > 0) std::cout << "Meshes read." << std::endl;
+    if (input.verbosity > 0)
+        std::cout << "Meshes read." << std::endl;
 
     // Construct BVH on CPU
     host_vector<BVHNode> h_nodes;
@@ -89,7 +88,8 @@ int main (int argc, char *argv[]) {
     Scene h_scene;
     h_scene.build(h_triangles, h_triangle_indices, h_nodes);
 
-    if (input.verbosity > 0) std::cout << "Bounding volume heirarchy constructed." << std::endl;
+    if (input.verbosity > 0)
+        std::cout << "Bounding volume heirarchy constructed." << std::endl;
 
     // Send mesh data and BVH to GPU.
     device_vector<Triangle> d_triangles = h_triangles;
@@ -104,7 +104,8 @@ int main (int argc, char *argv[]) {
     d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
     d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
-    if (input.verbosity > 0) std::cout << "Mesh data sent to GPU" << std::endl;
+    if (input.verbosity > 0)
+        std::cout << "Mesh data sent to GPU" << std::endl;
 
     // Cast initial rays from plume to find where they hit facility geometry
     // Store result in ParticleContainer pc_plume
@@ -133,7 +134,8 @@ int main (int argc, char *argv[]) {
     Timer timer;
     cuda::Event start{}, stop_compute{}, stop_copy{};
 
-    if (input.verbosity > 0) std::cout << "Beginning main loop." << std::endl;
+    if (input.verbosity > 0)
+        std::cout << "Beginning main loop." << std::endl;
 
     while ((input.display && window.open) || (!input.display && timer.physical_time < input.max_time_s)) {
         // Draw GUI and set up for this frame
@@ -145,8 +147,7 @@ int main (int argc, char *argv[]) {
             start.record();
 
             // Push particles and sputter from surfaces, then remove those that are out of bounds
-            particles.evolve(d_scene, d_materials, d_surface_ids, d_collected,
-                             d_hits, d_num_emit, input);
+            particles.evolve(d_scene, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input);
 
             // record stop time
             stop_compute.record();
@@ -176,12 +177,12 @@ int main (int argc, char *argv[]) {
         app::end_frame(input, window);
 
         // Write output to console and file at regular intervals, plus one additional when simulation terminates
-        if ( input.output_interval > 0 && (
-            (!app::sim_paused && (step % input.output_interval == 0)) ||
-            (!input.display && timer.physical_time >= input.max_time_s) ||
-            (input.display && !window.open))) {
+        if (input.output_interval > 0 &&
+            ((!app::sim_paused && (step % input.output_interval == 0)) ||
+             (!input.display && timer.physical_time >= input.max_time_s) || (input.display && !window.open))) {
 
-            if (input.verbosity > 0) app::write_to_console(step, input, timer);
+            if (input.verbosity > 0)
+                app::write_to_console(step, input, timer);
             deposition_info.write_to_file(step, timer.physical_time);
         }
 
@@ -191,7 +192,8 @@ int main (int argc, char *argv[]) {
         }
     }
 
-    if (input.verbosity > 0) std::cout << "Program terminated successfully." << std::endl;
+    if (input.verbosity > 0)
+        std::cout << "Program terminated successfully." << std::endl;
 
     return 0;
 }
