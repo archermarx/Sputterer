@@ -15,8 +15,8 @@
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init(seed << 20, 0, 0, &rng[tid]);
-    // curand_init(seed, tid, 0, &rng[tid]);
+    // curand_init(seed << 20, 0, 0, &rng[tid]);
+    curand_init((seed << 20) + tid, 0, 0, &rng[tid]);
 }
 
 void ParticleContainer::initialize (size_t num) {
@@ -314,8 +314,6 @@ void ParticleContainer::evolve (Scene scene, const device_vector<Material> &mats
     auto d_emit_ptr = thrust::raw_pointer_cast(num_emit.data());
 
     auto [grid, block] = get_kernel_launch_params(num_particles + hits.size(), k_evolve);
-    std::cout << "grid size, block size = (" << print_dim3(grid) << ", " << print_dim3(block) << ")\n";
-
     k_evolve<<<grid, block>>>(this->data(), scene, d_mat_ptr, d_id_ptr, d_col_ptr, d_hit_ptr, d_emit_ptr, hits.size(),
                               input.particle_weight, input.timestep_s);
 
