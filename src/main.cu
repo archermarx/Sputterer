@@ -144,7 +144,8 @@ int main (int argc, char *argv[]) {
         // Main computation loop
         if (step > 0 && !app::sim_paused) {
             // Record iteration start time
-            std::cout << "Recording evolution start time\n" start.record();
+            std::cout << "Recording evolution start time\n";
+            start.record();
 
             std::cout << "Launching evolution kernel\n";
 
@@ -152,7 +153,8 @@ int main (int argc, char *argv[]) {
             particles.evolve(d_scene, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input);
 
             // record stop time
-            std::cout << "Recording evolution stop time\n" stop_compute.record();
+            std::cout << "Recording evolution stop time\n";
+            stop_compute.record();
 
             // Track particles collected by each triangle flagged 'collect' and compute diagnostics
             for (int id = 0; id < deposition_info.num_tris; id++) {
