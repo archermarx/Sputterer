@@ -40,78 +40,82 @@ struct DeviceParticleContainer {
 };
 
 constexpr float DEFAULT_SCALE = 0.1f;
-const glm::vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f}; 
+const glm::vec3 DEFAULT_COLOR = {0.2f, 0.2f, 0.2f};
 
 class ParticleContainer {
     // Holds information for many particles of a specific species.
     // Species are differentiated by charge state and mass.
 
-    public:
-        string name = "noname";  // name of particles
-        double mass = 0.0;       // mass in atomic mass units
-        int charge = 0;          // charge number
-        int num_particles{0};    // number of particles in container
+  public:
+    string name = "noname"; // name of particles
+    double mass = 0.0;      // mass in atomic mass units
+    int charge = 0;         // charge number
+    int num_particles{0};   // number of particles in container
 
-        // RNG state
-        device_vector<curandState> d_rng;
+    // RNG state
+    device_vector<curandState> d_rng;
 
-        // Position in meters
-        host_vector<float3> position;
-        device_vector<float3> d_position;
+    // Position in meters
+    host_vector<float3> position;
+    device_vector<float3> d_position;
 
-        // Velocity in m/s
-        host_vector<float3> velocity;
-        device_vector<float3> d_velocity;
+    // Velocity in m/s
+    host_vector<float3> velocity;
+    device_vector<float3> d_velocity;
 
-        // Particle weight (computational particles per real particle
-        host_vector<float> weight;
-        device_vector<float> d_weight;
+    // Particle weight (computational particles per real particle
+    host_vector<float> weight;
+    device_vector<float> d_weight;
 
-        device_vector<float> d_tmp;
+    device_vector<float> d_tmp;
 
-        // Particle mesh
-        glm::vec3 color = DEFAULT_COLOR;
-        float scale = DEFAULT_SCALE;
-        Mesh mesh{};
-        ShaderProgram shader;
-        bool render = true;
+    // Particle mesh
+    glm::vec3 color = DEFAULT_COLOR;
+    float scale = DEFAULT_SCALE;
+    Mesh mesh{};
+    ShaderProgram shader;
+    bool render = true;
 
-        void draw (Camera &cam, float aspect_ratio);
+    void draw (Camera &cam, float aspect_ratio);
 
-        void setup_shaders (glm::vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE); 
+    void setup_shaders (glm::vec3 color = DEFAULT_COLOR, float scale = DEFAULT_SCALE);
 
-        // Constructor
-        ParticleContainer () {};
-        ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
+    // Constructor
+    ParticleContainer () {};
+    ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
 
-        // allocate memory and set up rng
-        void initialize (size_t num);
+    // allocate memory and set up rng
+    void initialize (size_t num);
 
-        // push particles to next positions (for now just use forward Euler)
-        void evolve (Scene scene
-                , const device_vector<Material> &mats, const device_vector<size_t> &ids
-                , device_vector<int> &collected
-                , const device_vector<HitInfo> &hits, const device_vector<float> &num_emit
-                , const Input &input);
+    // push particles to next positions (for now just use forward Euler)
+    void evolve (Scene scene, const device_vector<Material> &mats, const device_vector<size_t> &ids,
+                 device_vector<int> &collected, const device_vector<HitInfo> &hits,
+                 const device_vector<float> &num_emit, const Input &input);
 
-        // add particles to the container
-        void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
+    // add particles to the container
+    void add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel, const host_vector<float> &w);
 
-        // Returns kernel launch params
-        [[nodiscard]] std::pair<dim3, dim3>
-            get_kernel_launch_params (size_t num_elems, size_t block_size = 64) const;
+    // Returns kernel launch params
+    template <class T>
+    std::pair<dim3, dim3> get_kernel_launch_params (size_t num_elems, T func) const {
+        int min_grid_size, block_size;
+        cudaError_t err = cudaOccupancyMaxPotentialBlockSize(&min_grid_size, &block_size, func);
+        auto grid_size = static_cast<int>(ceil(static_cast<float>(num_elems) / static_cast<float>(block_size)));
+        grid_size = std::max(grid_size, min_grid_size);
+        dim3 grid(grid_size, 1, 1);
+        dim3 block(block_size, 1, 1);
+        return std::make_pair(grid, block);
+    }
+    // Set particles that leave bounds to have negative weights and remove them
+    void remove_out_of_bounds (const Input &input);
 
-        // Set particles that leave bounds to have negative weights and remove them
-        void remove_out_of_bounds (const Input &input);
+    // Copy particles on GPU to CPU
+    void copy_to_cpu ();
 
-        // Copy particles on GPU to CPU
-        void copy_to_cpu ();
+  private:
+    unsigned int buffer{};
 
-    private:
-        unsigned int buffer{};
-
-        [[nodiscard]] DeviceParticleContainer data ();
-
+    [[nodiscard]] DeviceParticleContainer data ();
 };
 
 float rand_uniform (float min = 0.0f, float max = 1.0f);
@@ -123,6 +127,5 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
 __device__ float3 sample_diffuse (const Triangle &tri, float3 norm, float thermal_speed, curandState *rng);
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc);
-
 
 #endif
