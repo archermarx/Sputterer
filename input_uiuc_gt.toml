@@ -3,7 +3,7 @@ timestep_s = 50e-6         # Simulation timestep
 max_time_s = 1.01            # Maximum time to run the simulation (in seconds)
 output_interval = 1000
 particle_weight = 5e8      # Carbon macroparticle weight
-display = false
+display = true
 verbosity = 1
 
 [plume]
