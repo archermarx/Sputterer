@@ -15,7 +15,8 @@
 // Setup RNG
 __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init(seed, tid, 0, &rng[tid]);
+    curand_init(seed << 20, 0, 0, &rng[tid]);
+    // curand_init(seed, tid, 0, &rng[tid]);
 }
 
 void ParticleContainer::initialize (size_t num) {
