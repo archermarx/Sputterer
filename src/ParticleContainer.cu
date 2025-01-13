@@ -29,6 +29,7 @@ void ParticleContainer::initialize (size_t num) {
     // Reinit RNG
     auto [grid, block] = get_kernel_launch_params(num, k_setup_rng);
     k_setup_rng<<<grid, block>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
+    CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 ParticleContainer::ParticleContainer (string name, size_t num, double mass, int charge)
@@ -319,7 +320,7 @@ void ParticleContainer::evolve (Scene scene, const device_vector<Material> &mats
 
     this->num_particles += hits.size();
 
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     remove_out_of_bounds(input);
 }
@@ -378,7 +379,7 @@ void ParticleContainer::remove_out_of_bounds (const Input &input) {
     const auto [grid, block] = get_kernel_launch_params(num_particles, k_flag_oob);
 
     k_flag_oob<<<grid, block>>>(d_pos_ptr, d_vel_ptr, d_wgt_ptr, r * r, l / 2 - r, num_particles);
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     // reorder positions and velocities so that particles with negative or zero weight follow those with positive weight
     // This could be done with a single partition if I was smarter

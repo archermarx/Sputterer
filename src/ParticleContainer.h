@@ -99,7 +99,7 @@ class ParticleContainer {
     template <class T>
     std::pair<dim3, dim3> get_kernel_launch_params (size_t num_elems, T func) const {
         int min_grid_size, block_size;
-        cudaError_t err = cudaOccupancyMaxPotentialBlockSize(&min_grid_size, &block_size, func);
+        CUDA_CHECK(cudaOccupancyMaxPotentialBlockSize(&min_grid_size, &block_size, func));
         auto grid_size = static_cast<int>(ceil(static_cast<float>(num_elems) / static_cast<float>(block_size)));
         grid_size = std::max(grid_size, min_grid_size);
         dim3 grid(grid_size, 1, 1);
