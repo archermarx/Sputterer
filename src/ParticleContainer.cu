@@ -19,6 +19,7 @@ __global__ void k_setup_rng (curandState *rng, uint64_t seed) {
 }
 
 void ParticleContainer::initialize (size_t num) {
+    CUDA_CHECK_STATUS();
     // Allocate memory on GPU
     d_position.resize(num);
     d_velocity.resize(num);
@@ -27,6 +28,7 @@ void ParticleContainer::initialize (size_t num) {
     d_rng.resize(num);
 
     // Reinit RNG
+    CUDA_CHECK_STATUS();
     auto [grid, block] = get_kernel_launch_params(num, k_setup_rng);
     k_setup_rng<<<grid, block>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -41,6 +43,7 @@ ParticleContainer::ParticleContainer (string name, size_t num, double mass, int 
 
 void ParticleContainer::add_particles (const host_vector<float3> &pos, const host_vector<float3> &vel,
                                        const host_vector<float> &w) {
+    CUDA_CHECK_STATUS();
     auto n = static_cast<int>(std::min(std::min(pos.size(), vel.size()), w.size()));
     if (n == 0)
         return;
@@ -63,12 +66,15 @@ void ParticleContainer::add_particles (const host_vector<float3> &pos, const hos
     thrust::copy(weight.begin() + num_particles, weight.end(), d_weight.begin() + num_particles);
 
     num_particles += n;
+    CUDA_CHECK_STATUS();
 }
 
 void ParticleContainer::copy_to_cpu () {
+    CUDA_CHECK_STATUS();
     position = host_vector<float3>(d_position.begin(), d_position.begin() + num_particles);
     velocity = host_vector<float3>(d_velocity.begin(), d_velocity.begin() + num_particles);
     weight = host_vector<float>(d_weight.begin(), d_weight.begin() + num_particles);
+    CUDA_CHECK_STATUS();
 }
 
 void ParticleContainer::setup_shaders (glm::vec3 color, float scale) {
@@ -167,12 +173,14 @@ __device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float 
 }
 
 DeviceParticleContainer ParticleContainer::data () {
+    CUDA_CHECK_STATUS();
     DeviceParticleContainer pc;
     pc.position = thrust::raw_pointer_cast(this->d_position.data());
     pc.velocity = thrust::raw_pointer_cast(this->d_velocity.data());
     pc.weight = thrust::raw_pointer_cast(this->d_weight.data());
     pc.rng = thrust::raw_pointer_cast(this->d_rng.data());
     pc.num_particles = this->num_particles;
+    CUDA_CHECK_STATUS();
     return pc;
 }
 
@@ -304,6 +312,7 @@ void ParticleContainer::evolve (Scene scene, const device_vector<Material> &mats
                                 device_vector<int> &collected, const device_vector<HitInfo> &hits,
                                 const device_vector<float> &num_emit, const Input &input) {
 
+    CUDA_CHECK_STATUS();
     // TODO: could move all of the device geometric info into a struct
     auto d_id_ptr = thrust::raw_pointer_cast(ids.data());
     auto d_mat_ptr = thrust::raw_pointer_cast(mats.data());
@@ -321,6 +330,8 @@ void ParticleContainer::evolve (Scene scene, const device_vector<Material> &mats
     CUDA_CHECK(cudaDeviceSynchronize());
 
     remove_out_of_bounds(input);
+
+    CUDA_CHECK_STATUS();
 }
 
 float rand_uniform (float min, float max) {
@@ -366,6 +377,7 @@ struct IsPositive {
 };
 
 void ParticleContainer::remove_out_of_bounds (const Input &input) {
+    CUDA_CHECK_STATUS();
     // Get raw pointers to position and weight data
     auto d_pos_ptr = thrust::raw_pointer_cast(d_position.data());
     auto d_vel_ptr = thrust::raw_pointer_cast(d_velocity.data());
@@ -396,6 +408,7 @@ void ParticleContainer::remove_out_of_bounds (const Input &input) {
 
     // Reset number of particles to the middle of the partition
     num_particles = static_cast<int>(thrust::distance(d_weight.begin(), ret));
+    CUDA_CHECK_STATUS();
 }
 
 std::ostream &operator<< (std::ostream &os, ParticleContainer const &pc) {

@@ -79,6 +79,7 @@ int main (int argc, char *argv[]) {
     }
     deposition_info.init_diagnostics();
 
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After meshes read.");
     if (input.verbosity > 0)
         std::cout << "Meshes read." << std::endl;
 
@@ -88,6 +89,7 @@ int main (int argc, char *argv[]) {
     Scene h_scene;
     h_scene.build(h_triangles, h_triangle_indices, h_nodes);
 
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After BVH construction.");
     if (input.verbosity > 0)
         std::cout << "Bounding volume heirarchy constructed." << std::endl;
 
@@ -104,6 +106,7 @@ int main (int argc, char *argv[]) {
     d_scene.triangle_indices = thrust::raw_pointer_cast(d_triangle_indices.data());
     d_scene.nodes = thrust::raw_pointer_cast(d_nodes.data());
 
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After mesh data sent to GPU.");
     if (input.verbosity > 0)
         std::cout << "Mesh data sent to GPU" << std::endl;
 
@@ -115,6 +118,8 @@ int main (int argc, char *argv[]) {
     ThrusterPlume plume(input.plume);
     plume.find_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After plume intersections found.");
+
     // Copy plume results to GPU
     device_vector<HitInfo> d_hits{hits};
     device_vector<float> d_num_emit{num_emit};
@@ -123,6 +128,8 @@ int main (int argc, char *argv[]) {
     ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
     Renderer renderer(input, &h_scene, plume, particles, surfaces);
     renderer.setup(input);
+
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After renderer created.");
 
     // generate plume diagnostics if applicable
     if (input.plume.probe) {
@@ -133,6 +140,8 @@ int main (int argc, char *argv[]) {
     size_t step = 0;
     Timer timer;
     cuda::Event start{}, stop_compute{}, stop_copy{};
+
+    CUDA_CHECK_STATUS_WITH_MESSAGE("Before main loop.");
 
     if (input.verbosity > 0)
         std::cout << "Beginning main loop." << std::endl;
