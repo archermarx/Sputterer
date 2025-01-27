@@ -13,9 +13,11 @@
 #include "ShaderCode.h"
 
 // Setup RNG
-__global__ void k_setup_rng (curandState *rng, uint64_t seed) {
+__global__ void k_setup_rng (curandState *rng, size_t N, uint64_t seed) {
     unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init((seed << 20) + tid, 0, 0, &rng[tid]);
+    if (tid < N) {
+        curand_init((seed << 20) + tid, 0, 0, &rng[tid]);
+    }
 }
 
 void ParticleContainer::initialize (size_t num) {
@@ -28,9 +30,13 @@ void ParticleContainer::initialize (size_t num) {
     d_rng.resize(num);
 
     // Reinit RNG
-    CUDA_CHECK_STATUS();
+    CUDA_CHECK_STATUS_WITH_MESSAGE("Before RNG initialization");
+
     auto [grid, block] = get_kernel_launch_params(num, k_setup_rng);
-    k_setup_rng<<<grid, block>>>(thrust::raw_pointer_cast(d_rng.data()), time(nullptr));
+    curandState *d_rng_ptr = thrust::raw_pointer_cast(d_rng.data());
+    k_setup_rng<<<grid, block>>>(d_rng_ptr, d_rng.size(), time(nullptr));
+
+    CUDA_CHECK_STATUS_WITH_MESSAGE("After RNG initialization");
     CUDA_CHECK(cudaDeviceSynchronize());
 }
 
