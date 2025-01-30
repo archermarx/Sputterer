@@ -9,17 +9,17 @@
 
 namespace fs = std::filesystem;
 
-template<typename T>
+template <typename T>
 void set_value (toml::table &table, const std::string &input_name, T &value);
 
-template<typename T>
+template <typename T>
 T get_value (toml::table &table, const std::string &key) {
     T value;
     set_value(table, key, value);
     return value;
 }
 
-template<typename T>
+template <typename T>
 bool query_value (toml::table &table, const std::string &key, T &value) {
     if (table.contains(key)) {
         value = get_value<T>(table, key);
@@ -28,7 +28,7 @@ bool query_value (toml::table &table, const std::string &key, T &value) {
     return false;
 }
 
-template<typename T>
+template <typename T>
 void set_value (toml::table &table, const std::string &input_name, T &value) {
     auto node = table[input_name];
     bool valid = true;
@@ -58,20 +58,26 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
             auto arr = node.as_array();
             int i = 0;
             float out[3] = {0.0, 0.0, 0.0};
-            for (auto &&val: *arr) {
-                out[i] = static_cast<float>(val.as_floating_point()->get());;
+            for (auto &&val : *arr) {
+                out[i] = static_cast<float>(val.as_floating_point()->get());
+                ;
                 i++;
-                if (i == 3) break;
+                if (i == 3)
+                    break;
             }
             x = out[0];
             y = out[1];
             z = out[2];
-        } else if (node.is_integer()){
+        } else if (node.is_integer()) {
             auto val = static_cast<float>(node.as_integer()->get());
-            x = val; y = val; z = val;
+            x = val;
+            y = val;
+            z = val;
         } else if (node.is_floating_point()) {
             auto val = static_cast<float>(node.as_floating_point()->get());
-            x = val; y = val; z = val;
+            x = val;
+            y = val;
+            z = val;
         } else {
             valid = false;
         }
@@ -92,12 +98,12 @@ void set_value (toml::table &table, const std::string &input_name, T &value) {
         }
     }
     if (!valid) {
-        std::cerr << "Invalid input for option " << input_name
-                  << ".\n Expected value of type " << typeid(T).name() << "\n.";
+        std::cerr << "Invalid input for option " << input_name << ".\n Expected value of type " << typeid(T).name()
+                  << "\n.";
     }
 }
 
-toml::table get_table(toml::table &parent, const std::string &key){
+toml::table get_table (toml::table &parent, const std::string &key) {
     if (parent.contains(key)) {
         return *parent.get_as<toml::table>(key);
     } else {
@@ -148,11 +154,12 @@ Input read_input (std::string filename) {
         set_value(plume, "cex_energy_eV", input.plume.cex_energy_eV);
         auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
         auto ind = 0;
-        for (auto &&plume_param: *plume_params_arr) {
-            input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());;
+        for (auto &&plume_param : *plume_params_arr) {
+            input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());
+            ;
             ind++;
         }
-    
+
         // read plume diagnostics variables
         query_value(plume, "probe", input.plume.probe);
         query_value(plume, "probe_distance_m", input.plume.probe_distance_m);
@@ -163,7 +170,7 @@ Input read_input (std::string filename) {
     std::unordered_map<string, glm::vec3> material_colors;
     auto input_materials = *input_table.get_as<toml::array>("material");
 
-    for (auto &&material_node: input_materials) {
+    for (auto &&material_node : input_materials) {
         auto mat = *material_node.as_table();
 
         // Populate material
@@ -173,6 +180,11 @@ Input read_input (std::string filename) {
         set_value(mat, "sticking_coeff", material.sticking_coeff);
         set_value(mat, "diffuse_coeff", material.diffuse_coeff);
         set_value(mat, "temperature_K", material.temperature_K);
+
+        // Optionally set sputter and collect for all objects of the same material
+        // These can be overridden by specific objects
+        query_value(mat, "sputter", material.sputter);
+        query_value(mat, "collect", material.collect);
 
         // Add material to list
         materials.insert(std::make_pair(material_name, material));
@@ -185,7 +197,7 @@ Input read_input (std::string filename) {
     input.surfaces.resize(num_surfaces);
 
     int id = 0;
-    for (auto &&elem: geometry) {
+    for (auto &&elem : geometry) {
         auto tab = *elem.as_table();
         auto &surf = input.surfaces.at(id);
 
@@ -200,8 +212,11 @@ Input read_input (std::string filename) {
 
         auto &material = surf.material;
         query_value(tab, "name", surf.name);
+
+        // Override global collect and sputter settings for this material
         query_value(tab, "collect", material.collect);
         query_value(tab, "sputter", material.sputter);
+
         auto mesh_path = get_value<string>(tab, "model");
 
         // object positions (optional)
