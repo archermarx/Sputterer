@@ -116,6 +116,7 @@ int main (int argc, char *argv[]) {
     host_vector<float3> hit_positions;
     host_vector<float> num_emit;
     ThrusterPlume plume(input.plume);
+    auto next_plume_resample_s = plume.inputs.resample_interval_s;
     plume.find_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
 
     CUDA_CHECK_STATUS_WITH_MESSAGE("After plume intersections found.");
@@ -125,7 +126,7 @@ int main (int argc, char *argv[]) {
     device_vector<float> d_num_emit{num_emit};
 
     // Create particle container for carbon atoms and renderer
-    ParticleContainer particles{"carbon", max_particles, 1.0f, 1};
+    ParticleContainer particles{"carbon", MAX_PARTICLES, 1.0f, 1};
     Renderer renderer(input, &h_scene, plume, particles, surfaces);
     renderer.setup(input);
 
@@ -154,6 +155,14 @@ int main (int argc, char *argv[]) {
         if (step > 0 && !app::sim_paused) {
             // Record iteration start time
             start.record();
+
+            // Resample plume sites, if required
+            if (plume.inputs.resample_interval_s > 0 && timer.physical_time > next_plume_resample_s) {
+                plume.find_hits(input, h_scene, h_materials, h_material_ids, hits, hit_positions, num_emit);
+                next_plume_resample_s += plume.inputs.resample_interval_s;
+                d_hits = hits;
+                d_num_emit = num_emit;
+            }
 
             // Push particles and sputter from surfaces, then remove those that are out of bounds
             particles.evolve(d_scene, d_materials, d_surface_ids, d_collected, d_hits, d_num_emit, input);

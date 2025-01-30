@@ -30,6 +30,9 @@ class ThrusterPlume {
     ShaderProgram cone_shader;
     ShaderProgram particle_shader;
 
+    // Resampling interval
+    float resample_interval_s = 10e-3;
+
     // display options
     bool render = true;
 
@@ -46,11 +49,11 @@ class ThrusterPlume {
 
     [[nodiscard]] CurrentFraction current_fractions () const;
 
-    ThrusterPlume(PlumeInputs inputs);
+    ThrusterPlume (PlumeInputs inputs);
     void setup_shaders (float len);
     void draw (Camera &cam, float aspect_ratio);
     CurrentFraction current_density (glm::vec2 coords) const;
-    void probe() const;
+    void probe () const;
 
   private:
     unsigned int vbo{}, vao{};

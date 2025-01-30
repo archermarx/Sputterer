@@ -152,6 +152,7 @@ Input read_input (std::string filename) {
         set_value(plume, "beam_energy_eV", input.plume.beam_energy_eV);
         set_value(plume, "scattered_energy_eV", input.plume.scattered_energy_eV);
         set_value(plume, "cex_energy_eV", input.plume.cex_energy_eV);
+        query_value(plume, "resample_interval_s", input.plume.resample_interval_s);
         auto plume_params_arr = plume.get_as<toml::array>("model_parameters");
         auto ind = 0;
         for (auto &&plume_param : *plume_params_arr) {

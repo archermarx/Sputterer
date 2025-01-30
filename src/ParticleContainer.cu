@@ -20,19 +20,30 @@ __global__ void k_setup_rng (curandState *rng, size_t N, uint64_t seed) {
     }
 }
 
-void ParticleContainer::initialize (size_t num) {
+void ParticleContainer::initialize (size_t capacity) {
     CUDA_CHECK_STATUS();
+
+    // Clear vectors
+    this->num_particles = 0;
+    d_position.clear();
+    d_velocity.clear();
+    d_weight.clear();
+    d_tmp.clear();
+    d_rng.clear();
+
     // Allocate memory on GPU
-    d_position.resize(num);
-    d_velocity.resize(num);
-    d_weight.resize(num);
-    d_tmp.resize(num);
-    d_rng.resize(num);
+    d_position.resize(capacity);
+    d_velocity.resize(capacity);
+    d_weight.resize(capacity);
+    d_tmp.resize(capacity);
+
+    // Allocate RNG
+    d_rng.resize(capacity);
 
     // Reinit RNG
     CUDA_CHECK_STATUS_WITH_MESSAGE("Before RNG initialization");
 
-    auto [grid, block] = get_kernel_launch_params(num, k_setup_rng);
+    auto [grid, block] = get_kernel_launch_params(capacity, k_setup_rng);
     curandState *d_rng_ptr = thrust::raw_pointer_cast(d_rng.data());
     k_setup_rng<<<grid, block>>>(d_rng_ptr, d_rng.size(), time(nullptr));
 
@@ -53,6 +64,10 @@ void ParticleContainer::add_particles (const host_vector<float3> &pos, const hos
     auto n = static_cast<int>(std::min(std::min(pos.size(), vel.size()), w.size()));
     if (n == 0)
         return;
+
+    if (this->num_particles + n > MAX_PARTICLES) {
+        throw std::runtime_error("Maximum number of particles exceeded! Terminating.");
+    }
 
     position.resize(num_particles + n);
     velocity.resize(num_particles + n);

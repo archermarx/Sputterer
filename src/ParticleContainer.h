@@ -26,7 +26,7 @@ using thrust::host_vector, thrust::device_vector;
 
 using std::vector, std::string;
 
-constexpr size_t max_particles = 35'000'000;
+constexpr size_t MAX_PARTICLES = 35'000'000;
 
 // forward decl
 class Input;
@@ -82,10 +82,10 @@ class ParticleContainer {
 
     // Constructor
     ParticleContainer () {};
-    ParticleContainer (string name, size_t num = max_particles, double mass = 0.0, int charge = 0);
+    ParticleContainer (string name, size_t capacity = MAX_PARTICLES, double mass = 0.0, int charge = 0);
 
     // allocate memory and set up rng
-    void initialize (size_t num);
+    void initialize (size_t capacity);
 
     // push particles to next positions (for now just use forward Euler)
     void evolve (Scene scene, const device_vector<Material> &mats, const device_vector<size_t> &ids,

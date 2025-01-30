@@ -30,8 +30,9 @@ struct PlumeInputs {
     double cex_energy_eV{50.0};
 
     // diagnostics
-    bool probe{true};                // whether to run a simulated faraday probe sweep
-    double probe_distance_m{1.0}; // distance between probe and plume origin
+    double probe_distance_m{1.0};     // distance between probe and plume origin
+    float resample_interval_s{10e-3}; // Frequency at which the plume is resampled
+    bool probe{false};                // whether to run a simulated faraday probe sweep
 };
 
 #endif // SPUTTERER_PLUME_INPUTS_H
