@@ -30,9 +30,6 @@ class ThrusterPlume {
     ShaderProgram cone_shader;
     ShaderProgram particle_shader;
 
-    // Resampling interval
-    float resample_interval_s = 10e-3;
-
     // display options
     bool render = true;
 
