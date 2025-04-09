@@ -157,7 +157,6 @@ Input read_input (std::string filename) {
         auto ind = 0;
         for (auto &&plume_param : *plume_params_arr) {
             input.plume.model_params[ind] = static_cast<double>(plume_param.as_floating_point()->get());
-            ;
             ind++;
         }
 
@@ -169,7 +168,17 @@ Input read_input (std::string filename) {
     // Read materials
     std::unordered_map<string, Material> materials;
     std::unordered_map<string, glm::vec3> material_colors;
-    auto input_materials = *input_table.get_as<toml::array>("material");
+
+    toml::array input_materials{};
+
+    if (input_table.contains("material")) {
+        input_materials = *input_table.get_as<toml::array>("material");
+    }
+
+    if (input_materials.size() < 1) {
+        std::cerr << "No materials in input file. Exiting.\n";
+        exit(1);
+    }
 
     for (auto &&material_node : input_materials) {
         auto mat = *material_node.as_table();
@@ -193,8 +202,20 @@ Input read_input (std::string filename) {
     }
 
     // Read surfaces
-    auto geometry = *input_table.get_as<toml::array>("geometry");
-    auto num_surfaces = geometry.size();
+    size_t num_surfaces = 0;
+    toml::array geometry{};
+
+    if (input_table.contains("geometry")) {
+        geometry = *input_table.get_as<toml::array>("geometry");
+    }
+
+    num_surfaces = geometry.size();
+
+    if (num_surfaces < 1) {
+        std::cerr << "No geometry specified in input file, exiting.\n";
+        exit(1);
+    }
+
     input.surfaces.resize(num_surfaces);
 
     int id = 0;
@@ -209,6 +230,7 @@ Input read_input (std::string filename) {
             surf.color = material_colors.at(mat_name);
         } else {
             std::cerr << "Material \"" << mat_name << "\" not found in input file!" << std::endl;
+            exit(1);
         }
 
         auto &material = surf.material;
