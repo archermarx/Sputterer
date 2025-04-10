@@ -83,7 +83,6 @@ void ThrusterPlume::find_hits (Input &input, Scene &h_scene, host_vector<Materia
 
                 // Only record hit if material is allowed to sputter
                 if (mat.sputter) {
-                    hits.push_back(hit);
                     auto hit_pos = r.at(hit.t);
                     hit_positions.push_back(hit_pos);
                     vel.push_back({0.0f, 0.0f, 0.0f});
@@ -91,6 +90,9 @@ void ThrusterPlume::find_hits (Input &input, Scene &h_scene, host_vector<Materia
 
                     auto cos_hit_angle = static_cast<double>(dot(r.direction, -hit.norm));
                     auto hit_angle = acos(cos_hit_angle);
+                    hit.angle = hit_angle;
+                    hit.energy = beam_energy;
+                    hits.push_back(hit);
 
                     auto yield = sputtering_yield(beam_energy, hit_angle, incident, target);
                     auto n_emit =
@@ -196,47 +198,70 @@ CurrentFraction ThrusterPlume::current_fractions () const {
     };
 }
 
+/*
+ * Calculate the sputtering yield of an `incident` species onto a `target` species,
+ * given the energy of the incident atom in eV and the incidence angle in radians.
+ *
+ * Uses the fits for Xenon from:
+ * Yim, John T. (2017).
+ * A Survey of Xenon Ion Sputter Yield Data and Fits Relevant to Electric Propulsion Spacecraft Integration.
+ * 35th International Electric Propulsion Conference, Atlanta GA.
+ * IEPC-2017-060
+ */
 double sputtering_yield (double energy, double angle, Species incident, Species target) {
-
     using namespace constants;
     auto [incident_mass, incident_z] = incident;
     auto [target_mass, target_z] = target;
 
-    // Model fitting parameters
-    constexpr auto threshold_energy = 10.92;
-    constexpr auto q = 2.18;
-    constexpr auto lambda = 4.05;
-    constexpr auto mu = 1.97;
-    constexpr auto f = 2.29;
-    constexpr auto a = 0.44;
-    constexpr auto b = 0.71;
+    // Model fitting parameters from Yim
+    constexpr auto threshold_energy = 21.0;
+    constexpr auto q = 4.0;
+    constexpr auto lambda = 0.8;
+    constexpr auto mu = 1.8;
 
     // no sputtering if energy below the threshold energy
     if (energy < threshold_energy) {
         return 0.0;
     }
 
-    // model computation
+    // Sputter yield at normal ion incidence
+    // Uses Eckstein model with parameters calculated by Yim
+
+    // Lindhard screening length
     constexpr auto twothirds = 2.0 / 3.0;
     constexpr auto arg1 = 9 * pi * pi / 128;
-    constexpr auto arg2 = a_0 * 4 * pi * eps_0 / q_e;
-    auto a1 = cbrt(arg1) * arg2;
+    constexpr auto arg2 = 4 * pi * eps_0 / q_e;
+    constexpr auto bohr_radius = 0.529177210903e-10;
 
-    // lindhard screening length
-    auto a_l = a1 / sqrt(pow(incident_z, twothirds) + pow(incident_z, twothirds));
-    auto eps_l = a_l * energy * target_mass / (target_z * incident_z * (target_mass + incident_mass));
+    auto lindhard_screening_length =
+        cbrt(arg1) * bohr_radius / sqrt(pow(incident_z, twothirds) + pow(target_z, twothirds));
+
+    auto reduced_energy = lindhard_screening_length * arg2 * energy * target_mass /
+                          (target_z * incident_z * (target_mass + incident_mass));
 
     // Nuclear stopping power for KrC potential
-    auto w = eps_l + 0.1728 * sqrt(eps_l) + 0.008 * pow(eps_l, 0.1504);
+    auto w = reduced_energy + 0.1728 * sqrt(reduced_energy) + 0.008 * pow(reduced_energy, 0.1504);
     auto inv_w = 1.0 / w;
-    auto s_n = 0.5 * log(1.0 + 1.2288 * eps_l) * inv_w;
+    auto s_n = 0.5 * log(1.0 + 1.2288 * reduced_energy) * inv_w;
 
-    // sputtering yield
-    auto term_1 = pow(energy / threshold_energy - 1, mu);
-    auto term_2 = 1.0 / cos(pow(angle, a));
-    auto numerator = q * s_n * term_1 * pow(term_2, f) * exp(b * (1 - term_2));
-    auto denominator = lambda * inv_w + term_1;
-    return numerator / denominator;
+    // Energy factor that appears in num. and denom.
+    auto energy_factor = pow(energy / threshold_energy - 1, mu);
+
+    // Yield at normal incidence
+    auto yield_normal = q * s_n * energy_factor / (lambda * inv_w + energy_factor);
+
+    // Angular correction
+    // We use the Wei model as formulated by Yim.
+    // beta/a and alpha/a parameters from Yim for Carbon, Table 7.
+    constexpr auto beta = 0.88;
+    constexpr auto beta2 = beta * beta;
+    constexpr auto alpha = 2.05;
+    constexpr auto alpha2 = alpha * alpha;
+    auto tan_theta = tan(angle);
+    auto g = 1.0 / (1 + beta2 * tan_theta * tan_theta);
+    auto angular_correction = sqrt(g) * exp(0.5 * alpha2 * (1 - g));
+
+    return yield_normal * angular_correction;
 }
 
 CurrentFraction ThrusterPlume::current_density (glm::vec2 coords) const {

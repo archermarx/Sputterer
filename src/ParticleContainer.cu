@@ -169,28 +169,86 @@ __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float i
     return diffuse_coeff;
 }
 
-__device__ float3 sample_diffuse (const Triangle &tri, const float3 norm, float thermal_speed, curandState *rng) {
-    // sample from a cosine distribution
-    //  auto c_tan1 = curand_normal(rng);
-    //  auto c_tan2 = curand_normal(rng);
-    //  auto c_norm = abs(curand_normal(rng));
+/*
+ * Sample particles that reflect diffusely from a surface with temperature defined by `thermal_speed`
+ */
+__device__ float3 sample_diffuse_reflection (const Triangle &tri, const float3 norm, float thermal_speed,
+                                             curandState *rng) {
     using namespace constants;
 
-    auto samples = curand_normal2(rng);
-    auto unif = curand_uniform(rng);
-
-    auto c_norm = sqrt(-0.5 * log(unif));
-    auto c_tan1 = samples.x;
-    auto c_tan2 = samples.y;
-
     // get tangent vectors
-    // TODO: may be worth pre-computing these?
     auto tan1 = normalize(tri.v1 - tri.v0);
     auto tan2 = cross(tan1, norm);
 
+    // Boyd and Schwartzentruber "Non-equilibrium gas dynamics and molecular simulation", pp. 318-319.
+    auto r1 = curand_uniform(rng);
+    auto r2 = curand_uniform(rng);
+    auto r3 = curand_uniform(rng);
+    auto r4 = curand_uniform(rng);
+    auto r5 = curand_uniform(rng);
+
+    auto c_norm = sqrt(-0.5 * log(r1));
+    auto c_tan1 = sinpi(2 * r2) * sqrt(-0.5 * log(r3));
+    auto c_tan2 = sinpi(2 * r4) * sqrt(-0.5 * log(r5));
+
     // Compute new velocity vector
     auto vel_refl = thermal_speed * (c_norm * norm + c_tan1 * tan1 + c_tan2 * tan2);
+
     return vel_refl;
+}
+
+__device__ float sigmund_thompson_edf (float E, float E_B, float m) {
+    return E / pow(E + E_B, 3 - 2 * m);
+}
+
+/*
+ * Sample particles that sputter off a surface in response to an incident atom of a given energy.
+ * Currently, we assume a cosine distribution and so there is no dependence on the angle of the incident particle.
+ * Ref: https://eplab.ae.illinois.edu/Publications/IEPC-2022-379.pdf
+ */
+__device__ float3 sample_sputtered_particle (const Triangle &tri, const float3 norm, float incident_energy_ev,
+                                             float incident_angle_rad, double target_mass, curandState *rng) {
+
+    using constants::pi;
+
+    constexpr auto E_B = 7.4;
+    constexpr auto m = static_cast<float>(1.0 / 3.0);
+
+    // Determine vector by sampling from cosine distribution
+    // get tangent vectors
+    auto tan1 = normalize(tri.v1 - tri.v0);
+    auto tan2 = cross(tan1, norm);
+
+    auto sin2_pi = curand_uniform(rng);
+    auto cos_pi = sqrt(1 - sin2_pi);
+    auto sin_pi = sqrt(sin2_pi);
+
+    auto plane_angle = curand_uniform(rng) * 2;
+
+    float sin_phi, cos_phi;
+    sincospif(curand_uniform(rng) * 2, &sin_phi, &cos_phi);
+
+    auto c_norm = cos_pi;
+    auto c_tan1 = sin_pi * sin_phi;
+    auto c_tan2 = sin_pi * cos_phi;
+    auto vector = c_norm * norm + c_tan1 * tan1 + c_tan2 * tan2;
+
+    // Determine energy by sampling from Sigmund-Thompson energy distribution
+    auto max_sigmund_thompson_edf = sigmund_thompson_edf(E_B / (2 * (1 - m)), E_B, m);
+    float energy;
+
+    while (true) {
+        auto u = curand_uniform(rng);
+        energy = curand_uniform(rng) * incident_energy_ev;
+        auto p_accept = sigmund_thompson_edf(energy, E_B, m) / max_sigmund_thompson_edf;
+        if (u <= p_accept)
+            break;
+    }
+
+    // Convert energy to velocity
+    auto velocity = sqrt(2 * constants::q_e * energy / target_mass);
+
+    return velocity * vector;
 }
 
 DeviceParticleContainer ParticleContainer::data () {
@@ -214,15 +272,15 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
 
     using namespace constants;
 
-    // Particle mass
+    // Target particle mass
     // FIXME: currently hard-coded to carbon, easy to fix by passing in mass as a param
-    const double mass = 12.011 * m_u;
+    const double target_mass = 12.011 * m_u;
 
     // Particle energy
-    const double energy_factor = 0.5 * mass / q_e;
+    const double energy_factor = 0.5 * target_mass / q_e;
 
     // k_B / m_u (for thermal speed calculations)
-    const auto thermal_speed_factor = static_cast<float>(sqrt(k_b / mass));
+    const auto thermal_speed_factor = static_cast<float>(sqrt(2 * k_b / target_mass));
 
     // Push particles
     if (tid < pc.num_particles) {
@@ -235,7 +293,10 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
         auto closest_hit = ray.cast(scene);
 
         if (closest_hit.t <= 1) {
-            auto &[_, t, hit_pos, norm, hit_triangle_id] = closest_hit;
+            auto t = closest_hit.t;
+            auto hit_triangle_id = closest_hit.id;
+            auto hit_pos = closest_hit.pos;
+            auto norm = closest_hit.norm;
 
             // Get material info where we hit
             auto &mat = materials[material_ids[hit_triangle_id]];
@@ -250,6 +311,7 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
             auto incident_energy_ev = static_cast<float>(energy_factor * velnorm_2);
 
             // Get sticking and diffuse coeff from model
+            // Material coefficients not used.
             auto diffuse_coeff = carbon_diffuse_prob(cos_incident_angle, incident_energy_ev);
             auto sticking_coeff = 1.0f - diffuse_coeff;
 
@@ -268,10 +330,10 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
             } else if (uniform < diffuse_coeff + sticking_coeff) {
                 // Particle reflects diffusely based on surface temperature
                 // TODO: pass thermal speed (or sqrt of temperature) instead of temperature to avoid this
-                //
                 auto sqrt_temp = sqrtf(mat.temperature_K);
                 auto thermal_speed = thermal_speed_factor * sqrt_temp;
-                auto vel_refl = sample_diffuse(scene.triangles[hit_triangle_id], norm, thermal_speed, local_rng);
+                auto vel_refl =
+                    sample_diffuse_reflection(scene.triangles[hit_triangle_id], norm, thermal_speed, local_rng);
 
                 // Get particle position
                 // (assuming particle reflects ~instantaneously then travels according to new velocity vector)
@@ -297,22 +359,22 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
         auto p_emit = emit_prob[tid - pc.num_particles];
         auto local_rng = &pc.rng[tid];
 
-        // compute diffuse velocity
-        auto &tri = scene.triangles[hit.id];
-        auto &mat = materials[material_ids[hit.id]];
-        auto thermal_speed = sqrtf(mat.temperature_K) * thermal_speed_factor;
-        auto vel = sample_diffuse(tri, hit.norm, thermal_speed, local_rng);
-
         // generate rng
         auto u = curand_uniform(local_rng);
 
         // add new particles (negative weight if not real)
         if (u < p_emit * dt) {
-            // offset particles from surface to avoid re-intersecting emission surface and to produce more
-            // continuous flow
+            // Sample velocity
+            auto &tri = scene.triangles[hit.id];
+            auto incident_ion_energy_ev = hit.energy;
+            auto incident_ion_angle_rad = hit.angle;
+            auto vel = sample_sputtered_particle(tri, hit.norm, incident_ion_energy_ev, incident_ion_angle_rad,
+                                                 target_mass, local_rng);
             auto pos_offset = curand_uniform(local_rng) * dt * vel;
-            pc.position[tid] = hit.pos + pos_offset;
             pc.velocity[tid] = vel;
+
+            // offset particles from surface to avoid re-intersecting emission surface and to produce more
+            pc.position[tid] = hit.pos + pos_offset;
             pc.weight[tid] = input_weight;
         } else {
             // flag particle for removal

@@ -13,11 +13,11 @@ using thrust::host_vector;
 std::ostream &operator<< (std::ostream &os, const float3 &v);
 
 inline __host__ __device__ float dot (const float3 a, const float3 b) {
-    return a.x*b.x + a.y*b.y + a.z*b.z;
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 inline __host__ __device__ float3 cross (const float3 a, const float3 b) {
-    return {a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
 
 inline __host__ __device__ float3 operator+ (const float3 a, const float3 b) {
@@ -29,11 +29,11 @@ inline __host__ __device__ float3 operator- (const float3 a, const float3 b) {
 }
 
 inline __host__ __device__ float3 operator* (const float a, const float3 b) {
-    return {a*b.x, a*b.y, a*b.z};
+    return {a * b.x, a * b.y, a * b.z};
 }
 
 inline __host__ __device__ float3 operator/ (const float3 a, const float b) {
-    return {a.x/b, a.y/b, a.z/b};
+    return {a.x / b, a.y / b, a.z / b};
 }
 
 inline __host__ __device__ float3 operator- (const float3 a) {
@@ -41,11 +41,11 @@ inline __host__ __device__ float3 operator- (const float3 a) {
 }
 
 inline __host__ __device__ float length (const float3 v) {
-    return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 inline __host__ __device__ float3 normalize (const float3 v) {
-    return v/length(v);
+    return v / length(v);
 }
 
 inline __host__ __device__ float3 make_float3 (const glm::vec3 &v) {
@@ -65,16 +65,19 @@ struct Triangle {
     float area;
 
     __host__ __device__ Triangle (float3 v0, float3 v1, float3 v2)
-        : v0(v0), v1(v1), v2(v2), centroid{(v0 + v1 + v2)/3.0f} {
-            auto e1 = v1 - v0;
-            auto e2 = v2 - v0;
+        : v0(v0)
+        , v1(v1)
+        , v2(v2)
+        , centroid{(v0 + v1 + v2) / 3.0f} {
+        auto e1 = v1 - v0;
+        auto e2 = v2 - v0;
 
-            auto cross_prod = cross(e1, e2);
-            auto len = length(cross_prod);
+        auto cross_prod = cross(e1, e2);
+        auto len = length(cross_prod);
 
-            this->area = len/2;
-            this->norm = cross_prod/len;
-        }
+        this->area = len / 2;
+        this->norm = cross_prod / len;
+    }
 
     // given random uniform numbers u1 and u2, find a random point on the triangle
     __host__ __device__ float3 sample (float u1, float u2) const {
@@ -87,17 +90,18 @@ struct Triangle {
             u2 = 1 - u2;
         }
 
-        return v0 + (u1*e1 + u2*e2);
+        return v0 + (u1 * e1 + u2 * e2);
     }
 };
 
-
 struct HitInfo {
-    bool hits{false};
-    float t{1e30f};
     float3 pos{};
     float3 norm{};
+    float energy{};
+    float angle{};
+    float t{1e30f};
     int id{-1};
+    bool hits{false};
 };
 
 float3 fminf (float3 a, float3 b);
@@ -108,22 +112,30 @@ struct BBox {
     float3 lb{1e30f, 1e30f, 1e30f};
     float3 ub{-1e30f, -1e30f, -1e30f};
 
-    void grow (float3 p) { lb = fminf(lb, p), ub = fmaxf(ub, p); }
-
-    float3 extent () { return ub - lb; }
-
-    float area () {
-        float3 e = extent();  // box extent
-        return e.x*e.y + e.y*e.z + e.z*e.x;
+    void grow (float3 p) {
+        lb = fminf(lb, p), ub = fmaxf(ub, p);
     }
 
-    float3 center () { return 0.5*(lb + ub); }
+    float3 extent () {
+        return ub - lb;
+    }
+
+    float area () {
+        float3 e = extent(); // box extent
+        return e.x * e.y + e.y * e.z + e.z * e.x;
+    }
+
+    float3 center () {
+        return 0.5 * (lb + ub);
+    }
 };
 
 struct BVHNode {
-    BBox box;    // 24 bytes, min and maximum extents of axis-aligned bounding box (aabb)
-    size_t left_first, tri_count;  // 8 bytes; total: 32 bytes
-    __host__ __device__ bool is_leaf () { return tri_count > 0; }
+    BBox box;                     // 24 bytes, min and maximum extents of axis-aligned bounding box (aabb)
+    size_t left_first, tri_count; // 8 bytes; total: 32 bytes
+    __host__ __device__ bool is_leaf () {
+        return tri_count > 0;
+    }
 };
 
 struct Scene {
@@ -150,7 +162,10 @@ struct Ray {
     float3 direction;
     float3 rd;
 
-    __host__ __device__ Ray (float3 orig, float3 dir) : origin(orig), direction(dir), rd({1/dir.x, 1/dir.y, 1/dir.z}) {}
+    __host__ __device__ Ray (float3 orig, float3 dir)
+        : origin(orig)
+        , direction(dir)
+        , rd({1 / dir.x, 1 / dir.y, 1 / dir.z}) {}
 
     [[nodiscard]] __host__ __device__ float3 at (float t) const;
 
