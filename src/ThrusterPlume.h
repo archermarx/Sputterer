@@ -51,6 +51,7 @@ class ThrusterPlume {
     void draw (Camera &cam, float aspect_ratio);
     CurrentFraction current_density (glm::vec2 coords) const;
     void probe () const;
+    void write_to_file () const;
 
   private:
     unsigned int vbo{}, vao{};

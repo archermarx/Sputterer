@@ -7,7 +7,6 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "gl_helpers.h"
 #include "Camera.h"
 #include "Constants.h"
 #include "ThrusterPlume.h"
@@ -22,6 +21,7 @@ void ThrusterPlume::find_hits (Input &input, Scene &h_scene, host_vector<Materia
                                host_vector<size_t> &h_material_ids, host_vector<HitInfo> &hits,
                                host_vector<float3> &hit_positions, host_vector<float> &num_emit) {
     using namespace constants;
+    std::cout << "Finding hits..." << std::endl;
     hits.clear();
     hit_positions.clear();
     num_emit.clear();
@@ -37,7 +37,7 @@ void ThrusterPlume::find_hits (Input &input, Scene &h_scene, host_vector<Materia
     auto incident = constants::xenon;
     auto target = constants::carbon;
 
-    auto [main_fraction, scattered_fraction, _] = current_fractions();
+    auto [main_fraction, scattered_fraction, cex_fraction] = current_fractions();
     auto beam_fraction = main_fraction + scattered_fraction;
     main_fraction = main_fraction / beam_fraction;
 
@@ -60,17 +60,28 @@ void ThrusterPlume::find_hits (Input &input, Scene &h_scene, host_vector<Materia
             // select whether ray comes from main beam or scattered beam based on
             // fraction of beam that is scattered vs main
             auto u = rand_uniform();
-            double div_angle, beam_energy;
-            if (u < main_fraction) {
-                div_angle = main_divergence_angle();
-                beam_energy = inputs.beam_energy_eV;
+            double beam_energy{};
+            float elevation{};
+            if (u > (main_fraction + scattered_fraction)) {
+                // CEX ions expand in a sphere, we thus have a uniform angular distribution between 0 and pi/2
+                elevation = rand_uniform(0, 0.5 * constants::pi);
+                beam_energy = inputs.cex_energy_eV;
             } else {
-                div_angle = scattered_divergence_angle();
-                beam_energy = inputs.scattered_energy_eV;
+                // Main or scattered beam
+                double div_angle{};
+                if (u > scattered_fraction) {
+                    div_angle = main_divergence_angle();
+                    beam_energy = inputs.beam_energy_eV;
+                } else {
+                    div_angle = scattered_divergence_angle();
+                    beam_energy = inputs.scattered_energy_eV;
+                }
+                // Main and scattered beams are Gaussians with variance = (div_angle^2/2)
+                elevation = abs(rand_normal(0, div_angle / sqrt(2.0)));
             }
 
+            // Azimuthal angle is uniform for an ideal plume
             auto azimuth = rand_uniform(0, 2 * constants::pi);
-            auto elevation = abs(rand_normal(0, div_angle / sqrt(2.0)));
 
             auto dir = cos(elevation) * inputs.direction + sin(elevation) * (cos(azimuth) * right + sin(azimuth) * up);
             Ray r{make_float3(inputs.origin + dir * 1e-3f), normalize(make_float3(dir))};
@@ -182,12 +193,13 @@ CurrentFraction ThrusterPlume::current_fractions () const {
 
     // divergence angles
     const auto [t0, t1, t2, t3, t4, t5, sigma_cex] = inputs.model_params;
+    auto sigma_cex_A2 = sigma_cex * 1e-20; // square Angstroms
 
     // neutral density
-    auto neutral_density = t4 * inputs.background_pressure_Torr * torr_to_pa + t5;
+    auto neutral_density = exp10(t4) * inputs.background_pressure_Torr * torr_to_pa + exp10(t5);
 
     // get fraction of current in beam vs in main
-    auto exp_factor = exp(-1.0 * neutral_density * sigma_cex * 1e-20);
+    auto exp_factor = exp(-1.0 * neutral_density * sigma_cex_A2);
     auto cex_current_factor = 1.0 - exp_factor;
     auto beam_current_factor = exp_factor;
 
@@ -196,6 +208,31 @@ CurrentFraction ThrusterPlume::current_fractions () const {
         .scattered = t0 * beam_current_factor,
         .cex = cex_current_factor,
     };
+}
+
+CurrentFraction ThrusterPlume::current_density (glm::vec2 coords) const {
+    using namespace constants;
+    const auto [frac_beam, frac_scat, frac_cex] = current_fractions();
+    const auto theta_beam = main_divergence_angle();
+    const auto theta_scat = scattered_divergence_angle();
+
+    const auto r = coords.x;
+    const auto theta = coords.y;
+
+    const auto A1 = frac_beam * current_density_scale(theta_beam);
+    const auto A2 = frac_scat * current_density_scale(theta_scat);
+
+    const auto angle_frac_beam = theta / theta_beam;
+    const auto angle_frac_scat = theta / theta_scat;
+    const auto a_beam = A1 * exp(-(angle_frac_beam * angle_frac_beam));
+    const auto a_scat = A2 * exp(-(angle_frac_scat * angle_frac_scat));
+
+    const auto inv_r2 = 1.0 / (r * r);
+    const auto j_beam = inputs.beam_current_A * a_beam * inv_r2;
+    const auto j_scat = inputs.beam_current_A * a_scat * inv_r2;
+    const auto j_cex = inputs.beam_current_A * frac_cex / (2 * pi) * inv_r2;
+
+    return {j_beam, j_scat, j_cex};
 }
 
 /*
@@ -262,30 +299,6 @@ double sputtering_yield (double energy, double angle, Species incident, Species 
     auto angular_correction = sqrt(g) * exp(0.5 * alpha2 * (1 - g));
 
     return yield_normal * angular_correction;
-}
-
-CurrentFraction ThrusterPlume::current_density (glm::vec2 coords) const {
-    using namespace constants;
-    const auto [frac_beam, frac_scat, frac_cex] = current_fractions();
-    const auto theta_beam = main_divergence_angle();
-    const auto theta_scat = scattered_divergence_angle();
-
-    const auto r = coords.x;
-    const auto theta = coords.y;
-
-    const auto A1 = frac_beam * current_density_scale(theta_beam);
-    const auto A2 = frac_scat * current_density_scale(theta_scat);
-
-    const auto angle_frac_1 = theta / theta_beam;
-    const auto angle_frac_2 = theta / theta_scat;
-    const auto a_beam = A1 * exp(-(angle_frac_1 * angle_frac_1));
-    const auto a_scat = A2 * exp(-(angle_frac_2 * angle_frac_2));
-
-    const auto inv_r2 = 1.0 / r * r;
-    const auto j_beam = inputs.beam_current_A * a_beam * inv_r2;
-    const auto j_scat = inputs.beam_current_A * a_scat * inv_r2;
-    const auto j_cex = inputs.beam_current_A * frac_cex / (2 * pi) * inv_r2;
-    return {j_beam, j_scat, j_cex};
 }
 
 void ThrusterPlume::probe () const {
