@@ -159,7 +159,7 @@ void ParticleContainer::draw (Camera &camera, float aspect_ratio) {
 }
 
 __host__ __device__ float carbon_diffuse_prob (float cos_incident_angle, float incident_energy_ev) {
-    // fit parameters
+    // fit parameters to molecular dynamics data
     constexpr auto angle_offset = 1.6823f;
     constexpr auto energy_offset = 65.6925f;
     constexpr auto energy_scale = 34.5302f;
@@ -219,18 +219,19 @@ __device__ float3 sample_sputtered_particle (const Triangle &tri, const float3 n
     auto tan1 = normalize(tri.v1 - tri.v0);
     auto tan2 = cross(tan1, norm);
 
-    auto sin2_pi = curand_uniform(rng);
-    auto cos_pi = sqrt(1 - sin2_pi);
-    auto sin_pi = sqrt(sin2_pi);
+    auto sin2_theta = curand_uniform(rng);
+    auto cos_theta = sqrt(1 - sin2_theta);
+    auto sin_theta = sqrt(sin2_theta);
 
+    // Uniform distribution in azimuth
     auto plane_angle = curand_uniform(rng) * 2;
-
     float sin_phi, cos_phi;
-    sincospif(curand_uniform(rng) * 2, &sin_phi, &cos_phi);
+    sincospif(plane_angle, &sin_phi, &cos_phi);
 
-    auto c_norm = cos_pi;
-    auto c_tan1 = sin_pi * sin_phi;
-    auto c_tan2 = sin_pi * cos_phi;
+    auto c_norm = cos_theta;
+    auto c_tan1 = sin_theta * sin_phi;
+    auto c_tan2 = sin_theta * cos_phi;
+
     auto vector = c_norm * norm + c_tan1 * tan1 + c_tan2 * tan2;
 
     // Determine energy by sampling from Sigmund-Thompson energy distribution
@@ -311,7 +312,8 @@ __global__ void k_evolve (DeviceParticleContainer pc, Scene scene, const Materia
             auto incident_energy_ev = static_cast<float>(energy_factor * velnorm_2);
 
             // Get sticking and diffuse coeff from model
-            // Material coefficients not used.
+            // Material coefficients not presently used
+            // auto diffuse_coeff = mat.diffuse_coeff;
             auto diffuse_coeff = carbon_diffuse_prob(cos_incident_angle, incident_energy_ev);
             auto sticking_coeff = 1.0f - diffuse_coeff;
 

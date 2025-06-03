@@ -1,6 +1,6 @@
 [simulation]
-timestep_s = 5e-6         # Simulation timestep
-max_time_s = 5e-2            # Maximum time to run the simulation (in seconds)
+timestep_s = 1e-6         # Simulation timestep
+max_time_s = 1e-2            # Maximum time to run the simulation (in seconds)
 output_interval = 1000
 particle_weight = 1e8      # Carbon macroparticle weight
 display = false
